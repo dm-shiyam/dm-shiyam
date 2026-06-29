@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
 import { getActiveAutomations, logActivity, getUserById, incrementDmsUsed } from "@/lib/db";
+import { rateLimit } from "@/lib/rate-limiter";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
@@ -41,8 +42,29 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signatureHeader));
 }
 
+// ─── Rate limit config ──────────────────────────────────────────────
+const RATE_LIMIT_MAX = 100;           // max requests per window
+const RATE_LIMIT_WINDOW_MS = 60_000;  // 60-second window
+
 // ─── POST — incoming events ──────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  // Task #4: Rate limiting
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("x-real-ip")
+    || "unknown";
+  const rl = rateLimit(clientIp, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  if (!rl.allowed) {
+    console.warn(`[webhook] Rate limited IP ${clientIp}`);
+    return new NextResponse("Too Many Requests", {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)),
+        "X-RateLimit-Limit": String(RATE_LIMIT_MAX),
+        "X-RateLimit-Remaining": "0",
+      },
+    });
+  }
+
   let rawBody: string;
   try {
     rawBody = await req.text();

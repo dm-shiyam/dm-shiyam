@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/reset-dm-usage",
+      "schedule": "0 0 1 * *"
+    }
+  ]
+}

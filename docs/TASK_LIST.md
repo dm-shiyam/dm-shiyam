@@ -13,11 +13,11 @@
 | 1 | **Long-lived token exchange** — Exchange short-lived (1hr) tokens for 60-day tokens + auto-refresh before expiry | High | Done |
 | 2 | **Migrate from SQLite to PostgreSQL** — SQLite doesn't support concurrent writes; move to Postgres for production | High | Pending |
 | 3 | **User-scoped data isolation** — Add `user_id` FK to `accounts`, `automations`, `activity_log`; filter all queries by user | High | Done |
-| 4 | **Rate limiting on webhook endpoint** — Prevent abuse on `POST /api/webhook/instagram` (no auth check currently) | Medium | Pending |
+| 4 | **Rate limiting on webhook endpoint** — Prevent abuse on `POST /api/webhook/instagram` (no auth check currently) | Medium | Done |
 | 5 | **DM limit enforcement** — `dms_used_this_month` exists but is never checked before sending; enforce plan limits in `processCommentTrigger` | Medium | Done |
-| 6 | **Monthly DM usage reset** — `resetMonthlyDmUsage()` exists but no cron/scheduler calls it | Medium | Pending |
+| 6 | **Monthly DM usage reset** — `resetMonthlyDmUsage()` exists but no cron/scheduler calls it | Medium | Done |
 | 7 | **Webhook signature verification** — Verify `X-Hub-Signature-256` header from Meta to ensure requests are authentic | Medium | Done |
-| 8 | **Error retry logic** — If DM API fails (rate limit, temporary error), implement retry with backoff | Low | Pending |
+| 8 | **Error retry logic** — If DM API fails (rate limit, temporary error), implement retry with backoff | Low | Done |
 | 9 | **SQL injection in analytics** — `getAnalyticsData` interpolates `days` directly into SQL template strings; use parameterized queries | Medium | Done |
 | 10 | **App Review submission** — Prepare and submit `instagram_manage_messages` for Advanced Access | High | Done |
 
@@ -65,6 +65,6 @@
 
 | Person | Tasks | Focus |
 |--------|-------|-------|
-| **Priyanka** | #1, #3, #5, #7, #9, #10 (Done) → Next: #2, #4, #6 | Postgres migration, rate limiting, monthly reset |
+| **Priyanka** | #1, #3, #4, #5, #6, #7, #8, #9, #10 (Done) → Next: #2 | Postgres migration (coordinate with Venkat #7) |
 | **Ankit** | #2 (Done), #3 (Done) → Next: #4, #6, #10 | Google OAuth, mobile UI, onboarding |
 | **Venkat** | Next: #1, #2, #7 | Billing, dedup DMs, deployment |

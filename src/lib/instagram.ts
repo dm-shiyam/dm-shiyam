@@ -4,6 +4,18 @@
 const GRAPH_API_VERSION = "v19.0";
 const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
+// Retry config
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 1000; // 1s, 2s, 4s exponential backoff
+
+function isRetryable(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ─────────────────────────────────────────────
 // Send a DM via the Instagram Messaging API
 //
@@ -19,38 +31,56 @@ export async function sendDM(
   accessToken: string,
   igAccountId: string    // Your Instagram Business Account ID (INSTAGRAM_ACCOUNT_ID)
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
-  try {
-    const url = `${BASE_URL}/me/messages`;
+  const url = `${BASE_URL}/me/messages`;
 
-    const body = {
-  recipient: { id: recipientId },
-  message: { text: messageText },
-  messaging_type: "RESPONSE",
-};
+  const body = {
+    recipient: { id: recipientId },
+    message: { text: messageText },
+    messaging_type: "RESPONSE",
+  };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    });
+  let lastError = "";
 
-    const data = await res.json();
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[sendDM] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
+        await sleep(delay);
+      }
 
-    if (!res.ok || data.error) {
-      const errMsg = data.error?.message ?? `HTTP ${res.status}`;
-      console.error("[sendDM] API error:", JSON.stringify(data.error ?? data));
-      return { success: false, error: errMsg };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        lastError = data.error?.message ?? `HTTP ${res.status}`;
+        console.error(`[sendDM] API error (attempt ${attempt + 1}):`, JSON.stringify(data.error ?? data));
+
+        // Only retry on rate limits (429) and server errors (5xx)
+        if (isRetryable(res.status) && attempt < MAX_RETRIES) continue;
+        return { success: false, error: lastError };
+      }
+
+      return { success: true, messageId: data.message_id };
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.error(`[sendDM] Fetch error (attempt ${attempt + 1}):`, lastError);
+
+      // Retry on network errors
+      if (attempt < MAX_RETRIES) continue;
+      return { success: false, error: lastError };
     }
-
-    return { success: true, messageId: data.message_id };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[sendDM] Fetch error:", message);
-    return { success: false, error: message };
   }
+
+  return { success: false, error: lastError };
 }
 
 // ─────────────────────────────────────────────

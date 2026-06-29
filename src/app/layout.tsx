@@ -3,7 +3,7 @@ import Providers from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DMagic — Instagram Comment-to-DM Bot",
+  title: "DM Shiyam — Instagram Comment-to-DM Bot",
   description:
     "Automatically send DMs when users comment specific keywords on your Instagram posts.",
 };

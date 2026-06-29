@@ -1,6 +1,6 @@
-# DMagic — Business Plan & Growth Strategy
+# DM Shiyam — Business Plan & Growth Strategy
 
-> Turning DMagic from a side project into a profitable SaaS business.
+> Turning DM Shiyam from a side project into a profitable SaaS business.
 
 ---
 
@@ -22,11 +22,11 @@
 
 ## Product Vision
 
-**DMagic** = Automated comment-to-DM funnels for Instagram creators and businesses.
+**DM Shiyam** = Automated comment-to-DM funnels for Instagram creators and businesses.
 
 **One-liner pitch**: "Turn every Instagram comment into a customer — automatically."
 
-**Problem we solve**: Creators and businesses get hundreds of comments like "INFO", "LINK", "PRICE" — but manually DMing each person is impossible. They lose leads. DMagic automates this instantly with AI-personalized DMs.
+**Problem we solve**: Creators and businesses get hundreds of comments like "INFO", "LINK", "PRICE" — but manually DMing each person is impossible. They lose leads. DM Shiyam automates this instantly with AI-personalized DMs.
 
 ---
 
@@ -156,7 +156,7 @@
 - Useful for tech brands and thought leaders
 
 ### Branding After Cross-Platform
-- Brand name: **DMagic** — works across all platforms (DM = Direct Message + Magic)
+- Brand name: **DM Shiyam** — works across all platforms (DM = Direct Message + Magic)
 - Tagline: "Automate DMs across Instagram, WhatsApp, Facebook & more"
 
 ---
@@ -174,7 +174,7 @@
 **Ad Creative Ideas**:
 - "I used to spend 3 hours replying to DMs. Now it's automatic." (before/after)
 - Screen recording of the dashboard in action
-- "Comment 'INFO' and watch what happens" (meta — use DMagic to demo DMagic)
+- "Comment 'INFO' and watch what happens" (meta — use DM Shiyam to demo DM Shiyam)
 - Testimonial-style reels from early users
 
 **Targeting**:
@@ -187,7 +187,7 @@
 | Content Type | Platform | Frequency | Topic Examples |
 |-------------|----------|-----------|----------------|
 | **Short reels** | Instagram, YouTube Shorts | 3-5/week | "How I automated 1000 DMs", tips for creators |
-| **Tutorial videos** | YouTube | 1-2/week | "How to set up Instagram DM automation", "ManyChat vs DMagic" |
+| **Tutorial videos** | YouTube | 1-2/week | "How to set up Instagram DM automation", "ManyChat vs DM Shiyam" |
 | **Blog posts** | Your website | 2-4/month | SEO for "instagram dm automation", "comment to dm bot" |
 | **Twitter threads** | X/Twitter | 2-3/week | Growth tips, product updates, case studies |
 | **LinkedIn posts** | LinkedIn | 2-3/week | B2B angle — "How agencies use DM automation" |
@@ -297,7 +297,7 @@ High-value keywords to target:
 - [ ] **Conditional replies** (if comment contains "price" → send pricing, if "demo" → send calendly)
 - [ ] **Team collaboration** (multiple team members per account)
 - [ ] **White-label** (agencies can brand it as their own)
-- [ ] **API access** (developers can build on top of DMagic)
+- [ ] **API access** (developers can build on top of DM Shiyam)
 
 ### Phase 4 — Cross-Platform (Month 4-6)
 - [ ] Facebook Messenger automation
@@ -447,13 +447,13 @@ ManyChat dominates the US/EU market. But in **India**, there's almost no player 
 ### Marketing — What Actually Works
 
 **1. "Eat your own dog food" (FREE, BEST ROI)**
-- Use DMagic on YOUR OWN Instagram to promote DMagic
+- Use DM Shiyam on YOUR OWN Instagram to promote DM Shiyam
 - Post a reel: "Comment INFO to see this tool in action"
 - When they comment, they experience the product firsthand — live demo + marketing + lead gen in one
 
 **2. YouTube tutorials (FREE, compounds over time)**
 - "How to automate Instagram DMs for free"
-- "ManyChat vs DMagic — which is cheaper?"
+- "ManyChat vs DM Shiyam — which is cheaper?"
 - These rank in Google/YouTube for months and bring leads forever
 
 **3. Instagram ads (PAID, scalable)**

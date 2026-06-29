@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   console.log(`[DEV] Password reset link for ${email}: ${resetUrl}`);
   
   // In production, integrate with Resend/Nodemailer here:
-  // await sendEmail({ to: email, subject: "Reset your DMagic password", html: `...` })
+  // await sendEmail({ to: email, subject: "Reset your DM Shiyam password", html: `...` })
 
   return NextResponse.json({ success: true });
 }

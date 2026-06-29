@@ -5,10 +5,14 @@ import {
   updateAutomation,
   deleteAutomation,
 } from "@/lib/db";
+import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
   try {
-    const automations = getAllAutomations();
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const automations = getAllAutomations({ userId });
     return NextResponse.json(automations);
   } catch (error) {
     console.error("Error fetching automations:", error);
@@ -21,6 +25,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
 
     if (!body.name || !body.trigger_keywords || !body.dm_message) {
@@ -38,6 +45,7 @@ export async function POST(request: NextRequest) {
       account_id: body.account_id,
       ai_enabled: body.ai_enabled,
       ai_system_prompt: body.ai_system_prompt,
+      user_id: userId,
     });
 
     return NextResponse.json(automation, { status: 201 });

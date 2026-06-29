@@ -20,7 +20,7 @@ export default function HomePage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600">
               <Send className="h-4 w-4 text-white" />
             </div>
-            <span className="text-lg font-bold">DMagic</span>
+            <span className="text-lg font-bold">DM Shiyam</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Pricing</Link>
@@ -46,7 +46,7 @@ export default function HomePage() {
             <span className="gradient-text">Conversations & Sales</span>
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-lg text-gray-600">
-            When someone comments a keyword on your post, DMagic
+            When someone comments a keyword on your post, DM Shiyam
             automatically sends them a personalized DM. Capture leads, share
             resources, and grow your business on autopilot.
           </p>
@@ -178,7 +178,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-100 py-8">
         <div className="mx-auto max-w-6xl px-6 text-center text-sm text-gray-400">
-          DMagic — Built with Next.js & Instagram Graph API
+          DM Shiyam — Built with Next.js & Instagram Graph API
         </div>
       </footer>
     </div>

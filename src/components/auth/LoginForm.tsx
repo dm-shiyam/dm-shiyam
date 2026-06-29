@@ -75,7 +75,7 @@ export default function LoginForm({ defaultSignup = false }: Props) {
               style={{ width: 40, height: 40 }}>
               <Send className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">DMagic</span>
+            <span className="text-xl font-bold text-gray-900">DM Shiyam</span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">
             {isSignup ? "Create your account" : "Welcome back"}

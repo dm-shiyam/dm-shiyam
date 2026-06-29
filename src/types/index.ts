@@ -35,10 +35,12 @@ export interface PlanConfig {
 
 export interface Account {
   id: string;
+  user_id?: string;
   instagram_account_id: string;
   instagram_username: string;
   access_token: string;
   page_id?: string;
+  token_expires_at?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -48,6 +50,7 @@ export interface Account {
 
 export interface Automation {
   id: string;
+  user_id?: string; // owning user
   account_id?: string; // linked Instagram account
   name: string;
   trigger_keywords: string; // comma-separated keywords
@@ -65,6 +68,7 @@ export interface Automation {
 
 export interface ActivityLog {
   id: string;
+  user_id?: string;
   account_id?: string;
   automation_id: string;
   automation_name: string;

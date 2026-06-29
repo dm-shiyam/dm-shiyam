@@ -1,4 +1,4 @@
-# DMagic — Instagram Comment-to-DM Bot
+# DM Shiyam — Instagram Comment-to-DM Bot
 
 Automatically send personalized DMs when users comment specific keywords on your Instagram posts. Built with Next.js, TailwindCSS, and the official Instagram Graph API.
 

@@ -138,7 +138,7 @@ export default function PricingPage() {
         const options = {
           key: data.razorpay_key,
           subscription_id: data.subscription_id,
-          name: "DMagic",
+          name: "DM Shiyam",
           description: `${planId.charAt(0).toUpperCase() + planId.slice(1)} Plan`,
           handler: async (response: { razorpay_payment_id: string; razorpay_subscription_id: string; razorpay_signature: string }) => {
             await fetch("/api/billing/verify", {
@@ -186,7 +186,7 @@ export default function PricingPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-purple-600">
                 <Send className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold">DMagic</span>
+              <span className="text-lg font-bold">DM Shiyam</span>
             </div>
           </div>
           {session ? (

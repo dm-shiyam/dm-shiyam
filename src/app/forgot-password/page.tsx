@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
             <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-purple-600" style={{ width: 40, height: 40 }}>
               <Send className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">DMagic</span>
+            <span className="text-xl font-bold text-gray-900">DM Shiyam</span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Reset your password</h1>
           <p className="mt-1 text-sm text-gray-500">We'll send you a link to reset it</p>

@@ -105,7 +105,7 @@ export default function DashboardPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-purple-600">
                 <Send className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold">DMagic</span>
+              <span className="text-lg font-bold">DM Shiyam</span>
             </div>
           </div>
           <div className="flex items-center gap-3">

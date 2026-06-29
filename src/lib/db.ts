@@ -3,7 +3,7 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import type { Account, Automation, ActivityLog, DashboardStats, AnalyticsData, User } from "@/types";
 
-const DB_PATH = path.join(process.cwd(), "dmagic.db");
+const DB_PATH = path.join(process.cwd(), "dm-shiyam.db");
 
 let _db: Database.Database | null = null;
 
@@ -95,7 +95,14 @@ function initTables(db: Database.Database) {
     "ALTER TABLE activity_log ADD COLUMN account_id TEXT",
     "ALTER TABLE activity_log ADD COLUMN ai_generated INTEGER DEFAULT 0",
     "ALTER TABLE users ADD COLUMN reset_token TEXT",
-"ALTER TABLE users ADD COLUMN reset_token_expires TEXT",
+    "ALTER TABLE users ADD COLUMN reset_token_expires TEXT",
+    "ALTER TABLE accounts ADD COLUMN token_expires_at TEXT",
+    "ALTER TABLE accounts ADD COLUMN user_id TEXT",
+    "ALTER TABLE automations ADD COLUMN user_id TEXT",
+    "ALTER TABLE activity_log ADD COLUMN user_id TEXT",
+    "CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_automations_user ON automations(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* column already exists */ }
@@ -106,8 +113,13 @@ function initTables(db: Database.Database) {
 // ── Accounts CRUD ──
 // ═══════════════════════════════════════
 
-export function getAllAccounts(): Account[] {
+export function getAllAccounts(userId?: string): Account[] {
   const db = getDb();
+  if (userId) {
+    return db
+      .prepare("SELECT * FROM accounts WHERE user_id = ? ORDER BY created_at DESC")
+      .all(userId) as Account[];
+  }
   return db
     .prepare("SELECT * FROM accounts ORDER BY created_at DESC")
     .all() as Account[];
@@ -130,19 +142,21 @@ export function createAccount(data: {
   instagram_username: string;
   access_token: string;
   page_id?: string;
+  token_expires_at?: string | null;
+  user_id?: string;
 }): Account {
   const db = getDb();
   const id = uuidv4();
   db.prepare(
-    `INSERT INTO accounts (id, instagram_account_id, instagram_username, access_token, page_id)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(id, data.instagram_account_id, data.instagram_username, data.access_token, data.page_id || null);
+    `INSERT INTO accounts (id, instagram_account_id, instagram_username, access_token, page_id, token_expires_at, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, data.instagram_account_id, data.instagram_username, data.access_token, data.page_id || null, data.token_expires_at || null, data.user_id || null);
   return getAccount(id)!;
 }
 
 export function updateAccount(
   id: string,
-  data: Partial<{ instagram_username: string; access_token: string; page_id: string; is_active: boolean }>
+  data: Partial<{ instagram_username: string; access_token: string; page_id: string; is_active: boolean; token_expires_at: string | null }>
 ): Account | undefined {
   const db = getDb();
   const fields: string[] = [];
@@ -151,11 +165,23 @@ export function updateAccount(
   if (data.access_token !== undefined) { fields.push("access_token = ?"); values.push(data.access_token); }
   if (data.page_id !== undefined) { fields.push("page_id = ?"); values.push(data.page_id); }
   if (data.is_active !== undefined) { fields.push("is_active = ?"); values.push(data.is_active ? 1 : 0); }
+  if (data.token_expires_at !== undefined) { fields.push("token_expires_at = ?"); values.push(data.token_expires_at); }
   if (fields.length === 0) return getAccount(id);
   fields.push("updated_at = datetime('now')");
   values.push(id);
   db.prepare(`UPDATE accounts SET ${fields.join(", ")} WHERE id = ?`).run(...values);
   return getAccount(id);
+}
+
+export function getAccountsWithExpiringTokens(thresholdDays = 7): Account[] {
+  const db = getDb();
+  return db.prepare(
+    `SELECT * FROM accounts
+     WHERE is_active = 1
+       AND token_expires_at IS NOT NULL
+       AND token_expires_at <= datetime('now', '+' || ? || ' days')
+     ORDER BY token_expires_at ASC`
+  ).all(thresholdDays) as Account[];
 }
 
 export function deleteAccount(id: string): boolean {
@@ -167,16 +193,18 @@ export function deleteAccount(id: string): boolean {
 // ── Automations CRUD ──
 // ═══════════════════════════════════════
 
-export function getAllAutomations(accountId?: string): Automation[] {
+export function getAllAutomations(filters?: { accountId?: string; userId?: string }): Automation[] {
   const db = getDb();
-  if (accountId) {
-    return db
-      .prepare("SELECT * FROM automations WHERE account_id = ? ORDER BY created_at DESC")
-      .all(accountId) as Automation[];
-  }
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters?.accountId) { conditions.push("account_id = ?"); params.push(filters.accountId); }
+  if (filters?.userId) { conditions.push("user_id = ?"); params.push(filters.userId); }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   return db
-    .prepare("SELECT * FROM automations ORDER BY created_at DESC")
-    .all() as Automation[];
+    .prepare(`SELECT * FROM automations ${where} ORDER BY created_at DESC`)
+    .all(...params) as Automation[];
 }
 
 export function getAutomation(id: string): Automation | undefined {
@@ -206,12 +234,13 @@ export function createAutomation(data: {
   account_id?: string;
   ai_enabled?: boolean;
   ai_system_prompt?: string;
+  user_id?: string;
 }): Automation {
   const db = getDb();
   const id = uuidv4();
   db.prepare(
-    `INSERT INTO automations (id, account_id, name, trigger_keywords, dm_message, reply_comment, ai_enabled, ai_system_prompt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO automations (id, account_id, name, trigger_keywords, dm_message, reply_comment, ai_enabled, ai_system_prompt, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     data.account_id || null,
@@ -220,7 +249,8 @@ export function createAutomation(data: {
     data.dm_message,
     data.reply_comment || null,
     data.ai_enabled ? 1 : 0,
-    data.ai_system_prompt || null
+    data.ai_system_prompt || null,
+    data.user_id || null
   );
   return getAutomation(id)!;
 }
@@ -286,14 +316,15 @@ export function logActivity(data: {
   comment_replied: boolean;
   ai_generated?: boolean;
   error_message?: string;
+  user_id?: string;
 }): ActivityLog {
   const db = getDb();
   const id = uuidv4();
   db.prepare(
     `INSERT INTO activity_log 
      (id, account_id, automation_id, automation_name, instagram_user_id, instagram_username, 
-      comment_text, matched_keyword, dm_sent, comment_replied, ai_generated, error_message)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      comment_text, matched_keyword, dm_sent, comment_replied, ai_generated, error_message, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     data.account_id || null,
@@ -306,40 +337,47 @@ export function logActivity(data: {
     data.dm_sent ? 1 : 0,
     data.comment_replied ? 1 : 0,
     data.ai_generated ? 1 : 0,
-    data.error_message || null
+    data.error_message || null,
+    data.user_id || null
   );
   return db.prepare("SELECT * FROM activity_log WHERE id = ?").get(id) as ActivityLog;
 }
 
-export function getActivityLog(limit = 50, offset = 0, accountId?: string): ActivityLog[] {
+export function getActivityLog(limit = 50, offset = 0, filters?: { accountId?: string; userId?: string }): ActivityLog[] {
   const db = getDb();
-  if (accountId) {
-    return db
-      .prepare("SELECT * FROM activity_log WHERE account_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?")
-      .all(accountId, limit, offset) as ActivityLog[];
-  }
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters?.accountId) { conditions.push("account_id = ?"); params.push(filters.accountId); }
+  if (filters?.userId) { conditions.push("user_id = ?"); params.push(filters.userId); }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  params.push(limit, offset);
   return db
-    .prepare("SELECT * FROM activity_log ORDER BY created_at DESC LIMIT ? OFFSET ?")
-    .all(limit, offset) as ActivityLog[];
+    .prepare(`SELECT * FROM activity_log ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    .all(...params) as ActivityLog[];
 }
 
 // ═══════════════════════════════════════
 // ── Dashboard Stats ──
 // ═══════════════════════════════════════
 
-export function getDashboardStats(): DashboardStats {
+export function getDashboardStats(userId?: string): DashboardStats {
   const db = getDb();
-  const q = (sql: string) => (db.prepare(sql).get() as { count: number }).count;
+  const uf = userId ? " AND user_id = ?" : "";
+  const p = userId ? [userId] : [];
+
+  const q = (sql: string) => (db.prepare(sql).get(...p) as { count: number }).count;
 
   return {
-    total_automations: q("SELECT COUNT(*) as count FROM automations"),
-    active_automations: q("SELECT COUNT(*) as count FROM automations WHERE is_active = 1"),
-    total_dms_sent: q("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1"),
-    total_comments_replied: q("SELECT COUNT(*) as count FROM activity_log WHERE comment_replied = 1"),
-    dms_today: q("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND date(created_at) = date('now')"),
-    dms_this_week: q("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= datetime('now', '-7 days')"),
-    ai_replies: q("SELECT COUNT(*) as count FROM activity_log WHERE ai_generated = 1"),
-    accounts_connected: q("SELECT COUNT(*) as count FROM accounts WHERE is_active = 1"),
+    total_automations: q(`SELECT COUNT(*) as count FROM automations WHERE 1=1${uf}`),
+    active_automations: q(`SELECT COUNT(*) as count FROM automations WHERE is_active = 1${uf}`),
+    total_dms_sent: q(`SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1${uf}`),
+    total_comments_replied: q(`SELECT COUNT(*) as count FROM activity_log WHERE comment_replied = 1${uf}`),
+    dms_today: q(`SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND date(created_at) = date('now')${uf}`),
+    dms_this_week: q(`SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= datetime('now', '-7 days')${uf}`),
+    ai_replies: q(`SELECT COUNT(*) as count FROM activity_log WHERE ai_generated = 1${uf}`),
+    accounts_connected: q(`SELECT COUNT(*) as count FROM accounts WHERE is_active = 1${uf}`),
   };
 }
 
@@ -350,35 +388,42 @@ export function getDashboardStats(): DashboardStats {
 export function getAnalyticsData(days = 30): AnalyticsData {
   const db = getDb();
 
+  // Sanitize: ensure days is a positive integer (1–365)
+  const raw = Number(days);
+  const safeDays = Number.isFinite(raw) ? Math.max(1, Math.min(365, Math.floor(raw))) : 30;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - safeDays);
+  const cutoffISO = cutoff.toISOString();
+
   // DMs over time (last N days)
   const dmsOverTime = db.prepare(`
     SELECT date(created_at) as date,
            COUNT(*) as count,
            SUM(CASE WHEN ai_generated = 1 THEN 1 ELSE 0 END) as ai_count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= datetime('now', '-${days} days')
+    WHERE dm_sent = 1 AND created_at >= ?
     GROUP BY date(created_at)
     ORDER BY date ASC
-  `).all() as Array<{ date: string; count: number; ai_count: number }>;
+  `).all(cutoffISO) as Array<{ date: string; count: number; ai_count: number }>;
 
   // Top keywords
   const topKeywords = db.prepare(`
     SELECT matched_keyword as keyword, COUNT(*) as count
     FROM activity_log
-    WHERE created_at >= datetime('now', '-${days} days')
+    WHERE created_at >= ?
     GROUP BY matched_keyword
     ORDER BY count DESC
     LIMIT 10
-  `).all() as Array<{ keyword: string; count: number }>;
+  `).all(cutoffISO) as Array<{ keyword: string; count: number }>;
 
   // Hourly distribution
   const hourlyDist = db.prepare(`
     SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= datetime('now', '-${days} days')
+    WHERE dm_sent = 1 AND created_at >= ?
     GROUP BY hour
     ORDER BY hour ASC
-  `).all() as Array<{ hour: number; count: number }>;
+  `).all(cutoffISO) as Array<{ hour: number; count: number }>;
 
   // Fill missing hours with 0
   const hourlyMap = new Map(hourlyDist.map((h) => [h.hour, h.count]));
@@ -389,21 +434,22 @@ export function getAnalyticsData(days = 30): AnalyticsData {
 
   // Success rate
   const sent = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= datetime('now', '-${days} days')`
-  ).get() as { count: number }).count;
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= ?`
+  ).get(cutoffISO) as { count: number }).count;
   const failed = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0 AND created_at >= datetime('now', '-${days} days')`
-  ).get() as { count: number }).count;
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0 AND created_at >= ?`
+  ).get(cutoffISO) as { count: number }).count;
 
   // Per-account breakdown
   const perAccount = db.prepare(`
     SELECT a.account_id, COALESCE(acc.instagram_username, 'Default') as username, COUNT(*) as count
     FROM activity_log a
     LEFT JOIN accounts acc ON a.account_id = acc.id
-    WHERE a.dm_sent = 1 AND a.created_at >= datetime('now', '-${days} days')
+    WHERE a.dm_sent = 1 AND a.created_at >= ?
     GROUP BY a.account_id
     ORDER BY count DESC
-  `).all() as Array<{ account_id: string; username: string; count: number }>;
+  `).all(cutoffISO) as Array<{ account_id: string; username: string; count: number }>;
+
 
   return {
     dms_over_time: dmsOverTime,

@@ -7,7 +7,7 @@ export default function PrivacyPage() {
       <div className="space-y-6 text-gray-700 leading-relaxed">
         <section>
           <h2 className="mb-2 text-xl font-semibold">1. Information We Collect</h2>
-          <p>DMagic collects the following information when you use our service:</p>
+          <p>DM Shiyam collects the following information when you use our service:</p>
           <ul className="ml-6 mt-2 list-disc space-y-1">
             <li>Instagram account information (username, account ID) via the official Instagram Graph API</li>
             <li>Comment data on your Instagram posts (for keyword matching)</li>

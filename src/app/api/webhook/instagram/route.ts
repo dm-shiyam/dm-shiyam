@@ -2,13 +2,14 @@
 // Fixed version — DMs now send correctly
 
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
-// adjust this import to match your actual db module:
-import { getActiveAutomations, logActivity } from "@/lib/db";
+import { getActiveAutomations, logActivity, getUserById, incrementDmsUsed } from "@/lib/db";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
 const IG_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID!;
+const APP_SECRET = process.env.INSTAGRAM_APP_SECRET || "";
 
 // ─── GET — webhook verification handshake ───────────────────────────
 export async function GET(req: NextRequest) {
@@ -26,11 +27,39 @@ export async function GET(req: NextRequest) {
   return new NextResponse("Forbidden", { status: 403 });
 }
 
+// ─── Signature verification ─────────────────────────────────────────
+function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
+  if (!APP_SECRET) {
+    console.warn("[webhook] INSTAGRAM_APP_SECRET not set — skipping signature verification");
+    return true;
+  }
+  if (!signatureHeader) {
+    console.error("[webhook] Missing X-Hub-Signature-256 header");
+    return false;
+  }
+  const expectedSig = "sha256=" + crypto.createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signatureHeader));
+}
+
 // ─── POST — incoming events ──────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  let rawBody: string;
+  try {
+    rawBody = await req.text();
+  } catch {
+    return new NextResponse("Bad Request", { status: 400 });
+  }
+
+  // Task #7: Verify webhook signature from Meta
+  const signature = req.headers.get("x-hub-signature-256");
+  if (!verifySignature(rawBody, signature)) {
+    console.error("[webhook] Invalid signature — rejecting request");
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   let body: WebhookPayload;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch {
     return new NextResponse("Bad Request", { status: 400 });
   }
@@ -85,6 +114,30 @@ async function processWebhookAsync(body: WebhookPayload) {
         let commentReplied = false;
         let errorMessage: string | undefined;
 
+        // ── Task #5: DM limit enforcement ────────────────────────
+        const userId = automation.user_id;
+        if (userId) {
+          const user = getUserById(userId);
+          if (user && user.dm_limit !== -1 && user.dms_used_this_month >= user.dm_limit) {
+            errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
+            console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
+
+            await logActivity({
+              automation_id: automation.id,
+              automation_name: automation.name,
+              instagram_user_id: senderId,
+              instagram_username: senderUsername,
+              comment_text: commentText,
+              matched_keyword: matchedKeyword,
+              dm_sent: false,
+              comment_replied: false,
+              error_message: errorMessage,
+              user_id: userId,
+            });
+            break;
+          }
+        }
+
         // ── Send DM ────────────────────────────────────────────────
         const dmResult = await sendDM(
           senderId,      // IG-scoped user ID (the fix)
@@ -96,6 +149,8 @@ async function processWebhookAsync(body: WebhookPayload) {
         if (dmResult.success) {
           dmSent = true;
           console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
+          // Increment usage counter
+          if (userId) incrementDmsUsed(userId);
         } else {
           errorMessage = dmResult.error;
           console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
@@ -115,21 +170,19 @@ async function processWebhookAsync(body: WebhookPayload) {
         }
 
         // ── Log to DB ──────────────────────────────────────────────
-       await logActivity({
-  automation_id: automation.id,
-  automation_name: automation.name,
-  instagram_user_id: senderId,
-  instagram_username: senderUsername,
-  comment_text: commentText,
-  matched_keyword: matchedKeyword,
-  dm_sent: dmSent,
-  comment_replied: commentReplied,
-  error_message: errorMessage,
-});
+        await logActivity({
+          automation_id: automation.id,
+          automation_name: automation.name,
+          instagram_user_id: senderId,
+          instagram_username: senderUsername,
+          comment_text: commentText,
+          matched_keyword: matchedKeyword,
+          dm_sent: dmSent,
+          comment_replied: commentReplied,
+          error_message: errorMessage,
+          user_id: automation.user_id,
+        });
 
-        // if (dmSent) {
-        //   await incrementTriggered(automation.id);
-        // }
 
         break; // Only fire the first matching automation per comment
       }

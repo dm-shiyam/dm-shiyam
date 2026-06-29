@@ -1,14 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllAccounts, createAccount, updateAccount, deleteAccount } from "@/lib/db";
+import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
   try {
-    const accounts = getAllAccounts();
-    // Strip access tokens from response for security
-    const safe = accounts.map((a) => ({
-      ...a,
-      access_token: a.access_token ? "••••" + a.access_token.slice(-8) : "",
-    }));
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const accounts = getAllAccounts(userId);
+    // Strip access tokens from response for security, add token status
+    const safe = accounts.map((a) => {
+      let token_status: "valid" | "expiring_soon" | "expired" | "never_expires" | "unknown" = "unknown";
+      if (!a.token_expires_at) {
+        token_status = "never_expires";
+      } else {
+        const expiryTime = new Date(a.token_expires_at).getTime();
+        const now = Date.now();
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        if (expiryTime < now) token_status = "expired";
+        else if (expiryTime - now < sevenDays) token_status = "expiring_soon";
+        else token_status = "valid";
+      }
+      return {
+        ...a,
+        access_token: a.access_token ? "••••" + a.access_token.slice(-8) : "",
+        token_status,
+      };
+    });
     return NextResponse.json(safe);
   } catch (error) {
     console.error("Error fetching accounts:", error);
@@ -27,11 +45,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const account = createAccount({
       instagram_account_id: body.instagram_account_id,
       instagram_username: body.instagram_username,
       access_token: body.access_token,
       page_id: body.page_id,
+      user_id: userId,
     });
 
     return NextResponse.json(

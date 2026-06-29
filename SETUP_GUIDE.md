@@ -1,4 +1,4 @@
-# DMagic — Complete Setup Guide
+# DM Shiyam — Complete Setup Guide
 
 > Comment-to-DM funnel automation for Instagram Business accounts.
 > Includes AI Smart Replies (GPT), Analytics Dashboard, and Multi-Account Support.
@@ -22,7 +22,7 @@
 
 ## Prerequisites
 
-Before starting, create one **free Gmail account** (e.g., `dmagic.app@gmail.com`). Use this same email for all services below. A personal `@gmail.com` works for everything — no need for Google Workspace or a business email.
+Before starting, create one **free Gmail account** (e.g., `dmshiyam.app@gmail.com`). Use this same email for all services below. A personal `@gmail.com` works for everything — no need for Google Workspace or a business email.
 
 You'll need:
 - A smartphone with the **Instagram app**
@@ -141,7 +141,7 @@ You'll need:
    - Select **"Other"** → click **Next**
 4. For app type, select **"Business"** → click **Next**
 5. Fill in the details:
-   - **App Name**: e.g., `DMagic Bot`
+   - **App Name**: e.g., `DM Shiyam Bot`
    - **App Contact Email**: your Gmail
    - **Business Portfolio**: select your portfolio, or click **"Create a new business portfolio"** if none exists
 6. Click **"Create App"**
@@ -221,7 +221,7 @@ Your app is in **Development mode** (unpublished). You must add your Instagram a
 ### Step 7 — Get Your Instagram Account ID
 
 1. Go to the **Graph API Explorer**: [developers.facebook.com/tools/explorer](https://developers.facebook.com/tools/explorer)
-2. In the top-right dropdown, select **your app** (e.g., "DMagic Bot")
+2. In the top-right dropdown, select **your app** (e.g., "DM Shiyam Bot")
 3. In the **"User or Page"** dropdown, select **"Get User Access Token"**
 4. Add these permissions: `instagram_basic`, `pages_show_list`, `pages_manage_metadata`, `pages_read_engagement`
 5. Click **"Generate Access Token"** and approve the permissions
@@ -579,7 +579,7 @@ instagram-dm-bot/
 │   │   └── openai.ts         # OpenAI GPT integration
 │   └── types/
 │       └── index.ts          # TypeScript interfaces
-└── dmagic.db            # SQLite database file (auto-created)
+└── dm-shiyam.db            # SQLite database file (auto-created)
 ```
 
 ---

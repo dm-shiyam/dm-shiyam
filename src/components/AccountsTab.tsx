@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Instagram,
   Plus,
@@ -39,19 +40,22 @@ export default function AccountsTab() {
   }, [fetchAccounts]);
 
   const handleToggle = async (account: Account) => {
-    await fetch("/api/accounts", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: account.id, is_active: !account.is_active }),
-    });
-    fetchAccounts();
-  };
+  await fetch("/api/accounts", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: account.id, is_active: !account.is_active }),
+  });
+  toast.success(account.is_active ? "Account paused" : "Account activated");
+  fetchAccounts();
+};
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Disconnect this account? Automations linked to it will be unlinked.")) return;
-    await fetch(`/api/accounts?id=${id}`, { method: "DELETE" });
-    fetchAccounts();
-  };
+const handleDelete = async (id: string) => {
+  if (!confirm("Disconnect this account? Automations linked to it will be unlinked.")) return;
+  await fetch(`/api/accounts?id=${id}`, { method: "DELETE" });
+  toast.success("Account disconnected");
+  fetchAccounts();
+};
+
 
   if (loading) {
     return (
@@ -198,10 +202,13 @@ function AccountForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to connect account");
+        const errMsg = data.error || "Failed to connect account";
+setError(errMsg);
+toast.error(errMsg);
         return;
       }
-      onSave();
+      toast.success("Account connected successfully!");
+onSave();
     } catch {
       setError("Network error");
     } finally {

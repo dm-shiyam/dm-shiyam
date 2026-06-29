@@ -221,6 +221,76 @@ function StatsGrid({ stats }: { stats: DashboardStats }) {
   );
 }
 
+
+function TemplateSelector({ onSelect }: { onSelect: (template: Partial<Automation>) => void }) {
+  const templates = [
+    {
+      icon: "🧲",
+      label: "Lead Magnet",
+      description: "Send a free guide or resource",
+      data: {
+        name: "Lead Magnet",
+        trigger_keywords: "guide, free, send, info",
+        dm_message: "Hey {username}! 👋\n\nThanks for your interest! Here's your free guide:\nhttps://yourlink.com/guide\n\nLet me know if you have any questions!",
+        reply_comment: "Just sent it to your DMs! 📩",
+      },
+    },
+    {
+      icon: "🏷️",
+      label: "Discount Code",
+      description: "Share a promo code via DM",
+      data: {
+        name: "Discount Code",
+        trigger_keywords: "discount, code, promo, deal, offer",
+        dm_message: "Hey {username}! 🎉\n\nHere's your exclusive discount code: SAVE20\n\nUse it at checkout for 20% off:\nhttps://yourstore.com\n\nValid for 48 hours only!",
+        reply_comment: "Sent you the code in your DMs! 🎁",
+      },
+    },
+    {
+      icon: "🔗",
+      label: "Link in Bio",
+      description: "Drive traffic to your link",
+      data: {
+        name: "Link in Bio",
+        trigger_keywords: "link, website, shop, store",
+        dm_message: "Hey {username}! ✨\n\nHere's the link you asked for:\nhttps://yourlink.com\n\nLet me know if you need anything else!",
+        reply_comment: "Link sent to your DMs! 🔗",
+      },
+    },
+  ];
+
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+        Quick start with a template
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {templates.map((t) => (
+          <button
+            key={t.label}
+            onClick={() => {
+  console.log("Template selected:", t.data);
+  onSelect(t.data as Partial<Automation>);
+}}
+            className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left transition-all hover:border-purple-300 hover:bg-purple-50 hover:shadow-sm"
+          >
+            <span className="text-2xl">{t.icon}</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">{t.label}</p>
+              <p className="text-xs text-gray-400">{t.description}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <div className="flex-1" style={{ borderTop: "1px solid #e5e7eb" }} />
+        <span className="text-xs text-gray-400">or start from scratch</span>
+        <div className="flex-1" style={{ borderTop: "1px solid #e5e7eb" }} />
+      </div>
+    </div>
+  );
+}
+
 // ── Automations Tab ──
 
 function AutomationsTab({
@@ -242,6 +312,8 @@ function AutomationsTab({
   setEditingId: (v: string | null) => void;
   onRefresh: () => void;
 }) {
+
+  const [selectedTemplate, setSelectedTemplate] = useState<Partial<Automation> | null>(null); // 
   const handleToggle = async (automation: Automation) => {
   await fetch("/api/automations", {
     method: "PUT",
@@ -260,59 +332,73 @@ function AutomationsTab({
 };
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          Your Automations ({automations.length})
-        </h2>
-        <button
-          onClick={() => { setShowCreateForm(!showCreateForm); setEditingId(null); }}
-          className="btn-primary !py-2"
-        >
-          {showCreateForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showCreateForm ? "Cancel" : "New Automation"}
+  <div>
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-lg font-semibold">
+        Your Automations ({automations.length})
+      </h2>
+      <button
+        onClick={() => { setShowCreateForm(!showCreateForm); setEditingId(null); setSelectedTemplate(null); }}
+        className="btn-primary !py-2"
+      >
+        {showCreateForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        {showCreateForm ? "Cancel" : "New Automation"}
+      </button>
+    </div>
+
+    {showCreateForm && (
+      <>
+        <TemplateSelector onSelect={(template) => setSelectedTemplate(template)} />
+        <div className="card mb-4">
+          <AutomationForm
+            key={selectedTemplate?.name ?? "empty"}
+            template={selectedTemplate ?? undefined}
+            accounts={accounts}
+            onSave={() => {
+              setShowCreateForm(false);
+              setSelectedTemplate(null);
+              onRefresh();
+            }}
+            onCancel={() => {
+              setShowCreateForm(false);
+              setSelectedTemplate(null);
+            }}
+          />
+        </div>
+      </>
+    )}
+
+    {loading ? (
+      <div className="card flex items-center justify-center py-12 text-gray-400">
+        <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Loading...
+      </div>
+    ) : automations.length === 0 ? (
+      <div className="card py-16 text-center">
+        <Zap className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+        <h3 className="mb-2 text-lg font-semibold text-gray-700">No automations yet</h3>
+        <p className="mb-6 text-sm text-gray-500">Create your first automation to start sending DMs automatically.</p>
+        <button onClick={() => setShowCreateForm(true)} className="btn-primary">
+          <Plus className="h-4 w-4" /> Create Automation
         </button>
       </div>
-
-      {showCreateForm && (
-        <AutomationForm
-          accounts={accounts}
-          onSave={() => { setShowCreateForm(false); onRefresh(); }}
-          onCancel={() => setShowCreateForm(false)}
-        />
-      )}
-
-      {loading ? (
-        <div className="card flex items-center justify-center py-12 text-gray-400">
-          <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Loading...
-        </div>
-      ) : automations.length === 0 ? (
-        <div className="card py-16 text-center">
-          <Zap className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-700">No automations yet</h3>
-          <p className="mb-6 text-sm text-gray-500">Create your first automation to start sending DMs automatically.</p>
-          <button onClick={() => setShowCreateForm(true)} className="btn-primary">
-            <Plus className="h-4 w-4" /> Create Automation
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {automations.map((auto) => (
-            <AutomationCard
-              key={auto.id}
-              automation={auto}
-              accounts={accounts}
-              isEditing={editingId === auto.id}
-              onEdit={() => setEditingId(editingId === auto.id ? null : auto.id)}
-              onToggle={() => handleToggle(auto)}
-              onDelete={() => handleDelete(auto.id)}
-              onSave={() => { setEditingId(null); onRefresh(); }}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    ) : (
+      <div className="space-y-3">
+        {automations.map((auto) => (
+          <AutomationCard
+            key={auto.id}
+            automation={auto}
+            accounts={accounts}
+            isEditing={editingId === auto.id}
+            onEdit={() => setEditingId(editingId === auto.id ? null : auto.id)}
+            onToggle={() => handleToggle(auto)}
+            onDelete={() => handleDelete(auto.id)}
+            onSave={() => { setEditingId(null); onRefresh(); }}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+);
 }
 
 // ── Automation Card ──
@@ -420,23 +506,36 @@ function AutomationCard({
 
 function AutomationForm({
   initial,
+  template,
   accounts,
   onSave,
   onCancel,
 }: {
   initial?: Automation;
+  template?: Partial<Automation>;
   accounts: Account[];
   onSave: () => void;
   onCancel: () => void;
 }) {
-  const [name, setName] = useState(initial?.name || "");
-  const [keywords, setKeywords] = useState(initial?.trigger_keywords || "");
-  const [dmMessage, setDmMessage] = useState(initial?.dm_message || "");
-  const [replyComment, setReplyComment] = useState(initial?.reply_comment || "");
-  const [accountId, setAccountId] = useState(initial?.account_id || "");
-  const [aiEnabled, setAiEnabled] = useState(initial?.ai_enabled || false);
-  const [aiSystemPrompt, setAiSystemPrompt] = useState(initial?.ai_system_prompt || "");
-  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(initial?.name || template?.name || "");
+const [keywords, setKeywords] = useState(initial?.trigger_keywords || template?.trigger_keywords || "");
+const [dmMessage, setDmMessage] = useState(initial?.dm_message || template?.dm_message || "");
+const [replyComment, setReplyComment] = useState(initial?.reply_comment || template?.reply_comment || "");
+const [accountId, setAccountId] = useState(initial?.account_id || "");
+const [aiEnabled, setAiEnabled] = useState(initial?.ai_enabled || false);
+const [aiSystemPrompt, setAiSystemPrompt] = useState(initial?.ai_system_prompt || "");
+const [saving, setSaving] = useState(false);
+
+// ← add this right after all the useState lines
+useEffect(() => {
+   console.log("useEffect fired, template:", template); // ← add
+  if (template) {
+    setName(template.name || "");
+    setKeywords(template.trigger_keywords || "");
+    setDmMessage(template.dm_message || "");
+    setReplyComment(template.reply_comment || "");
+  }
+}, [template]);
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -468,7 +567,7 @@ function AutomationForm({
 };
 
   return (
-    <form onSubmit={handleSubmit} className={initial ? "" : "card mb-4"}>
+    <form onSubmit={handleSubmit} className="">
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>

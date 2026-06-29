@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "DM Shiyam — Instagram Comment-to-DM Bot",
   description:
     "Automatically send DMs when users comment specific keywords on your Instagram posts.",
+  viewport: "width=device-width, initial-scale=1",
 };
 
 export default function RootLayout({

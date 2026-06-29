@@ -85,3 +85,12 @@
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
+
+/* Add at the bottom of globals.css */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

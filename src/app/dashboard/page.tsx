@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "sonner";
 import {
   Send,
@@ -94,9 +95,10 @@ export default function DashboardPage() {
   const userPlan = (session.user as Record<string, unknown>)?.plan as string || "free";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80">
+
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -106,7 +108,7 @@ export default function DashboardPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-purple-600">
                 <Send className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold">DM Shiyam</span>
+              <span className="text-lg font-bold dark:text-white">DM Shiyam</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -125,6 +127,10 @@ export default function DashboardPage() {
   <span className="h-2 w-2 rounded-full bg-emerald-500 pulse-dot" />
   Webhook Active
 </div>
+            <ThemeToggle />
+<button onClick={fetchData} className="btn-secondary !px-3 !py-2">
+  <RefreshCw className="h-4 w-4" />
+</button>
             <button onClick={fetchData} className="btn-secondary !px-3 !py-2">
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -144,7 +150,7 @@ export default function DashboardPage() {
 
         {/* Tabs */}
        <div
-  className="mb-6 rounded-xl bg-gray-100 p-1 scrollbar-hide"
+  className="mb-6 rounded-xl bg-gray-100 dark:bg-gray-800 p-1 scrollbar-hide"
   style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexWrap: "nowrap" }}
 >
   {[
@@ -159,8 +165,8 @@ export default function DashboardPage() {
       onClick={() => setActiveTab(tab.id)}
       className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-shrink-0 ${
         activeTab === tab.id
-          ? "bg-white text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
+          ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
       }`}
     >
       <tab.icon className="h-4 w-4 flex-shrink-0" />
@@ -211,7 +217,7 @@ function StatsGrid({ stats }: { stats: DashboardStats }) {
       {cards.map((card) => (
         <div key={card.label} className="card">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">
+            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
               {card.label}
             </span>
             <div className={`rounded-lg p-1.5 ${card.color}`}>
@@ -338,7 +344,7 @@ function AutomationsTab({
   return (
   <div>
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-lg font-semibold">
+      <h2 className="text-lg font-semibold dark:text-white">
         Your Automations ({automations.length})
       </h2>
       <button
@@ -432,7 +438,7 @@ function AutomationCard({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold truncate">{automation.name}</h3>
+            <h3 className="font-semibold truncate dark:text-white">{automation.name}</h3>
             {automation.is_active ? <span className="badge-success">Active</span> : <span className="badge-error">Paused</span>}
             {automation.ai_enabled && (
               <span className="badge bg-violet-50 text-violet-700 flex items-center gap-1">
@@ -444,7 +450,7 @@ function AutomationCard({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 dark:text-gray-400">
               <Hash className="h-3.5 w-3.5" />
               {automation.trigger_keywords.split(",").map((k) => (
                 <span key={k} className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
@@ -453,7 +459,7 @@ function AutomationCard({
               ))}
             </span>
             <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 dark:text-gray-400">
               <Send className="h-3.5 w-3.5" />
               {automation.total_triggered} triggered
             </span>

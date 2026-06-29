@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Providers from "@/components/Providers";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen" suppressHydrationWarning>
         <Providers>{children}</Providers>
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

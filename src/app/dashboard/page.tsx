@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   Send,
   Plus,
@@ -242,19 +243,21 @@ function AutomationsTab({
   onRefresh: () => void;
 }) {
   const handleToggle = async (automation: Automation) => {
-    await fetch("/api/automations", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: automation.id, is_active: !automation.is_active }),
-    });
-    onRefresh();
-  };
+  await fetch("/api/automations", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: automation.id, is_active: !automation.is_active }),
+  });
+  toast.success(automation.is_active ? "Automation paused" : "Automation activated");
+  onRefresh();
+};
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this automation? This cannot be undone.")) return;
-    await fetch(`/api/automations?id=${id}`, { method: "DELETE" });
-    onRefresh();
-  };
+  if (!confirm("Delete this automation? This cannot be undone.")) return;
+  await fetch(`/api/automations?id=${id}`, { method: "DELETE" });
+  toast.success("Automation deleted");
+  onRefresh();
+};
 
   return (
     <div>
@@ -436,29 +439,33 @@ function AutomationForm({
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const body = {
-        ...(initial ? { id: initial.id } : {}),
-        name,
-        trigger_keywords: keywords,
-        dm_message: dmMessage,
-        reply_comment: replyComment || undefined,
-        account_id: accountId || undefined,
-        ai_enabled: aiEnabled,
-        ai_system_prompt: aiEnabled ? aiSystemPrompt || undefined : undefined,
-      };
-      await fetch("/api/automations", {
-        method: initial ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      onSave();
-    } finally {
-      setSaving(false);
-    }
-  };
+  e.preventDefault();
+  setSaving(true);
+  try {
+    const body = {
+      ...(initial ? { id: initial.id } : {}),
+      name,
+      trigger_keywords: keywords,
+      dm_message: dmMessage,
+      reply_comment: replyComment || undefined,
+      account_id: accountId || undefined,
+      ai_enabled: aiEnabled,
+      ai_system_prompt: aiEnabled ? aiSystemPrompt || undefined : undefined,
+    };
+    const res = await fetch("/api/automations", {
+      method: initial ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error("Failed to save");
+    toast.success(initial ? "Automation updated" : "Automation created!");
+    onSave();
+  } catch {
+    toast.error("Something went wrong. Please try again.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <form onSubmit={handleSubmit} className={initial ? "" : "card mb-4"}>

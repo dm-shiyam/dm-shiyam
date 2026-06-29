@@ -6,6 +6,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Send, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   defaultSignup?: boolean;
@@ -25,32 +26,36 @@ export default function LoginForm({ defaultSignup = false }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        name: isSignup ? name : undefined,
-        action: isSignup ? "signup" : "login",
-        redirect: false,
-      });
+  try {
+    const result = await signIn("credentials", {
+      email,
+      password,
+      name: isSignup ? name : undefined,
+      action: isSignup ? "signup" : "login",
+      redirect: false,
+    });
 
-      if (result?.error) {
-        setError(result.error === "CredentialsSignin"
-          ? "Invalid email or password"
-          : result.error);
-      } else {
-        router.push(callbackUrl);
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
+    if (result?.error) {
+      const msg = result.error === "CredentialsSignin"
+        ? "Invalid email or password"
+        : result.error;
+      setError(msg);
+      toast.error(msg);
+    } else {
+      toast.success(isSignup ? "Account created! Welcome 🎉" : "Welcome back!");
+      router.push(callbackUrl);
     }
-  };
+  } catch {
+    setError("Something went wrong. Please try again.");
+    toast.error("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogle = () => {
     signIn("google", { callbackUrl });

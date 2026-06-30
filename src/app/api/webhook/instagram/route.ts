@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
 import { getActiveAutomations, logActivity, getUserById, incrementDmsUsed } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
+import { emitNewActivity } from "@/lib/activity-events";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
@@ -144,19 +145,20 @@ async function processWebhookAsync(body: WebhookPayload) {
             errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
             console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
 
-            await logActivity({
-              automation_id: automation.id,
-              automation_name: automation.name,
-              instagram_user_id: senderId,
-              instagram_username: senderUsername,
-              comment_text: commentText,
-              matched_keyword: matchedKeyword,
-              dm_sent: false,
-              comment_replied: false,
-              error_message: errorMessage,
-              user_id: userId,
-            });
-            break;
+            const activity = await logActivity({
+  automation_id: automation.id,
+  automation_name: automation.name,
+  instagram_user_id: senderId,
+  instagram_username: senderUsername,
+  comment_text: commentText,
+  matched_keyword: matchedKeyword,
+  dm_sent: false,
+  comment_replied: false,
+  error_message: errorMessage,
+  user_id: userId,
+});
+emitNewActivity(userId, activity);
+break;
           }
         }
 
@@ -192,21 +194,22 @@ async function processWebhookAsync(body: WebhookPayload) {
         }
 
         // ── Log to DB ──────────────────────────────────────────────
-        await logActivity({
-          automation_id: automation.id,
-          automation_name: automation.name,
-          instagram_user_id: senderId,
-          instagram_username: senderUsername,
-          comment_text: commentText,
-          matched_keyword: matchedKeyword,
-          dm_sent: dmSent,
-          comment_replied: commentReplied,
-          error_message: errorMessage,
-          user_id: automation.user_id,
-        });
+       
 
 
-        break; // Only fire the first matching automation per comment
+        const activity = await logActivity({
+  automation_id: automation.id,
+  automation_name: automation.name,
+  instagram_user_id: senderId,
+  instagram_username: senderUsername,
+  comment_text: commentText,
+  matched_keyword: matchedKeyword,
+  dm_sent: dmSent,
+  comment_replied: commentReplied,
+  error_message: errorMessage,
+  user_id: automation.user_id,
+});
+emitNewActivity(automation.user_id, activity);
       }
     }
   }

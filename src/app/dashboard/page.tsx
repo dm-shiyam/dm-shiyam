@@ -70,17 +70,39 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-      return;
-    }
-    if (status === "authenticated") {
-      fetchData();
-      const interval = setInterval(fetchData, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [fetchData, status, router]);
+useEffect(() => {
+  if (status === "unauthenticated") {
+    router.push("/login");
+    return;
+  }
+  if (status === "authenticated") {
+    fetchData();
+
+    // Poll non-activity data less frequently (stats, automations) since SSE
+    // only covers new activity log entries
+    const interval = setInterval(fetchData, 30000);
+
+    const es = new EventSource("/api/activity/stream");
+    es.onmessage = (event) => {
+      try {
+        const newActivity = JSON.parse(event.data);
+        setActivities((prev) => [newActivity, ...prev].slice(0, 50));
+        toast.success(`New activity: @${newActivity.instagram_username}`);
+        fetchData(); // refresh stats too since a new DM affects counts
+      } catch {
+        // ignore comment/heartbeat lines, they don't reach onmessage anyway
+      }
+    };
+    es.onerror = () => {
+      console.warn("SSE connection error, browser will auto-reconnect");
+    };
+
+    return () => {
+      clearInterval(interval);
+      es.close();
+    };
+  }
+}, [fetchData, status, router]);
 
   if (status === "loading") {
     return (

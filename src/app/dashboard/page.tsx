@@ -230,6 +230,7 @@ useEffect(() => {
 
       {showOnboarding && (
   <OnboardingWizard
+    initialStep={accounts.length > 0 ? 2 : 0}
     onClose={() => {
       setShowOnboarding(false);
       setOnboardingDismissed(true);

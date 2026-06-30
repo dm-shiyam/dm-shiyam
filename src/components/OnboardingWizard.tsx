@@ -4,20 +4,21 @@ import { useState } from "react";
 import { Send, Instagram, Zap, ArrowRight, X, CheckCircle2 } from "lucide-react";
 
 interface Props {
+  initialStep?: number;
   onClose: () => void;
   onGoToAccounts: () => void;
   onGoToAutomations: () => void;
 }
 
-export default function OnboardingWizard({ onClose, onGoToAccounts, onGoToAutomations }: Props) {
-  const [step, setStep] = useState(0);
+export default function OnboardingWizard({
+  initialStep = 0,
+  onClose,
+  onGoToAccounts,
+  onGoToAutomations,
+}: Props) {
+  const [step, setStep] = useState(initialStep);
 
-  const finish = async () => {
-    try {
-      await fetch("/api/onboarding", { method: "POST" });
-    } catch {
-      // non-blocking, ignore failure
-    }
+  const finish = () => {
     onClose();
   };
 
@@ -30,31 +31,31 @@ export default function OnboardingWizard({ onClose, onGoToAccounts, onGoToAutoma
       action: { label: "Get started", onClick: () => setStep(1) },
     },
     {
-  icon: Instagram,
-  title: "Connect your Instagram account",
-  description:
-    "Link your Instagram Business or Creator account so DM Shiyam can detect comments and send DMs on your behalf.",
-  action: {
-    label: "Connect account",
-    onClick: () => {
-      onGoToAccounts();
-      onClose(); // close the wizard so the user can actually use the Accounts tab
+      icon: Instagram,
+      title: "Connect your Instagram account",
+      description:
+        "Link your Instagram Business or Creator account so DM Shiyam can detect comments and send DMs on your behalf.",
+      action: {
+        label: "Connect account",
+        onClick: () => {
+          onGoToAccounts();
+          onClose();
+        },
+      },
+      secondaryAction: { label: "I'll do this later", onClick: () => setStep(2) },
     },
-  },
-  secondaryAction: { label: "I'll do this later", onClick: () => setStep(2) },
-},
     {
       icon: Zap,
       title: "Create your first automation",
       description:
         "Pick a template like \"Lead Magnet\" or \"Discount Code\", set a trigger keyword, and you're live.",
       action: {
-  label: "Create automation",
-  onClick: () => {
-    onGoToAutomations();
-    finish();
-  },
-},
+        label: "Create automation",
+        onClick: () => {
+          onGoToAutomations();
+          finish();
+        },
+      },
       secondaryAction: { label: "Skip for now", onClick: finish },
     },
   ];
@@ -76,7 +77,6 @@ export default function OnboardingWizard({ onClose, onGoToAccounts, onGoToAutoma
           <X className="h-4 w-4" />
         </button>
 
-        {/* Progress dots */}
         <div className="mb-6 flex items-center gap-1.5">
           {steps.map((_, i) => (
             <div

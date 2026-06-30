@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import OnboardingWizard from "@/components/OnboardingWizard";
 import { toast } from "sonner";
 import {
   Send,
@@ -48,6 +49,8 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -103,6 +106,12 @@ useEffect(() => {
     };
   }
 }, [fetchData, status, router]);
+
+useEffect(() => {
+  if (status === "authenticated" && !loading && automations.length === 0 && !onboardingDismissed) {
+    setShowOnboarding(true);
+  }
+}, [status, loading, automations, onboardingDismissed]);
 
   if (status === "loading") {
     return (
@@ -218,6 +227,18 @@ useEffect(() => {
         {activeTab === "accounts" && <AccountsTab />}
         {activeTab === "setup" && <SetupGuide />}
       </main>
+
+      {showOnboarding && (
+  <OnboardingWizard
+    onClose={() => {
+      setShowOnboarding(false);
+      setOnboardingDismissed(true);
+    }}
+    onGoToAccounts={() => setActiveTab("accounts")}
+    onGoToAutomations={() => setActiveTab("automations")}
+  />
+)}
+
     </div>
   );
 }
@@ -817,6 +838,11 @@ function SetupGuide() {
           <li>- For production, submit your app for Meta App Review</li>
         </ul>
       </div>
+
+
+      
     </div>
+
+    
   );
 }

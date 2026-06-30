@@ -100,6 +100,7 @@ function initTables(db: Database.Database) {
     "ALTER TABLE accounts ADD COLUMN user_id TEXT",
     "ALTER TABLE automations ADD COLUMN user_id TEXT",
     "ALTER TABLE activity_log ADD COLUMN user_id TEXT",
+    "ALTER TABLE users ADD COLUMN has_seen_onboarding INTEGER DEFAULT 0",
     "CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_automations_user ON automations(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
@@ -550,4 +551,11 @@ export function updatePassword(userId: string, passwordHash: string): void {
   db.prepare(
     "UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
   ).run(passwordHash, userId);
+}
+
+export function markOnboardingSeen(userId: string): void {
+  const db = getDb();
+  db.prepare(
+    "UPDATE users SET has_seen_onboarding = 1 WHERE id = ?"
+  ).run(userId);
 }

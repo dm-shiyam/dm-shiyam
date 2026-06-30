@@ -4,6 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserByProviderId, createUser } from "./db";
 
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -65,22 +66,24 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user }) {
-      if (user) {
-        const dbUser = getUserByEmail(user.email!);
-        if (dbUser) {
-          token.userId = dbUser.id;
-          token.plan = dbUser.plan;
-        }
-      }
-      return token;
-    },
+  if (user) {
+    const dbUser = getUserByEmail(user.email!);
+    if (dbUser) {
+      token.userId = dbUser.id;
+      token.plan = dbUser.plan;
+      token.hasSeenOnboarding = dbUser.has_seen_onboarding === 1;
+    }
+  }
+  return token;
+},
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as Record<string, unknown>).id = token.userId;
-        (session.user as Record<string, unknown>).plan = token.plan;
-      }
-      return session;
-    },
+  if (session.user) {
+    (session.user as Record<string, unknown>).id = token.userId;
+    (session.user as Record<string, unknown>).plan = token.plan;
+    (session.user as Record<string, unknown>).has_seen_onboarding = token.hasSeenOnboarding;
+  }
+  return session;
+},
   },
   pages: {
     signIn: "/login",

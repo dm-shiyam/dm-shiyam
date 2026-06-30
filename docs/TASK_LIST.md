@@ -33,12 +33,12 @@
 | 2 | **Signup page** — Build a dedicated `/register` page with proper validation and UX | High | Done |
 | 3 | **Password reset flow** — Forgot password functionality (`/forgot-password`, `/reset-password`) | High | Done |
 | 4 | **Google OAuth setup** — GoogleProvider has empty `clientId/clientSecret`; either configure it or remove the button | Medium | Pending |
-| 5 | **Real-time activity feed** — Replace 15s polling with WebSocket/SSE for instant activity updates | Medium | Pending |
-| 6 | **Mobile-responsive dashboard** — Test and fix dashboard layout on mobile screens | Medium | Pending |
-| 7 | **Toast notifications** — Add success/error toasts when creating automations, connecting accounts, etc. | Low | Pending |
-| 8 | **Automation templates** — Pre-built templates ("Lead Magnet", "Discount Code", "Link in Bio") for quick setup | Low | Pending |
-| 9 | **Dark mode support** — Add theme toggle | Low | Pending |
-| 10 | **Onboarding wizard** — First-time user setup flow guiding through connecting Instagram and creating first automation | Medium | Pending |
+| 5 | **Real-time activity feed** — Replace 15s polling with WebSocket/SSE for instant activity updates | Medium | Done |
+| 6 | **Mobile-responsive dashboard** — Test and fix dashboard layout on mobile screens | Medium | Done |
+| 7 | **Toast notifications** — Add success/error toasts when creating automations, connecting accounts, etc. | Low | Done |
+| 8 | **Automation templates** — Pre-built templates ("Lead Magnet", "Discount Code", "Link in Bio") for quick setup | Low | Done |
+| 9 | **Dark mode support** — Add theme toggle | Low | Done |
+| 10 | **Onboarding wizard** — First-time user setup flow guiding through connecting Instagram and creating first automation | Medium | Done |
 
 ---
 
@@ -66,5 +66,5 @@
 | Person | Tasks | Focus |
 |--------|-------|-------|
 | **Priyanka** | #1, #3, #4, #5, #6, #7, #8, #9, #10 (Done) → Next: #2 | Postgres migration (coordinate with Venkat #7) |
-| **Ankit** | #2 (Done), #3 (Done) → Next: #4, #6, #10 | Google OAuth, mobile UI, onboarding |
+| **Ankit** | #2, #3, #5, #6, #7, #8, #9, #10 (Done) → Next: #1, #4 | Hydration fix, Google OAuth |
 | **Venkat** | Next: #1, #2, #7 | Billing, dedup DMs, deployment |

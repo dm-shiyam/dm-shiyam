@@ -53,8 +53,8 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
 }
 
 // ─── Rate limit config ──────────────────────────────────────────────
-const RATE_LIMIT_MAX = 100;           // max requests per window
-const RATE_LIMIT_WINDOW_MS = 60_000;  // 60-second window
+const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 100;
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000;
 
 // ─── POST — incoming events ──────────────────────────────────────────
 export async function POST(req: NextRequest) {

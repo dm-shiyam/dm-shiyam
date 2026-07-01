@@ -407,7 +407,7 @@ export function getDashboardStats(userId?: string): DashboardStats {
 // ── Analytics ──
 // ═══════════════════════════════════════
 
-export function getAnalyticsData(days = 30): AnalyticsData {
+export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
   const db = getDb();
 
   // Sanitize: ensure days is a positive integer (1–365)
@@ -417,35 +417,38 @@ export function getAnalyticsData(days = 30): AnalyticsData {
   cutoff.setDate(cutoff.getDate() - safeDays);
   const cutoffISO = cutoff.toISOString();
 
+  const uf = userId ? " AND user_id = ?" : "";
+  const base = userId ? [cutoffISO, userId] : [cutoffISO];
+
   // DMs over time (last N days)
   const dmsOverTime = db.prepare(`
     SELECT date(created_at) as date,
            COUNT(*) as count,
            SUM(CASE WHEN ai_generated = 1 THEN 1 ELSE 0 END) as ai_count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= ?
+    WHERE dm_sent = 1 AND created_at >= ?${uf}
     GROUP BY date(created_at)
     ORDER BY date ASC
-  `).all(cutoffISO) as Array<{ date: string; count: number; ai_count: number }>;
+  `).all(...base) as Array<{ date: string; count: number; ai_count: number }>;
 
   // Top keywords
   const topKeywords = db.prepare(`
     SELECT matched_keyword as keyword, COUNT(*) as count
     FROM activity_log
-    WHERE created_at >= ?
+    WHERE created_at >= ?${uf}
     GROUP BY matched_keyword
     ORDER BY count DESC
     LIMIT 10
-  `).all(cutoffISO) as Array<{ keyword: string; count: number }>;
+  `).all(...base) as Array<{ keyword: string; count: number }>;
 
   // Hourly distribution
   const hourlyDist = db.prepare(`
     SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= ?
+    WHERE dm_sent = 1 AND created_at >= ?${uf}
     GROUP BY hour
     ORDER BY hour ASC
-  `).all(cutoffISO) as Array<{ hour: number; count: number }>;
+  `).all(...base) as Array<{ hour: number; count: number }>;
 
   // Fill missing hours with 0
   const hourlyMap = new Map(hourlyDist.map((h) => [h.hour, h.count]));
@@ -456,22 +459,21 @@ export function getAnalyticsData(days = 30): AnalyticsData {
 
   // Success rate
   const sent = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= ?`
-  ).get(cutoffISO) as { count: number }).count;
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= ?${uf}`
+  ).get(...base) as { count: number }).count;
   const failed = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0 AND created_at >= ?`
-  ).get(cutoffISO) as { count: number }).count;
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0 AND created_at >= ?${uf}`
+  ).get(...base) as { count: number }).count;
 
   // Per-account breakdown
   const perAccount = db.prepare(`
     SELECT a.account_id, COALESCE(acc.instagram_username, 'Default') as username, COUNT(*) as count
     FROM activity_log a
     LEFT JOIN accounts acc ON a.account_id = acc.id
-    WHERE a.dm_sent = 1 AND a.created_at >= ?
+    WHERE a.dm_sent = 1 AND a.created_at >= ?${uf}
     GROUP BY a.account_id
     ORDER BY count DESC
-  `).all(cutoffISO) as Array<{ account_id: string; username: string; count: number }>;
-
+  `).all(...base) as Array<{ account_id: string; username: string; count: number }>;
 
   return {
     dms_over_time: dmsOverTime,

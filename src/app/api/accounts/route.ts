@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllAccounts, createAccount, updateAccount, deleteAccount } from "@/lib/db";
+import { getAllAccounts, getAccount, createAccount, updateAccount, deleteAccount } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
@@ -71,9 +71,17 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await request.json();
     if (!body.id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+
+    const existing = getAccount(body.id);
+    if (!existing || existing.user_id !== userId) {
+      return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
     const account = updateAccount(body.id, {
@@ -99,11 +107,20 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const userId = await getSessionUserId();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
+
+    const existing = getAccount(id);
+    if (!existing || existing.user_id !== userId) {
+      return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    }
+
     const deleted = deleteAccount(id);
     if (!deleted) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });

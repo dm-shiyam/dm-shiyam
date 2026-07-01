@@ -13,8 +13,12 @@ export async function POST(request: NextRequest) {
       .update(body)
       .digest("hex");
 
-    if (!signature || signature !== expectedSignature) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const sigValid =
+      signature !== null &&
+      signature.length === expectedSignature.length &&
+      crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+    if (!sigValid) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
     const event = JSON.parse(body);

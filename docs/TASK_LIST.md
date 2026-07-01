@@ -48,16 +48,16 @@
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 1 | **Razorpay billing integration** — Checkout/verify/webhook routes exist but likely untested; complete and test payment flow | High | Pending |
-| 2 | **Duplicate DM prevention** — If the same user comments the same keyword twice, don't send duplicate DMs; track sent DMs per user per automation | High | Pending |
-| 3 | **OpenAI integration testing** — AI Smart Replies module exists (`openai.ts`) but needs testing and prompt tuning | Medium | Pending |
-| 4 | **Multi-account token management** — AccountsTab lets users add accounts, but tokens need validation and refresh logic | Medium | Pending |
-| 5 | **Export activity logs** — CSV/Excel download of activity data for reporting | Low | Pending |
-| 6 | **Scheduled automations** — Enable/disable automations on a schedule (e.g., only active during business hours) | Low | Pending |
-| 7 | **Production deployment** — Dockerize, set up Vercel/Railway deployment, environment config | High | Pending |
-| 8 | **Terms of Service & Privacy Policy** — Current privacy page is minimal; add proper legal pages | Medium | Pending |
-| 9 | **Webhook health monitoring** — Dashboard indicator showing last webhook received time, connection status | Medium | Pending |
-| 10 | **Story/Reel mention triggers** — Extend beyond comments to detect mentions in stories/reels | Low | Pending |
+| 1 | **Razorpay billing integration** — Checkout/verify/webhook routes exist but likely untested; complete and test payment flow | High | Done |
+| 2 | **Duplicate DM prevention** — If the same user comments the same keyword twice, don't send duplicate DMs; track sent DMs per user per automation | High | Done |
+| 3 | **OpenAI integration testing** — AI Smart Replies module exists (`openai.ts`) but needs testing and prompt tuning | Medium | Done |
+| 4 | **Multi-account token management** — AccountsTab lets users add accounts, but tokens need validation and refresh logic | Medium | Done |
+| 5 | **Export activity logs** — CSV/Excel download of activity data for reporting | Low | Done |
+| 6 | **Scheduled automations** — Enable/disable automations on a schedule (e.g., only active during business hours) | Low | Done |
+| 7 | **Production deployment** — Dockerize, set up Vercel/Railway deployment, environment config | High | Done |
+| 8 | **Terms of Service & Privacy Policy** — Current privacy page is minimal; add proper legal pages | Medium | Done |
+| 9 | **Webhook health monitoring** — Dashboard indicator showing last webhook received time, connection status | Medium | Done |
+| 10 | **Story/Reel mention triggers** — Extend beyond comments to detect mentions in stories/reels | Low | Done |
 
 ---
 

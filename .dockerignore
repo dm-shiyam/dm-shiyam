@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.*.local
+node_modules
+.next
+*.db
+*.db-shm
+*.db-wal
+.git
+.gitignore
+README.md
+BUSINESS_PLAN.md
+SETUP_GUIDE.md
+docs
+tests

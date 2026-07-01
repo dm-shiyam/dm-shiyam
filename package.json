@@ -6,7 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "db:init": "node scripts/init-db.js"
+    "db:init": "node scripts/init-db.js",
+    "build:docker": "DOCKER_BUILD=true next build",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app",
+    "test:logic": "node tests/test-logic.js",
+    "test:db": "node tests/test-db.js",
+    "test:api": "node tests/test-api.js",
+    "test": "node tests/test-logic.js && node tests/test-db.js && node tests/test-api.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

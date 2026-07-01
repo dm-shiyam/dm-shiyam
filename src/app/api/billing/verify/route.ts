@@ -13,15 +13,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { payment_id, subscription_id, signature, plan } = await request.json();
+    const {
+      razorpay_payment_id,
+      razorpay_subscription_id,
+      razorpay_signature,
+      plan,
+    } = await request.json();
 
-    // Verify Razorpay signature
+    if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature || !plan) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Verify Razorpay signature — format: payment_id|subscription_id
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-      .update(`${payment_id}|${subscription_id}`)
+      .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
       .digest("hex");
 
-    if (expectedSignature !== signature) {
+    if (expectedSignature !== razorpay_signature) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
@@ -39,8 +48,8 @@ export async function POST(request: NextRequest) {
     const updated = updateUserPlan(user.id, {
       plan,
       dm_limit: planConfig.dm_limit,
-      razorpay_customer_id: payment_id,
-      razorpay_subscription_id: subscription_id,
+      razorpay_customer_id: razorpay_payment_id,
+      razorpay_subscription_id,
       subscription_status: "active",
     });
 

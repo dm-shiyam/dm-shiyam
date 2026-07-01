@@ -15,6 +15,9 @@ export interface User {
   subscription_status: "active" | "cancelled" | "expired" | "none";
   dm_limit: number; // per month
   dms_used_this_month: number;
+  has_seen_onboarding?: number; // 0 or 1
+  reset_token?: string;
+  reset_token_expires?: string;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +65,10 @@ export interface Automation {
   created_at: string;
   updated_at: string;
   total_triggered: number;
+  schedule_enabled?: boolean; // enable time-based scheduling
+  schedule_start_hour?: number; // UTC hour 0-23
+  schedule_end_hour?: number; // UTC hour 0-23
+  schedule_days?: string; // comma-separated day numbers "0,1,2,3,4,5,6" (0=Sun)
 }
 
 // ── Activity Log ──

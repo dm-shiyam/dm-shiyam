@@ -4,7 +4,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
-import { getActiveAutomations, logActivity, getUserById, incrementDmsUsed } from "@/lib/db";
+import {
+  getActiveAutomations,
+  logActivity,
+  getUserById,
+  incrementDmsUsed,
+  hasDmBeenSent,
+  recordSentDm,
+  updateWebhookHealth,
+  isAutomationActiveNow,
+} from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
 import { emitNewActivity } from "@/lib/activity-events";
 
@@ -99,15 +108,23 @@ export async function POST(req: NextRequest) {
 async function processWebhookAsync(body: WebhookPayload) {
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {
-      if (change.field !== "comments") continue;
+      // V10: Support comments, story/reel mentions
+      const field = change.field;
+      const isTriggerEvent =
+        field === "comments" ||
+        field === "mentions" ||
+        field === "story_insights";
+
+      if (!isTriggerEvent) continue;
+
+      // V9: Track webhook health
+      updateWebhookHealth(field);
 
       const value = change.value;
 
-      // FIX: The sender's Instagram-scoped user ID lives at value.from.id
-      // This is what you MUST pass to sendDM — not the username, not the text
       const senderId: string | undefined = value?.from?.id;
       const senderUsername: string = value?.from?.username ?? "there";
-      const commentText: string = value?.text ?? "";
+      const commentText: string = value?.text ?? (value as Record<string, unknown> & { mentioned_in?: { text?: string } })?.mentioned_in?.text ?? "";
       const commentId: string = value?.id ?? "";
 
       if (!senderId) {
@@ -115,11 +132,17 @@ async function processWebhookAsync(body: WebhookPayload) {
         continue;
       }
 
-      console.log(`[webhook] Comment from @${senderUsername} (${senderId}): "${commentText}"`);
+      console.log(`[webhook] ${field} from @${senderUsername} (${senderId}): "${commentText}"`);
 
       const automations = await getActiveAutomations();
 
       for (const automation of automations) {
+        // V6: Schedule enforcement
+        if (!isAutomationActiveNow(automation)) {
+          console.log(`[webhook] Automation "${automation.name}" is outside scheduled hours — skipping`);
+          continue;
+        }
+
         const keywords: string[] = automation.trigger_keywords
           .split(",")
           .map((k: string) => k.trim().toLowerCase())
@@ -132,84 +155,78 @@ async function processWebhookAsync(body: WebhookPayload) {
 
         console.log(`[webhook] Matched keyword "${matchedKeyword}" → automation "${automation.name}"`);
 
+        // V2: Duplicate DM prevention
+        if (hasDmBeenSent(automation.id, senderId)) {
+          console.log(`[webhook] Duplicate DM skipped — already sent to ${senderId} for automation "${automation.name}"`);
+          continue;
+        }
+
         const dmText = personalizeMessage(automation.dm_message, senderUsername);
         let dmSent = false;
         let commentReplied = false;
         let errorMessage: string | undefined;
 
-        // ── Task #5: DM limit enforcement ────────────────────────
+        // DM limit enforcement
         const userId = automation.user_id;
         if (userId) {
           const user = getUserById(userId);
           if (user && user.dm_limit !== -1 && user.dms_used_this_month >= user.dm_limit) {
             errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
             console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
-
-            const activity = await logActivity({
-  automation_id: automation.id,
-  automation_name: automation.name,
-  instagram_user_id: senderId,
-  instagram_username: senderUsername,
-  comment_text: commentText,
-  matched_keyword: matchedKeyword,
-  dm_sent: false,
-  comment_replied: false,
-  error_message: errorMessage,
-  user_id: userId,
-});
-emitNewActivity(userId, activity);
-break;
+            const activity = logActivity({
+              automation_id: automation.id,
+              automation_name: automation.name,
+              instagram_user_id: senderId,
+              instagram_username: senderUsername,
+              comment_text: commentText,
+              matched_keyword: matchedKeyword,
+              dm_sent: false,
+              comment_replied: false,
+              error_message: errorMessage,
+              user_id: userId,
+            });
+            emitNewActivity(userId, activity);
+            break;
           }
         }
 
-        // ── Send DM ────────────────────────────────────────────────
-        const dmResult = await sendDM(
-          senderId,      // IG-scoped user ID (the fix)
-          dmText,
-          ACCESS_TOKEN,
-          IG_ACCOUNT_ID  // Your business account ID (the fix)
-        );
+        // Send DM
+        const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
 
         if (dmResult.success) {
           dmSent = true;
           console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
-          // Increment usage counter
           if (userId) incrementDmsUsed(userId);
+          // V2: Record to prevent duplicates
+          recordSentDm(automation.id, senderId);
         } else {
           errorMessage = dmResult.error;
           console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
         }
 
-        // ── Reply to comment (if configured) ──────────────────────
-        if (automation.reply_comment && commentId) {
-          const replyResult = await replyToComment(
-            commentId,
-            automation.reply_comment,
-            ACCESS_TOKEN
-          );
+        // Reply to comment (if configured, only for comment events)
+        if (field === "comments" && automation.reply_comment && commentId) {
+          const replyResult = await replyToComment(commentId, automation.reply_comment, ACCESS_TOKEN);
           commentReplied = replyResult.success;
           if (!replyResult.success) {
             console.error(`[webhook] Comment reply failed:`, replyResult.error);
           }
         }
 
-        // ── Log to DB ──────────────────────────────────────────────
-       
-
-
-        const activity = await logActivity({
-  automation_id: automation.id,
-  automation_name: automation.name,
-  instagram_user_id: senderId,
-  instagram_username: senderUsername,
-  comment_text: commentText,
-  matched_keyword: matchedKeyword,
-  dm_sent: dmSent,
-  comment_replied: commentReplied,
-  error_message: errorMessage,
-  user_id: automation.user_id,
-});
-emitNewActivity(automation.user_id, activity);
+        // Log to DB
+        const activity = logActivity({
+          automation_id: automation.id,
+          automation_name: automation.name,
+          instagram_user_id: senderId,
+          instagram_username: senderUsername,
+          comment_text: commentText,
+          matched_keyword: matchedKeyword,
+          dm_sent: dmSent,
+          comment_replied: commentReplied,
+          error_message: errorMessage,
+          user_id: automation.user_id,
+        });
+        emitNewActivity(automation.user_id, activity);
       }
     }
   }

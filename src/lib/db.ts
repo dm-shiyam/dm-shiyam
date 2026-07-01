@@ -81,6 +81,22 @@ function initTables(db: Database.Database) {
       FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS sent_dms (
+      id TEXT PRIMARY KEY,
+      automation_id TEXT NOT NULL,
+      instagram_user_id TEXT NOT NULL,
+      sent_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS webhook_health (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      last_received_at TEXT,
+      last_event_type TEXT,
+      total_received INTEGER DEFAULT 0
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_dms_dedup ON sent_dms(automation_id, instagram_user_id);
     CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_log(created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_automation ON activity_log(automation_id);
     CREATE INDEX IF NOT EXISTS idx_activity_account ON activity_log(account_id);
@@ -104,6 +120,11 @@ function initTables(db: Database.Database) {
     "CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_automations_user ON automations(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)",
+    "ALTER TABLE automations ADD COLUMN schedule_enabled INTEGER DEFAULT 0",
+    "ALTER TABLE automations ADD COLUMN schedule_start_hour INTEGER DEFAULT 0",
+    "ALTER TABLE automations ADD COLUMN schedule_end_hour INTEGER DEFAULT 23",
+    "ALTER TABLE automations ADD COLUMN schedule_days TEXT DEFAULT '0,1,2,3,4,5,6'",
+    "INSERT OR IGNORE INTO webhook_health (id, total_received) VALUES (1, 0)",
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* column already exists */ }
@@ -558,4 +579,96 @@ export function markOnboardingSeen(userId: string): void {
   db.prepare(
     "UPDATE users SET has_seen_onboarding = 1 WHERE id = ?"
   ).run(userId);
+}
+
+// ═══════════════════════════════════════
+// ── Duplicate DM Prevention ──
+// ═══════════════════════════════════════
+
+export function hasDmBeenSent(automationId: string, instagramUserId: string): boolean {
+  const db = getDb();
+  const row = db.prepare(
+    "SELECT 1 FROM sent_dms WHERE automation_id = ? AND instagram_user_id = ?"
+  ).get(automationId, instagramUserId);
+  return !!row;
+}
+
+export function recordSentDm(automationId: string, instagramUserId: string): void {
+  const db = getDb();
+  const id = uuidv4();
+  try {
+    db.prepare(
+      "INSERT INTO sent_dms (id, automation_id, instagram_user_id) VALUES (?, ?, ?)"
+    ).run(id, automationId, instagramUserId);
+  } catch {
+    // Unique constraint — already recorded, ignore
+  }
+}
+
+// ═══════════════════════════════════════
+// ── Webhook Health ──
+// ═══════════════════════════════════════
+
+export function updateWebhookHealth(eventType: string): void {
+  const db = getDb();
+  db.prepare(
+    `UPDATE webhook_health SET last_received_at = datetime('now'), last_event_type = ?, total_received = total_received + 1 WHERE id = 1`
+  ).run(eventType);
+}
+
+export function getWebhookHealth(): { last_received_at: string | null; last_event_type: string | null; total_received: number } | undefined {
+  const db = getDb();
+  return db.prepare("SELECT last_received_at, last_event_type, total_received FROM webhook_health WHERE id = 1").get() as { last_received_at: string | null; last_event_type: string | null; total_received: number } | undefined;
+}
+
+// ═══════════════════════════════════════
+// ── Scheduled Automations ──
+// ═══════════════════════════════════════
+
+export function isAutomationActiveNow(automation: {
+  is_active: boolean | number;
+  schedule_enabled?: boolean | number;
+  schedule_start_hour?: number;
+  schedule_end_hour?: number;
+  schedule_days?: string;
+}): boolean {
+  if (!automation.is_active) return false;
+  if (!automation.schedule_enabled) return true;
+
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+  const currentDay = now.getUTCDay(); // 0=Sun, 6=Sat
+
+  const startHour = automation.schedule_start_hour ?? 0;
+  const endHour = automation.schedule_end_hour ?? 23;
+  const allowedDays = (automation.schedule_days ?? "0,1,2,3,4,5,6")
+    .split(",")
+    .map((d) => parseInt(d.trim(), 10));
+
+  if (!allowedDays.includes(currentDay)) return false;
+  if (currentHour < startHour || currentHour > endHour) return false;
+
+  return true;
+}
+
+export function updateAutomationSchedule(
+  id: string,
+  schedule: {
+    schedule_enabled: boolean;
+    schedule_start_hour: number;
+    schedule_end_hour: number;
+    schedule_days: string;
+  }
+): Automation | undefined {
+  const db = getDb();
+  db.prepare(
+    `UPDATE automations SET schedule_enabled = ?, schedule_start_hour = ?, schedule_end_hour = ?, schedule_days = ?, updated_at = datetime('now') WHERE id = ?`
+  ).run(
+    schedule.schedule_enabled ? 1 : 0,
+    schedule.schedule_start_hour,
+    schedule.schedule_end_hour,
+    schedule.schedule_days,
+    id
+  );
+  return getAutomation(id);
 }

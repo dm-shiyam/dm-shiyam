@@ -3,3 +3,10 @@ node_modules/
 .env.local
 *.db
 out/
+
+# SQLite WAL files
+*.db-shm
+*.db-wal
+
+# TypeScript build cache
+tsconfig.tsbuildinfo

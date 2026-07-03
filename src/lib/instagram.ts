@@ -84,6 +84,62 @@ export async function sendDM(
 }
 
 // ─────────────────────────────────────────────
+// Send a Private Reply (DM) in response to a comment
+// Uses POST /{comment-id}/private_replies
+// This does NOT require the 24-hour messaging window
+// Requires: instagram_manage_comments permission
+// ─────────────────────────────────────────────
+export async function sendPrivateReply(
+  commentId: string,
+  messageText: string,
+  accessToken: string
+): Promise<{ success: boolean; error?: string }> {
+  const url = `${BASE_URL}/${commentId}/private_replies`;
+
+  let lastError = "";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[sendPrivateReply] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
+        await sleep(delay);
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: messageText,
+          access_token: accessToken,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        lastError = data.error?.message ?? `HTTP ${res.status}`;
+        console.error(`[sendPrivateReply] API error (attempt ${attempt + 1}):`, JSON.stringify(data.error ?? data));
+
+        if (isRetryable(res.status) && attempt < MAX_RETRIES) continue;
+        return { success: false, error: lastError };
+      }
+
+      console.log(`[sendPrivateReply] DM sent successfully for comment ${commentId}`);
+      return { success: true };
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.error(`[sendPrivateReply] Fetch error (attempt ${attempt + 1}):`, lastError);
+
+      if (attempt < MAX_RETRIES) continue;
+      return { success: false, error: lastError };
+    }
+  }
+
+  return { success: false, error: lastError };
+}
+
+// ─────────────────────────────────────────────
 // Reply to a comment publicly
 // ─────────────────────────────────────────────
 export async function replyToComment(

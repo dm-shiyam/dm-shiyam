@@ -65,6 +65,6 @@
 
 | Person | Tasks | Focus |
 |--------|-------|-------|
-| **Priyanka** | #1, #3, #4, #5, #6, #7, #8, #9, #10 (Done) → Next: #2 | Postgres migration (coordinate with Venkat #7) |
-| **Ankit** | #2, #3, #5, #6, #7, #8, #9, #10 (Done) → Next: #1, #4 | Hydration fix, Google OAuth |
-| **Venkat** | Next: #1, #2, #7 | Billing, dedup DMs, deployment |
+| **Priyanka** | 9/10 Done → Remaining: #2 | Postgres migration |
+| **Ankit** | 8/10 Done → Remaining: #1, #4 | Hydration fix, Google OAuth |
+| **Venkat** | 10/10 Done ✅ | All tasks complete |

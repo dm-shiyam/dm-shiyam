@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
+import { sendDM, sendPrivateReply, replyToComment, personalizeMessage } from "@/lib/instagram";
 import {
   getActiveAutomations,
   logActivity,
@@ -49,7 +49,10 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
     return false;
   }
   const expectedSig = "sha256=" + crypto.createHmac("sha256", APP_SECRET).update(rawBody).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signatureHeader));
+  const expected = Buffer.from(expectedSig);
+  const received = Buffer.from(signatureHeader);
+  if (expected.length !== received.length) return false;
+  return crypto.timingSafeEqual(expected, received);
 }
 
 // ─── Rate limit config ──────────────────────────────────────────────
@@ -197,7 +200,6 @@ async function processWebhookAsync(body: WebhookPayload) {
           dmSent = true;
           console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
           if (userId) incrementDmsUsed(userId);
-          // V2: Record to prevent duplicates
           recordSentDm(automation.id, senderId);
         } else {
           errorMessage = dmResult.error;

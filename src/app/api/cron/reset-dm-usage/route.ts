@@ -9,13 +9,14 @@ import { resetMonthlyDmUsage } from "@/lib/db";
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
 export async function POST(req: NextRequest) {
-  // Verify the cron secret
+  // Verify the cron secret (accept via header or query param)
   const authHeader = req.headers.get("authorization");
-  const providedSecret = authHeader?.replace("Bearer ", "") || "";
+  const { searchParams } = new URL(req.url);
+  const providedSecret = authHeader?.replace("Bearer ", "") || searchParams.get("secret") || "";
 
   if (!CRON_SECRET) {
     console.error("[cron] CRON_SECRET not configured — rejecting request");
-    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+    return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 401 });
   }
 
   if (providedSecret !== CRON_SECRET) {

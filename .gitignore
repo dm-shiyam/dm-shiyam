@@ -10,3 +10,4 @@ out/
 
 # TypeScript build cache
 tsconfig.tsbuildinfo
+.DS_Store

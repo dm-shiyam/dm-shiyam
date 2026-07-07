@@ -7,6 +7,7 @@ const DB_PATH = path.join(process.cwd(), "dm-shiyam.db");
 
 let _db: Database.Database | null = null;
 
+
 function getDb(): Database.Database {
   if (!_db) {
     _db = new Database(DB_PATH);
@@ -384,10 +385,13 @@ export function getActivityLog(limit = 50, offset = 0, filters?: { accountId?: s
 // ── Dashboard Stats ──
 // ═══════════════════════════════════════
 
+
+
+
 export function getDashboardStats(userId?: string): DashboardStats {
   const db = getDb();
   const uf = userId ? " AND user_id = ?" : "";
-  const p = userId ? [userId] : [];
+const p = userId ? [userId] : [];
 
   const q = (sql: string) => (db.prepare(sql).get(...p) as { count: number }).count;
 
@@ -417,7 +421,8 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
   cutoff.setDate(cutoff.getDate() - safeDays);
   const cutoffISO = cutoff.toISOString();
 
-  const uf = userId ? " AND user_id = ?" : "";
+  const activityFilter = userId ? " AND activity_log.user_id = ?" : "";
+const activityAliasFilter = userId ? " AND a.user_id = ?" : "";
   const base = userId ? [cutoffISO, userId] : [cutoffISO];
 
   // DMs over time (last N days)
@@ -426,7 +431,9 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
            COUNT(*) as count,
            SUM(CASE WHEN ai_generated = 1 THEN 1 ELSE 0 END) as ai_count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= ?${uf}
+    WHERE dm_sent = 1
+AND created_at >= ?
+${activityFilter}
     GROUP BY date(created_at)
     ORDER BY date ASC
   `).all(...base) as Array<{ date: string; count: number; ai_count: number }>;
@@ -435,7 +442,9 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
   const topKeywords = db.prepare(`
     SELECT matched_keyword as keyword, COUNT(*) as count
     FROM activity_log
-    WHERE created_at >= ?${uf}
+   WHERE dm_sent = 1
+AND created_at >= ?
+${activityFilter}
     GROUP BY matched_keyword
     ORDER BY count DESC
     LIMIT 10
@@ -445,7 +454,9 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
   const hourlyDist = db.prepare(`
     SELECT CAST(strftime('%H', created_at) AS INTEGER) as hour, COUNT(*) as count
     FROM activity_log
-    WHERE dm_sent = 1 AND created_at >= ?${uf}
+    WHERE dm_sent = 1
+AND created_at >= ?
+${activityFilter}
     GROUP BY hour
     ORDER BY hour ASC
   `).all(...base) as Array<{ hour: number; count: number }>;
@@ -459,10 +470,14 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
 
   // Success rate
   const sent = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= ?${uf}`
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1
+AND created_at >= ?
+${activityFilter}`
   ).get(...base) as { count: number }).count;
   const failed = (db.prepare(
-    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0 AND created_at >= ?${uf}`
+    `SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0
+AND created_at >= ?
+${activityFilter}`
   ).get(...base) as { count: number }).count;
 
   // Per-account breakdown
@@ -470,7 +485,9 @@ export function getAnalyticsData(days = 30, userId?: string): AnalyticsData {
     SELECT a.account_id, COALESCE(acc.instagram_username, 'Default') as username, COUNT(*) as count
     FROM activity_log a
     LEFT JOIN accounts acc ON a.account_id = acc.id
-    WHERE a.dm_sent = 1 AND a.created_at >= ?${uf}
+    WHERE a.dm_sent = 1
+AND a.created_at >= ?
+${activityAliasFilter}
     GROUP BY a.account_id
     ORDER BY count DESC
   `).all(...base) as Array<{ account_id: string; username: string; count: number }>;

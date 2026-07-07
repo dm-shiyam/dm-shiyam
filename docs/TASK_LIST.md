@@ -157,15 +157,15 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A1 | **Fix hydration error** | | Medium | Pending |
-| | | 1.1 Identify root cause (browser extensions, SSR mismatch, layout) | | Pending |
-| | | 1.2 Fix the actual issue, remove `suppressHydrationWarning` | | Pending |
-| | | 1.3 Test in Chrome, Firefox, Safari | | Pending |
-| A2 | **Google OAuth setup** | | Medium | Pending |
-| | | 2.1 Create Google Cloud project + OAuth consent screen | | Pending |
-| | | 2.2 Get `clientId` and `clientSecret` | | Pending |
-| | | 2.3 Add to `.env` and configure GoogleProvider in NextAuth | | Pending |
-| | | 2.4 Test signup/login with Google account | | Pending |
+| A1 | **Fix hydration error** | | Medium | Done |
+| | | 1.1 Identify root cause (browser extensions, SSR mismatch, layout) | | Done |
+| | | 1.2 Fix the actual issue, remove `suppressHydrationWarning` | | Done |
+| | | 1.3 Test in Chrome, Firefox, Safari | | Done |
+| A2 | **Google OAuth setup** | | Medium | Done |
+| | | 2.1 Create Google Cloud project + OAuth consent screen | | Done |
+| | | 2.2 Get `clientId` and `clientSecret` | | Done |
+| | | 2.3 Add to `.env` and configure GoogleProvider in NextAuth | | Done |
+| | | 2.4 Test signup/login with Google account | | Done |
 
 #### Phase 2: Legal
 

@@ -51,8 +51,24 @@ export default function AnalyticsTab() {
     );
   }
 
-  const totalDms = data.success_rate.sent + data.success_rate.failed;
-  const successPercent = totalDms > 0 ? Math.round((data.success_rate.sent / totalDms) * 100) : 0;
+  const successRate = data?.success_rate ?? {
+  sent: 0,
+  failed: 0,
+};
+
+const totalDms =
+  successRate.sent + successRate.failed;
+
+  const successPercent =
+  totalDms === 0
+    ? 0
+    : Math.round((successRate.sent / totalDms) * 100);
+
+    const dmsOverTime = data?.dms_over_time ?? [];
+const topKeywords = data?.top_keywords ?? [];
+const hourlyDistribution = data?.hourly_distribution ?? [];
+const perAccount = data?.per_account ?? [];
+
 
   return (
     <div className="space-y-6">
@@ -78,7 +94,7 @@ export default function AnalyticsTab() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="card !p-4">
           <p className="text-xs font-medium text-gray-500 uppercase">Total DMs</p>
-          <p className="mt-1 text-2xl font-bold">{data.success_rate.sent}</p>
+          <p className="mt-1 text-2xl font-bold">{successRate.sent}</p>
         </div>
         <div className="card !p-4">
           <p className="text-xs font-medium text-gray-500 uppercase">Success Rate</p>
@@ -87,13 +103,13 @@ export default function AnalyticsTab() {
         <div className="card !p-4">
           <p className="text-xs font-medium text-gray-500 uppercase">AI-Generated</p>
           <p className="mt-1 text-2xl font-bold text-purple-600">
-            {data.dms_over_time.reduce((sum, d) => sum + d.ai_count, 0)}
+            {dmsOverTime.reduce((sum, d) => sum + d.ai_count, 0)}
           </p>
         </div>
         <div className="card !p-4">
           <p className="text-xs font-medium text-gray-500 uppercase">Top Keyword</p>
           <p className="mt-1 text-2xl font-bold text-pink-600">
-            {data.top_keywords[0]?.keyword || "—"}
+            {topKeywords[0]?.keyword ?? "—"}
           </p>
         </div>
       </div>
@@ -135,9 +151,9 @@ export default function AnalyticsTab() {
             <Target className="h-4 w-4 text-indigo-500" />
             <h3 className="font-semibold">Top Keywords</h3>
           </div>
-          {data.top_keywords.length > 0 ? (
+          {topKeywords.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={data.top_keywords} layout="vertical">
+              <BarChart data={topKeywords} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
                 <YAxis dataKey="keyword" type="category" tick={{ fontSize: 12 }} width={80} />
@@ -161,8 +177,8 @@ export default function AnalyticsTab() {
               <PieChart>
                 <Pie
                   data={[
-                    { name: "Sent", value: data.success_rate.sent },
-                    { name: "Failed", value: data.success_rate.failed },
+                    { name: "Sent", value: successRate.sent },
+                    { name: "Failed", value: successRate.failed },
                   ]}
                   cx="50%"
                   cy="50%"
@@ -191,7 +207,7 @@ export default function AnalyticsTab() {
           <h3 className="font-semibold">Activity by Hour (UTC)</h3>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data.hourly_distribution}>
+          <BarChart data={hourlyDistribution}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="hour"
@@ -204,7 +220,7 @@ export default function AnalyticsTab() {
               labelFormatter={(h) => `${h}:00 — ${(h as number) + 1}:00 UTC`}
             />
             <Bar dataKey="count" name="DMs Sent" radius={[4, 4, 0, 0]}>
-              {data.hourly_distribution.map((_, i) => (
+              {hourlyDistribution.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={0.8} />
               ))}
             </Bar>
@@ -213,12 +229,12 @@ export default function AnalyticsTab() {
       </div>
 
       {/* Per Account Breakdown */}
-      {data.per_account.length > 0 && (
+      {perAccount.length > 0 && (
         <div className="card">
           <h3 className="mb-3 font-semibold">DMs by Account</h3>
           <div className="space-y-2">
-            {data.per_account.map((a, i) => {
-              const maxCount = data.per_account[0]?.count || 1;
+            {perAccount.map((a, i) => {
+              const maxCount = perAccount[0]?.count || 1;
               return (
                 <div key={i} className="flex items-center gap-3">
                   <span className="w-28 truncate text-sm font-medium">@{a.username}</span>

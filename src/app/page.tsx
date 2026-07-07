@@ -12,7 +12,7 @@ import {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen" suppressHydrationWarning>
+    <div className="min-h-screen">
       {/* Nav */}
       <nav className="fixed top-0 z-50 w-full border-b border-gray-100 bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

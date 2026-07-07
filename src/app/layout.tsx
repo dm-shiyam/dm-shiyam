@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Providers from "@/components/Providers";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -7,7 +7,11 @@ export const metadata: Metadata = {
   title: "DM Shiyam — Instagram Comment-to-DM Bot",
   description:
     "Automatically send DMs when users comment specific keywords on your Instagram posts.",
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

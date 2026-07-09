@@ -180,12 +180,12 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A4 | **Landing page** | | High | Pending |
-| | | 4.1 Design hero section with tagline + CTA | | Pending |
-| | | 4.2 Features section (keyword triggers, auto DM, analytics) | | Pending |
-| | | 4.3 How it works section (3-step visual) | | Pending |
-| | | 4.4 Testimonials / social proof section | | Pending |
-| | | 4.5 CTA + signup button | | Pending |
+| A4 | **Landing page** | | High | Done |
+| | | 4.1 Design hero section with tagline + CTA | | Done |
+| | | 4.2 Features section (keyword triggers, auto DM, analytics) | | Done |
+| | | 4.3 How it works section (3-step visual) | | Done |
+| | | 4.4 Testimonials / social proof section | | Done |
+| | | 4.5 CTA + signup button | | Done |
 | A5 | **Pricing page** | | Medium | Pending |
 | | | 5.1 Design pricing cards (Free / Pro / Business) | | Pending |
 | | | 5.2 Feature comparison table | | Pending |

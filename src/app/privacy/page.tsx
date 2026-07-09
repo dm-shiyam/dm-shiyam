@@ -1,263 +1,292 @@
-import Link from "next/link";
+// app/privacy/page.tsx  (Next.js 14 App Router)
 
-export default function PrivacyPage() {
+export const metadata = {
+  title: "Privacy Policy | DM Shiyam",
+  description: "Privacy Policy for DM Shiyam Instagram automation platform.",
+};
+
+export default function PrivacyPolicy() {
+  const lastUpdated = "July 9, 2025";
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-3xl px-6 py-20">
-        {/* Header */}
-        <div className="mb-12">
-          <Link href="/" className="text-sm text-blue-600 hover:underline">← Back to Home</Link>
-          <h1 className="mt-6 text-4xl font-bold text-gray-900">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-gray-500">Last updated: June 25, 2025 · Effective: June 25, 2025</p>
-          <p className="mt-4 text-gray-600">
-            At DM Shiyam, we take your privacy seriously. This Privacy Policy explains what information
-            we collect, how we use it, and your rights regarding your data.
+    <main className="min-h-screen bg-white dark:bg-gray-950 py-16 px-4">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-2">
+          Privacy Policy
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-10">
+          Last updated: {lastUpdated}
+        </p>
+
+        <Section title="1. About Us">
+          <p>
+            This Privacy Policy applies to <strong>DM Shiyam</strong> ("we",
+            "our", or "us"), an Instagram DM automation platform. For any
+            privacy-related queries, contact us at{" "}
+            <a
+              href="mailto:dmshiyamofficial@gmail.com"
+              className="text-indigo-600 dark:text-indigo-400 underline"
+            >
+              dmshiyamofficial@gmail.com
+            </a>
+            .
           </p>
-        </div>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Business address: Available upon request.
+          </p>
+        </Section>
 
-        <div className="space-y-10 text-gray-700 leading-relaxed">
+        <Section title="2. Information We Collect">
+          <ul className="list-disc pl-5 space-y-2">
+            <li>
+              <strong>Account data:</strong> Your name, email address, and
+              password (hashed) when you register.
+            </li>
+            <li>
+              <strong>Instagram data:</strong> Your Instagram account ID, access
+              tokens, and page connections authorised through Meta's OAuth flow.
+            </li>
+            <li>
+              <strong>Automation data:</strong> Keywords, DM templates, and
+              automation rules you configure.
+            </li>
+            <li>
+              <strong>Activity logs:</strong> Records of DMs sent, comments
+              triggered, and webhook events processed.
+            </li>
+            <li>
+              <strong>Payment data:</strong> Subscription status processed via
+              Razorpay. We do not store card details.
+            </li>
+            <li>
+              <strong>Usage data:</strong> IP address, browser type, and pages
+              visited, collected via server logs and cookies.
+            </li>
+          </ul>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">1. Who We Are</h2>
-            <p>
-              DM Shiyam (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is an Instagram automation platform that helps businesses
-              and creators automate Direct Messages triggered by keyword comments. We are the data
-              controller for the personal data you provide to us.
-            </p>
-            <div className="mt-3 rounded-lg bg-gray-100 p-4 text-sm">
-              <p><strong>Contact:</strong> <a href="mailto:dmshiyam41@gmail.com" className="text-blue-600 hover:underline">dmshiyam41@gmail.com</a></p>
-            </div>
-          </section>
+        <Section title="3. How We Use Your Information">
+          <ul className="list-disc pl-5 space-y-2">
+            <li>To provide and operate the DM Shiyam service.</li>
+            <li>To authenticate your identity and secure your account.</li>
+            <li>
+              To send automated DMs on Instagram on your behalf, as configured
+              by you.
+            </li>
+            <li>To process subscription payments.</li>
+            <li>
+              To send transactional emails (e.g. account alerts, password
+              resets).
+            </li>
+            <li>To comply with legal obligations.</li>
+          </ul>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">2. Information We Collect</h2>
+        <Section title="4. Data Retention & Deletion">
+          <p>
+            We retain your data for as long as your account is active. Activity
+            logs (DM history, webhook events) are automatically deleted after{" "}
+            <strong>90 days</strong>.
+          </p>
+          <p className="mt-3">
+            You may request full deletion of your account and all associated
+            data at any time by emailing{" "}
+            <a
+              href="mailto:dmshiyamofficial@gmail.com"
+              className="text-indigo-600 dark:text-indigo-400 underline"
+            >
+              dmshiyamofficial@gmail.com
+            </a>
+            . We will process deletion requests within <strong>30 days</strong>.
+          </p>
+          <p className="mt-3">
+            Upon account deletion, we remove your personal data, Instagram
+            tokens, automations, and activity logs. Anonymised aggregate
+            statistics may be retained for internal analytics.
+          </p>
+        </Section>
 
-            <h3 className="mt-4 mb-2 font-semibold text-gray-800">2.1 Information You Provide</h3>
-            <ul className="ml-6 mt-2 list-disc space-y-1">
-              <li><strong>Account information:</strong> Name, email address, and password when you register</li>
-              <li><strong>Instagram credentials:</strong> Access tokens when you connect your Instagram Business or Creator account via Meta OAuth</li>
-              <li><strong>Automation content:</strong> Keywords, DM templates, reply messages, and AI prompts you configure</li>
-              <li><strong>Payment information:</strong> Processed entirely by Razorpay — we never store card numbers, CVV, or full payment details</li>
-            </ul>
+        <Section title="5. Cookies & Tracking">
+          <p>We use the following types of cookies:</p>
+          <ul className="list-disc pl-5 space-y-2 mt-2">
+            <li>
+              <strong>Strictly necessary cookies:</strong> Session cookies
+              required for authentication and security. These cannot be
+              disabled.
+            </li>
+            <li>
+              <strong>Functional cookies:</strong> Cookies that remember your
+              preferences (e.g. dark mode). You may disable these via browser
+              settings.
+            </li>
+            <li>
+              <strong>Analytics cookies:</strong> We may use anonymised usage
+              analytics to improve the platform. No third-party advertising
+              cookies are used.
+            </li>
+          </ul>
+          <p className="mt-3">
+            On your first visit, you will be shown a cookie consent banner. You
+            can withdraw consent at any time by clearing your browser cookies or
+            adjusting browser settings.
+          </p>
+        </Section>
 
-            <h3 className="mt-4 mb-2 font-semibold text-gray-800">2.2 Information Collected Automatically</h3>
-            <ul className="ml-6 mt-2 list-disc space-y-1">
-              <li><strong>Activity logs:</strong> Which automations triggered, DM sent/failed status, matched keywords, timestamps</li>
-              <li><strong>Instagram user IDs</strong> of commenters (stored to prevent duplicate DMs — not used for any other purpose)</li>
-              <li><strong>Comment text</strong> processed in real-time for keyword matching (not stored permanently)</li>
-              <li><strong>Webhook events</strong> received from Meta including event type and timestamp</li>
-              <li><strong>Usage data:</strong> DMs sent this month, plan usage, feature access</li>
-            </ul>
+        <Section title="6. Third-Party Services">
+          <ul className="list-disc pl-5 space-y-2">
+            <li>
+              <strong>Meta (Instagram/Facebook):</strong> We interact with
+              Meta's Graph API on your behalf. Your use is subject to{" "}
+              <a
+                href="https://www.facebook.com/privacy/policy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 underline"
+              >
+                Meta's Privacy Policy
+              </a>
+              .
+            </li>
+            <li>
+              <strong>Razorpay:</strong> Payment processing. Subject to{" "}
+              <a
+                href="https://razorpay.com/privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 underline"
+              >
+                Razorpay's Privacy Policy
+              </a>
+              .
+            </li>
+            <li>
+              <strong>Google OAuth:</strong> If you sign in with Google, subject
+              to{" "}
+              <a
+                href="https://policies.google.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 underline"
+              >
+                Google's Privacy Policy
+              </a>
+              .
+            </li>
+          </ul>
+        </Section>
 
-            <h3 className="mt-4 mb-2 font-semibold text-gray-800">2.3 Information We Do NOT Collect</h3>
-            <ul className="ml-6 mt-2 list-disc space-y-1">
-              <li>Full comment history or Instagram post content</li>
-              <li>Private messages or existing DM conversations</li>
-              <li>Location data, device identifiers, or IP addresses for tracking</li>
-              <li>Any data from Instagram users who have not commented on your posts</li>
-            </ul>
-          </section>
+        <Section title="7. International Transfers">
+          <p>
+            DM Shiyam serves users globally. Your data may be processed on
+            servers outside your country of residence. Where data is transferred
+            from the European Economic Area (EEA), we ensure appropriate
+            safeguards are in place in accordance with GDPR Chapter V.
+          </p>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">3. How We Use Your Information</h2>
-            <table className="w-full mt-3 text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left p-3 border border-gray-200 font-semibold">Purpose</th>
-                  <th className="text-left p-3 border border-gray-200 font-semibold">Data Used</th>
-                  <th className="text-left p-3 border border-gray-200 font-semibold">Legal Basis</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-3 border border-gray-200">Provide the automation service</td>
-                  <td className="p-3 border border-gray-200">Instagram tokens, automation config</td>
-                  <td className="p-3 border border-gray-200">Contract performance</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="p-3 border border-gray-200">Prevent duplicate DMs</td>
-                  <td className="p-3 border border-gray-200">Instagram user IDs, automation IDs</td>
-                  <td className="p-3 border border-gray-200">Legitimate interest</td>
-                </tr>
-                <tr>
-                  <td className="p-3 border border-gray-200">Enforce plan limits & billing</td>
-                  <td className="p-3 border border-gray-200">Usage counters, subscription status</td>
-                  <td className="p-3 border border-gray-200">Contract performance</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="p-3 border border-gray-200">Provide analytics & activity logs</td>
-                  <td className="p-3 border border-gray-200">Activity log data</td>
-                  <td className="p-3 border border-gray-200">Legitimate interest</td>
-                </tr>
-                <tr>
-                  <td className="p-3 border border-gray-200">Send service & billing emails</td>
-                  <td className="p-3 border border-gray-200">Email address</td>
-                  <td className="p-3 border border-gray-200">Contract performance</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className="p-3 border border-gray-200">AI Smart Replies (if enabled)</td>
-                  <td className="p-3 border border-gray-200">Comment text sent to OpenAI</td>
-                  <td className="p-3 border border-gray-200">Consent</td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
+        <Section title="8. Your Rights (GDPR & Global)">
+          <p>
+            Depending on your location, you may have the following rights
+            regarding your personal data:
+          </p>
+          <ul className="list-disc pl-5 space-y-2 mt-2">
+            <li>
+              <strong>Access:</strong> Request a copy of data we hold about you.
+            </li>
+            <li>
+              <strong>Rectification:</strong> Correct inaccurate data.
+            </li>
+            <li>
+              <strong>Erasure:</strong> Request deletion of your data ("right to
+              be forgotten").
+            </li>
+            <li>
+              <strong>Restriction:</strong> Ask us to limit how we process your
+              data.
+            </li>
+            <li>
+              <strong>Portability:</strong> Receive your data in a
+              machine-readable format.
+            </li>
+            <li>
+              <strong>Objection:</strong> Object to processing based on
+              legitimate interests.
+            </li>
+            <li>
+              <strong>Withdraw consent:</strong> Where processing is
+              consent-based, you may withdraw at any time.
+            </li>
+          </ul>
+          <p className="mt-3">
+            To exercise any of these rights, email{" "}
+            <a
+              href="mailto:dmshiyamofficial@gmail.com"
+              className="text-indigo-600 dark:text-indigo-400 underline"
+            >
+              dmshiyamofficial@gmail.com
+            </a>
+            . We will respond within 30 days.
+          </p>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">4. Data Sharing & Third Parties</h2>
-            <p>We do not sell, rent, or trade your personal data. We share data only with:</p>
+        <Section title="9. Data Security">
+          <p>
+            We use industry-standard measures to protect your data including
+            HTTPS encryption, hashed passwords, and access-controlled
+            infrastructure. However, no system is completely secure and we
+            cannot guarantee absolute security.
+          </p>
+        </Section>
 
-            <div className="mt-4 space-y-4">
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800">Meta / Instagram Graph API</h3>
-                <p className="mt-1 text-sm">Your access token is sent to Meta solely to send DMs and receive webhook events on your behalf. Subject to <a href="https://developers.facebook.com/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Meta Platform Terms</a>.</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800">Razorpay</h3>
-                <p className="mt-1 text-sm">Payment processing. We share your name and email for billing. Card details are handled exclusively by Razorpay. Subject to <a href="https://razorpay.com/privacy/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Razorpay Privacy Policy</a>.</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800">OpenAI <span className="text-xs font-normal text-gray-500">(only if AI Smart Replies enabled)</span></h3>
-                <p className="mt-1 text-sm">Comment text is sent to OpenAI to generate personalized DM replies. This feature is opt-in per automation and can be disabled at any time. Subject to <a href="https://openai.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">OpenAI Privacy Policy</a>.</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-800">Legal Requirements</h3>
-                <p className="mt-1 text-sm">We may disclose data if required by law, court order, or government authority, or to protect the rights, property, or safety of DM Shiyam, our users, or the public.</p>
-              </div>
-            </div>
-          </section>
+        <Section title="10. Children's Privacy">
+          <p>
+            DM Shiyam is not intended for users under the age of 13 (or 16 in
+            the EU). We do not knowingly collect data from children. If you
+            believe a child has provided us data, contact us for immediate
+            deletion.
+          </p>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">5. Data Security</h2>
-            <p>We implement industry-standard security measures to protect your data:</p>
-            <ul className="ml-6 mt-2 list-disc space-y-1">
-              <li>All data transmitted over HTTPS/TLS encryption</li>
-              <li>Instagram access tokens masked in all API responses (shown as ••••••••)</li>
-              <li>Passwords hashed using bcrypt (never stored in plain text)</li>
-              <li>Database access restricted and not publicly exposed</li>
-              <li>Webhook requests verified via HMAC-SHA256 signatures</li>
-              <li>Session tokens are httpOnly cookies, not accessible to JavaScript</li>
-            </ul>
-            <p className="mt-3">
-              Despite these measures, no system is 100% secure. In the event of a data breach that
-              affects your personal data, we will notify you within 72 hours of becoming aware.
-            </p>
-          </section>
+        <Section title="11. Changes to This Policy">
+          <p>
+            We may update this policy from time to time. We will notify you of
+            significant changes via email or an in-app notice. Continued use of
+            the service after changes constitutes acceptance.
+          </p>
+        </Section>
 
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">6. Data Retention</h2>
-            <ul className="ml-6 mt-2 list-disc space-y-1">
-              <li><strong>Account data:</strong> Retained while your account is active. Deleted within 30 days of account deletion request.</li>
-              <li><strong>Activity logs:</strong> Retained for 12 months, then automatically purged.</li>
-              <li><strong>Sent DM records:</strong> Retained for 90 days to prevent duplicates, then purged.</li>
-              <li><strong>Payment records:</strong> Retained for 7 years as required by Indian financial regulations.</li>
-              <li><strong>Comment text:</strong> Processed in memory only, not stored persistently.</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">7. Your Rights & Choices</h2>
-            <p>You have the following rights regarding your personal data:</p>
-            <div className="mt-3 space-y-3">
-              {[
-                ["Access", "View all data we hold about you via your dashboard or by emailing us."],
-                ["Export", "Download your activity logs as CSV from the dashboard at any time."],
-                ["Correction", "Update your name, email, or automation content directly from the dashboard."],
-                ["Deletion", "Delete your account and all associated data by emailing dmshiyam41@gmail.com. We process requests within 30 days."],
-                ["Disconnect Instagram", "Remove any connected Instagram account from the Accounts tab at any time."],
-                ["Opt out of AI", "Disable AI Smart Replies per automation from the automation settings."],
-                ["Withdraw consent", "Cancel your subscription at any time from account settings."],
-              ].map(([right, desc]) => (
-                <div key={right} className="flex gap-3">
-                  <span className="mt-0.5 text-blue-600 font-semibold text-sm min-w-[110px]">{right}</span>
-                  <span className="text-sm text-gray-600">{desc}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">8. Cookies & Tracking</h2>
-            <p>DM Shiyam uses a minimal cookie policy:</p>
-            <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left p-3 font-semibold">Cookie</th>
-                    <th className="text-left p-3 font-semibold">Purpose</th>
-                    <th className="text-left p-3 font-semibold">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-gray-200">
-                    <td className="p-3 font-mono text-xs">next-auth.session-token</td>
-                    <td className="p-3">Authentication session</td>
-                    <td className="p-3">30 days</td>
-                  </tr>
-                  <tr className="border-t border-gray-200 bg-gray-50">
-                    <td className="p-3 font-mono text-xs">next-auth.csrf-token</td>
-                    <td className="p-3">Security (CSRF protection)</td>
-                    <td className="p-3">Session</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-sm text-gray-600">
-              We do <strong>not</strong> use advertising cookies, tracking pixels, Google Analytics,
-              or any third-party analytics cookies.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">9. Children&apos;s Privacy</h2>
-            <p>
-              DM Shiyam is not directed to individuals under the age of 18. We do not knowingly
-              collect personal data from children. If you believe a child has provided us with
-              personal information, please contact us immediately and we will delete it.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">10. International Data Transfers</h2>
-            <p>
-              DM Shiyam is operated from India. If you access the Service from outside India, your
-              data may be transferred to and processed in India. By using the Service, you consent
-              to such transfer. When we transfer data to third parties such as OpenAI or Razorpay,
-              we rely on their published privacy policies and data processing agreements.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">11. Changes to This Policy</h2>
-            <p>
-              We may update this Privacy Policy periodically. For significant changes, we will notify
-              you via email or a prominent notice on the dashboard at least 14 days before the change
-              takes effect. The &quot;Last updated&quot; date at the top reflects the most recent revision.
-              Continued use after changes constitutes acceptance of the updated Policy.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="mb-3 text-xl font-bold text-gray-900">12. Contact & Data Requests</h2>
-            <p>For any privacy-related questions, data access requests, or deletion requests:</p>
-            <div className="mt-3 rounded-lg bg-gray-100 p-4 text-sm space-y-1">
-              <p><strong>DM Shiyam — Privacy Team</strong></p>
-              <p>Email: <a href="mailto:dmshiyam41@gmail.com" className="text-blue-600 hover:underline">dmshiyam41@gmail.com</a></p>
-              <p>Response time: Within 2 business days for general queries, within 30 days for data requests</p>
-            </div>
-          </section>
-
-        </div>
-
-        <div className="mt-12 border-t pt-6 flex items-center justify-between text-sm text-gray-400">
-          <div className="space-x-4">
-            <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
-            <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-            <Link href="/" className="hover:text-gray-600">Home</Link>
-          </div>
-          <span>© 2025 DM Shiyam</span>
-        </div>
+        <Section title="12. Contact">
+          <p>
+            For any privacy concerns, contact{" "}
+            <a
+              href="mailto:dmshiyamofficial@gmail.com"
+              className="text-indigo-600 dark:text-indigo-400 underline"
+            >
+              dmshiyamofficial@gmail.com
+            </a>
+            .
+          </p>
+        </Section>
       </div>
-    </div>
+    </main>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-10">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 pb-1 border-b border-gray-200 dark:border-gray-800">
+        {title}
+      </h2>
+      <div className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed space-y-2">
+        {children}
+      </div>
+    </section>
   );
 }

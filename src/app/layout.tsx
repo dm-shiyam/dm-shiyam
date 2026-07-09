@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Providers from "@/components/Providers";
 import { Toaster } from "sonner";
 import "./globals.css";
+import CookieConsent from "@/components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "DM Shiyam — Instagram Comment-to-DM Bot",
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen" suppressHydrationWarning>
+        <CookieConsent />
         <Providers>{children}</Providers>
         <Toaster position="bottom-right" richColors />
       </body>

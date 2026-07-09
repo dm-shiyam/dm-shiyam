@@ -171,10 +171,10 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A3 | **Update Privacy Policy & Terms** | | Medium | Pending |
-| | | 3.1 Add registered business name, address, contact email | | Pending |
-| | | 3.2 Add data retention period and deletion process | | Pending |
-| | | 3.3 Add GDPR/cookie consent section | | Pending |
+| A3 | **Update Privacy Policy & Terms** | | Medium | Done |
+| | | 3.1 Add registered business name, address, contact email | | Done |
+| | | 3.2 Add data retention period and deletion process | | Done |
+| | | 3.3 Add GDPR/cookie consent section | | Done |
 
 #### Phase 5: Marketing & Growth
 

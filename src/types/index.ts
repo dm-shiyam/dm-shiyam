@@ -2,6 +2,8 @@
 
 export type PlanType = "free" | "starter" | "pro" | "business" | "agency";
 
+export type UserRole = "user" | "admin";
+
 export interface User {
   id: string;
   email: string;
@@ -9,6 +11,7 @@ export interface User {
   password_hash?: string; // null for Google sign-in
   provider: "credentials" | "google";
   provider_id?: string; // Google sub ID
+  role: UserRole;
   plan: PlanType;
   razorpay_customer_id?: string;
   razorpay_subscription_id?: string;
@@ -111,6 +114,22 @@ export interface AnalyticsData {
   hourly_distribution: Array<{ hour: number; count: number }>;
   success_rate: { sent: number; failed: number };
   per_account: Array<{ account_id: string; username: string; count: number }>;
+}
+
+// ── Admin Stats ──
+
+export interface AdminStats {
+  total_users: number;
+  active_users_7d: number;
+  total_dms_sent: number;
+  total_dms_failed: number;
+  dms_today: number;
+  dms_this_week: number;
+  total_automations: number;
+  active_automations: number;
+  total_accounts: number;
+  plans: Array<{ plan: string; count: number }>;
+  recent_errors: Array<{ error_message: string; count: number; last_seen: string }>;
 }
 
 // ── Webhook Payload ──

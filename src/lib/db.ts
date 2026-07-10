@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import type { Account, Automation, ActivityLog, DashboardStats, AnalyticsData, User } from "@/types";
+import type { Account, Automation, ActivityLog, DashboardStats, AnalyticsData, User, AdminStats } from "@/types";
 
 const DB_PATH = path.join(process.cwd(), "dm-shiyam.db");
 
@@ -126,6 +126,7 @@ function initTables(db: Database.Database) {
     "ALTER TABLE automations ADD COLUMN schedule_end_hour INTEGER DEFAULT 23",
     "ALTER TABLE automations ADD COLUMN schedule_days TEXT DEFAULT '0,1,2,3,4,5,6'",
     "INSERT OR IGNORE INTO webhook_health (id, total_received) VALUES (1, 0)",
+    "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch { /* column already exists */ }
@@ -591,6 +592,82 @@ export function updatePassword(userId: string, passwordHash: string): void {
   db.prepare(
     "UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?"
   ).run(passwordHash, userId);
+}
+
+export function isAdmin(userId: string): boolean {
+  const db = getDb();
+  const user = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as { role: string } | undefined;
+  return user?.role === "admin";
+}
+
+export function getAllUsers(): User[] {
+  const db = getDb();
+  return db.prepare(
+    "SELECT id, email, name, provider, role, plan, subscription_status, dm_limit, dms_used_this_month, created_at, updated_at FROM users ORDER BY created_at DESC"
+  ).all() as User[];
+}
+
+export function updateUserRole(userId: string, role: string): User | undefined {
+  const db = getDb();
+  db.prepare("UPDATE users SET role = ?, updated_at = datetime('now') WHERE id = ?").run(role, userId);
+  return getUserById(userId);
+}
+
+export function updateUserAdmin(
+  userId: string,
+  data: Partial<{ plan: string; dm_limit: number; dms_used_this_month: number; role: string }>
+): User | undefined {
+  const db = getDb();
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  if (data.plan !== undefined) { fields.push("plan = ?"); values.push(data.plan); }
+  if (data.dm_limit !== undefined) { fields.push("dm_limit = ?"); values.push(data.dm_limit); }
+  if (data.dms_used_this_month !== undefined) { fields.push("dms_used_this_month = ?"); values.push(data.dms_used_this_month); }
+  if (data.role !== undefined) { fields.push("role = ?"); values.push(data.role); }
+  if (fields.length === 0) return getUserById(userId);
+  fields.push("updated_at = datetime('now')");
+  values.push(userId);
+  db.prepare(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+  return getUserById(userId);
+}
+
+export function getAdminStats(): AdminStats {
+  const db = getDb();
+  const count = (sql: string) => (db.prepare(sql).get() as { count: number }).count;
+
+  const plans = db.prepare(
+    "SELECT plan, COUNT(*) as count FROM users GROUP BY plan ORDER BY count DESC"
+  ).all() as Array<{ plan: string; count: number }>;
+
+  const recent_errors = db.prepare(
+    `SELECT error_message, COUNT(*) as count, MAX(created_at) as last_seen
+     FROM activity_log
+     WHERE error_message IS NOT NULL AND error_message != ''
+     GROUP BY error_message
+     ORDER BY count DESC
+     LIMIT 10`
+  ).all() as Array<{ error_message: string; count: number; last_seen: string }>;
+
+  return {
+    total_users: count("SELECT COUNT(*) as count FROM users"),
+    active_users_7d: count(
+      "SELECT COUNT(DISTINCT user_id) as count FROM activity_log WHERE created_at >= datetime('now', '-7 days') AND user_id IS NOT NULL"
+    ),
+    total_dms_sent: count("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1"),
+    total_dms_failed: count("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 0"),
+    dms_today: count("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND date(created_at) = date('now')"),
+    dms_this_week: count("SELECT COUNT(*) as count FROM activity_log WHERE dm_sent = 1 AND created_at >= datetime('now', '-7 days')"),
+    total_automations: count("SELECT COUNT(*) as count FROM automations"),
+    active_automations: count("SELECT COUNT(*) as count FROM automations WHERE is_active = 1"),
+    total_accounts: count("SELECT COUNT(*) as count FROM accounts WHERE is_active = 1"),
+    plans,
+    recent_errors,
+  };
+}
+
+export function deleteUser(userId: string): boolean {
+  const db = getDb();
+  return db.prepare("DELETE FROM users WHERE id = ?").run(userId).changes > 0;
 }
 
 export function markOnboardingSeen(userId: string): void {

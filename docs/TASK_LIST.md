@@ -11,7 +11,7 @@
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 1 | **Long-lived token exchange** — Exchange short-lived (1hr) tokens for 60-day tokens + auto-refresh before expiry | High | Done |
-| 2 | **Migrate from SQLite to PostgreSQL** — SQLite doesn't support concurrent writes; move to Postgres for production | High | Pending |
+| 2 | **Migrate from SQLite to PostgreSQL** — SQLite doesn't support concurrent writes; move to Postgres for production | High | Pending (Ankit — Sprint 2) |
 | 3 | **User-scoped data isolation** — Add `user_id` FK to `accounts`, `automations`, `activity_log`; filter all queries by user | High | Done |
 | 4 | **Rate limiting on webhook endpoint** — Prevent abuse on `POST /api/webhook/instagram` (no auth check currently) | Medium | Done |
 | 5 | **DM limit enforcement** — `dms_used_this_month` exists but is never checked before sending; enforce plan limits in `processCommentTrigger` | Medium | Done |
@@ -65,7 +65,7 @@
 
 | Person | Tasks | Focus |
 |--------|-------|-------|
-| **Priyanka** | 9/10 Done → Remaining: #2 | Postgres migration |
+| **Priyanka** | 10/10 Done ✅ | All tasks complete |
 | **Ankit** | 8/10 Done → Remaining: #1, #4 | Hydration fix, Google OAuth |
 | **Venkat** | 10/10 Done ✅ | All tasks complete |
 
@@ -77,40 +77,28 @@
 
 ---
 
-### Priyanka — Backend, Database, Meta Review (17 sub-tasks)
+### Priyanka — Meta Review, Production Backend (14 sub-tasks)
 
-*Focus: Postgres migration, Meta compliance, production backend*
-
-#### Phase 1: Development
-
-| # | Task | Sub-tasks | Priority | Status |
-|---|------|-----------|----------|--------|
-| P1 | **Postgres migration** | | High | Pending |
-| | | 1.1 Install `pg` and `@types/pg` packages | | Pending |
-| | | 1.2 Create Postgres connection module (replace `better-sqlite3`) | | Pending |
-| | | 1.3 Rewrite all DB functions in `src/lib/db.ts` to use Postgres queries | | Pending |
-| | | 1.4 Convert SQLite schema to Postgres DDL (auto-migrations) | | Pending |
-| | | 1.5 Test all DB operations locally with Postgres | | Pending |
-| | | 1.6 Migrate existing SQLite data to Postgres (one-time script) | | Pending |
+*Focus: Meta compliance, production backend, email & admin*
 
 #### Phase 2: Legal & Business
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P2 | **Udyam Registration** | | High | Pending |
-| | | 2.1 Go to [udyamregistration.gov.in](https://udyamregistration.gov.in) | | Pending |
-| | | 2.2 Register with Aadhaar + PAN | | Pending |
-| | | 2.3 Download Udyam certificate PDF | | Pending |
+| P2 | **Udyam Registration** | | High | ✅ Done |
+| | | 2.1 Go to [udyamregistration.gov.in](https://udyamregistration.gov.in) | | ✅ Done |
+| | | 2.2 Register with Aadhaar + PAN | | ✅ Done |
+| | | 2.3 Download Udyam certificate PDF | | ✅ Done |
 
 #### Phase 3: Meta App Review
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P3 | **Meta Business Verification** | | High | Pending |
-| | | 3.1 Go to Meta Business Suite → Settings → Business Info | | Pending |
-| | | 3.2 Enter business name, address from Udyam certificate | | Pending |
-| | | 3.3 Upload Udyam certificate as verification document | | Pending |
-| | | 3.4 Wait for verification (1-3 business days) | | Pending |
+| P3 | **Meta Business Verification** | | High | ✅ Done |
+| | | 3.1 Go to Meta Business Suite → Settings → Business Info | | ✅ Done |
+| | | 3.2 Enter business name, address from Udyam certificate | | ✅ Done |
+| | | 3.3 Upload Udyam certificate as verification document | | ✅ Done |
+| | | 3.4 Wait for verification (1-3 business days) | | ✅ Verified (9 Jul 2026) |
 | P4 | **Meta Access Verification** | | High | Pending |
 | | | 4.1 Complete access verification in Meta App Dashboard | | Pending |
 | P5 | **Meta App Review submission** | | High | Pending |
@@ -149,14 +137,21 @@
 
 ---
 
-### Ankit — Frontend, UX, Marketing Pages (15 sub-tasks)
+### Ankit — Frontend, Database, Marketing Pages (21 sub-tasks)
 
-*Focus: Frontend fixes, landing page, SEO, marketing*
+*Focus: Postgres migration, frontend fixes, landing page, SEO, marketing*
 
 #### Phase 1: Development
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
+| A0 | **Postgres migration** | | High | Pending |
+| | | 0.1 Install `pg` and `@types/pg` packages | | Pending |
+| | | 0.2 Create Postgres connection module (replace `better-sqlite3`) | | Pending |
+| | | 0.3 Rewrite all DB functions in `src/lib/db.ts` to use Postgres queries | | Pending |
+| | | 0.4 Convert SQLite schema to Postgres DDL (auto-migrations) | | Pending |
+| | | 0.5 Test all DB operations locally with Postgres | | Pending |
+| | | 0.6 Migrate existing SQLite data to Postgres (one-time script) | | Pending |
 | A1 | **Fix hydration error** | | Medium | Done |
 | | | 1.1 Identify root cause (browser extensions, SSR mismatch, layout) | | Done |
 | | | 1.2 Fix the actual issue, remove `suppressHydrationWarning` | | Done |
@@ -296,8 +291,8 @@
 
 | Person | High | Medium | Low | Total Sub-tasks |
 |--------|------|--------|-----|-----------------|
-| **Priyanka** | 11 | 3 | 6 | **20** |
-| **Ankit** | 5 | 10 | 2 | **17** |
+| **Priyanka** | 8 | 3 | 6 | **14** |
+| **Ankit** | 11 | 10 | 2 | **23** |
 | **Venkat** | 8 | 3 | 5 | **16** |
 | **Shared** | 3 | 3 | 9 | **15** |
 
@@ -305,7 +300,7 @@
 
 | Week | Priyanka | Ankit | Venkat |
 |------|----------|-------|--------|
-| **Week 1** | P1 (Postgres migration), P2 (Udyam) | A1 (Hydration fix), A2 (Google OAuth) | V1 (Domain), V2 (Business email) |
+| **Week 1** | P2 (Udyam registration) | A0 (Postgres migration), A1 (Hydration fix) | V1 (Domain), V2 (Business email) |
 | **Week 2** | P3-P5 (Meta verification & review), P6 (Cloud Postgres) | A3 (Update legal pages) | V3-V5 (Deploy + domain + env vars) |
 | **Week 3** | P7 (Webhook URL), P8 (Cron) | A4 (Landing page), A5 (Pricing page) | V6 (Analytics), V7 (Social media) |
 | **Week 4** | S1 (E2E testing) | A6 (SEO), S2 (Demo video) | S3 (Product Hunt prep) |

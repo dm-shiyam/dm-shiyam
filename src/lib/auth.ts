@@ -2,7 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, getUserByProviderId, createUser } from "./db";
+import { getUserByEmail, getUserByProviderId, getUserById, createUser } from "./db";
 
 
 export const authOptions: NextAuthOptions = {
@@ -67,19 +67,36 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
   if (user) {
+    // Initial sign-in: populate token from DB
     const dbUser = getUserByEmail(user.email!);
     if (dbUser) {
       token.userId = dbUser.id;
       token.plan = dbUser.plan;
+      token.role = dbUser.role || "user";
       token.hasSeenOnboarding = dbUser.has_seen_onboarding === 1;
     }
+  } else if (token.userId) {
+    // Subsequent requests: re-validate user still exists & sync latest data
+    const dbUser = getUserById(token.userId as string);
+    if (!dbUser) {
+      // User was deleted — invalidate the token
+      return { ...token, userId: null, expired: true };
+    }
+    // Sync latest role/plan in case admin changed it
+    token.plan = dbUser.plan;
+    token.role = dbUser.role || "user";
   }
   return token;
 },
     async session({ session, token }) {
+  // If user was deleted, return empty session to force re-login
+  if (!token.userId || token.expired) {
+    return { ...session, user: undefined } as typeof session;
+  }
   if (session.user) {
     (session.user as Record<string, unknown>).id = token.userId;
     (session.user as Record<string, unknown>).plan = token.plan;
+    (session.user as Record<string, unknown>).role = token.role;
     (session.user as Record<string, unknown>).has_seen_onboarding = token.hasSeenOnboarding;
   }
   return session;

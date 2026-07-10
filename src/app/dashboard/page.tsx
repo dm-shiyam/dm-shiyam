@@ -62,16 +62,28 @@ export default function DashboardPage() {
         fetch("/api/stats"),
         fetch("/api/accounts"),
       ]);
-      setAutomations(await autoRes.json());
-      setActivities(await actRes.json());
-      setStats(await statsRes.json());
-      setAccounts(await accRes.json());
+
+      // If any API returns 401, session is invalid — redirect to login
+      if ([autoRes, actRes, statsRes, accRes].some((r) => r.status === 401)) {
+        router.push("/login");
+        return;
+      }
+
+      const autoData = autoRes.ok ? await autoRes.json() : [];
+      const actData = actRes.ok ? await actRes.json() : [];
+      const statsData = statsRes.ok ? await statsRes.json() : null;
+      const accData = accRes.ok ? await accRes.json() : [];
+
+      setAutomations(Array.isArray(autoData) ? autoData : []);
+      setActivities(Array.isArray(actData) ? actData : []);
+      setStats(statsData);
+      setAccounts(Array.isArray(accData) ? accData : []);
     } catch (err) {
       console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
 useEffect(() => {
   if (status === "unauthenticated") {

@@ -1,9 +1,14 @@
 // app/terms/page.tsx  (Next.js 14 App Router)
 
-export const metadata = {
-  title: "Terms of Service | DM Shiyam",
-  description: "Terms of Service for DM Shiyam Instagram automation platform.",
-};
+import type { Metadata } from "next";
+import { generatePageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = generatePageMetadata(
+  "Terms of Service - DM Shiyam",
+  "Terms of Service for DM Shiyam. Read our rules, restrictions, and legal terms before using our Instagram automation platform.",
+  "/terms",
+  ["terms of service", "terms and conditions", "legal terms"]
+);
 
 export default function TermsOfService() {
   const lastUpdated = "July 9, 2025";

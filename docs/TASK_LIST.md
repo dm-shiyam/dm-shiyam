@@ -212,8 +212,8 @@
 | V1 | **Domain name** | | High | Pending |
 | | | 1.1 Purchase domain (dmshiyam.com or dmshiyam.in) from Namecheap/GoDaddy/Cloudflare | | Pending |
 | | | 1.2 Set up DNS records | | Pending |
-| V2 | **Business email** | | Medium | Pending |
-| | | 2.1 Set up contact@dmshiyam.com (Zoho Mail free / Google Workspace) | | Pending |
+| V2 | **Business email** | | Medium | ✅ Done |
+| | | 2.1 Set up contact@dmshiyam.com (Zoho Mail free / Google Workspace) | | ✅ Done |
 | | | 2.2 Add to Meta App Dashboard contact info | | Pending |
 
 #### Phase 4: Production Deployment
@@ -237,21 +237,21 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V6 | **Analytics & tracking** | | Low | Pending |
-| | | 6.1 Create Google Analytics property | | Pending |
-| | | 6.2 Add GA script to `_app.tsx` or layout | | Pending |
+| V6 | **Analytics & tracking** | | Low | ✅ Done |
+| | | 6.1 Create Google Analytics property | | ✅ Done |
+| | | 6.2 Add GA script to `_app.tsx` or layout | | ✅ Done (G-KDFFVFWBLC added to layout.tsx) |
 | | | 6.3 Set up conversion events (signup, automation created, DM sent) | | Pending |
-| V7 | **Social media accounts** | | Medium | Pending |
+| V7 | **Social media accounts** | | Medium | In Progress |
 | | | 7.1 Create @dmshiyam Instagram account | | Pending |
-| | | 7.2 Create @dmshiyam Twitter/X account | | Pending |
+| | | 7.2 Create @dmshiyam Twitter/X account | | In Progress |
 | | | 7.3 Post launch announcement | | Pending |
 
 #### Phase 6: Post-Launch
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V8 | **API documentation** | | Low | Pending |
-| | | 8.1 Document API endpoints (Swagger/OpenAPI or Markdown) | | Pending |
+| V8 | **API documentation** | | Low | ✅ Done |
+| | | 8.1 Document API endpoints (Swagger/OpenAPI or Markdown) | | ✅ Done (docs/API.md) |
 | | | 8.2 Host docs on website or GitHub Pages | | Pending |
 
 ---

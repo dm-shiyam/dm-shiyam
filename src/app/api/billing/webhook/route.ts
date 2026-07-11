@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const signature = request.headers.get("x-razorpay-signature");
 
-    // Verify webhook signature
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET || "")
       .update(body)
@@ -17,6 +16,7 @@ export async function POST(request: NextRequest) {
       signature !== null &&
       signature.length === expectedSignature.length &&
       crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+
     if (!sigValid) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
       case "subscription.expired": {
         const userId = payload?.subscription?.entity?.notes?.user_id;
         if (userId) {
-          const user = getUserById(userId);
+          const user = await getUserById(userId);
           if (user) {
-            updateUserPlan(userId, {
+            await updateUserPlan(userId, {
               plan: "free",
               dm_limit: 100,
               subscription_status: event.event === "subscription.cancelled" ? "cancelled" : "expired",
@@ -43,12 +43,11 @@ export async function POST(request: NextRequest) {
       }
       case "subscription.activated":
       case "subscription.charged": {
-        // Payment successful — subscription continues
         const userId = payload?.subscription?.entity?.notes?.user_id;
         if (userId) {
-          const user = getUserById(userId);
+          const user = await getUserById(userId);
           if (user) {
-            updateUserPlan(userId, {
+            await updateUserPlan(userId, {
               plan: user.plan,
               dm_limit: user.dm_limit,
               subscription_status: "active",

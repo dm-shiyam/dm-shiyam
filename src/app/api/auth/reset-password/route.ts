@@ -7,14 +7,14 @@ export async function POST(req: NextRequest) {
   if (!token || !password) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   if (password.length < 6) return NextResponse.json({ error: "Password too short" }, { status: 400 });
 
-  const user = getUserByResetToken(token);
+  const user = await getUserByResetToken(token);
   if (!user) {
     return NextResponse.json({ error: "Invalid or expired reset link" }, { status: 400 });
   }
 
   const hash = await bcrypt.hash(password, 12);
-  updatePassword(user.id, hash);
-  clearResetToken(user.id);
+  await updatePassword(user.id, hash);
+  await clearResetToken(user.id);
 
   return NextResponse.json({ success: true });
 }

@@ -15,7 +15,6 @@ function getRazorpay() {
   });
 }
 
-// Map plans to Razorpay plan IDs (create these in Razorpay dashboard)
 const RAZORPAY_PLAN_IDS: Partial<Record<PlanType, string>> = {
   starter: process.env.RAZORPAY_PLAN_STARTER || "",
   pro: process.env.RAZORPAY_PLAN_PRO || "",
@@ -36,10 +35,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    const user = getUserByEmail(session.user.email);
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = await getUserByEmail(session.user.email);
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const razorpayPlanId = RAZORPAY_PLAN_IDS[plan as PlanType];
     if (!razorpayPlanId) {
@@ -50,11 +47,8 @@ export async function POST(request: NextRequest) {
     const subscription = await razorpay.subscriptions.create({
       plan_id: razorpayPlanId,
       customer_notify: 1,
-      total_count: 12, // 12 months
-      notes: {
-        user_id: user.id,
-        plan: plan,
-      },
+      total_count: 12,
+      notes: { user_id: user.id, plan },
     });
 
     return NextResponse.json({

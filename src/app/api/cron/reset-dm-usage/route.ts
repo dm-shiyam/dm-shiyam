@@ -1,15 +1,9 @@
-// api/cron/reset-dm-usage/route.ts
-// Task #6: Monthly DM usage reset
-// Called by cron job on the 1st of each month (or via Vercel Cron)
-// Protected by CRON_SECRET to prevent unauthorized access
-
 import { NextRequest, NextResponse } from "next/server";
 import { resetMonthlyDmUsage } from "@/lib/db";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
-export async function POST(req: NextRequest) {
-  // Verify the cron secret (accept via header or query param)
+async function handler(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const { searchParams } = new URL(req.url);
   const providedSecret = authHeader?.replace("Bearer ", "") || searchParams.get("secret") || "";
@@ -25,16 +19,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    resetMonthlyDmUsage();
+    await resetMonthlyDmUsage();
     console.log("[cron] Monthly DM usage reset completed successfully");
-    return NextResponse.json({ success: true, message: "Monthly DM usage reset completed", resetAt: new Date().toISOString() });
+    return NextResponse.json({
+      success: true,
+      message: "Monthly DM usage reset completed",
+      resetAt: new Date().toISOString(),
+    });
   } catch (err) {
     console.error("[cron] Failed to reset DM usage:", err);
     return NextResponse.json({ error: "Reset failed" }, { status: 500 });
   }
 }
 
-// Also support GET for Vercel Cron (which sends GET requests)
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export async function POST(req: NextRequest) { return handler(req); }
+export async function GET(req: NextRequest) { return handler(req); }

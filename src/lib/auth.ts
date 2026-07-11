@@ -4,7 +4,6 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserByProviderId, getUserById, createUser } from "./db";
 
-
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -17,7 +16,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         name: { label: "Name", type: "text" },
-        action: { label: "Action", type: "text" }, // "login" or "signup"
+        action: { label: "Action", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -25,12 +24,12 @@ export const authOptions: NextAuthOptions = {
         const { email, password, name, action } = credentials;
 
         if (action === "signup") {
-          const existing = getUserByEmail(email);
+          const existing = await getUserByEmail(email);
           if (existing) throw new Error("Email already registered");
           if (!name) throw new Error("Name is required");
 
           const hash = await bcrypt.hash(password, 12);
-          const user = createUser({
+          const user = await createUser({
             email,
             name,
             password_hash: hash,
@@ -40,7 +39,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Login
-        const user = getUserByEmail(email);
+        const user = await getUserByEmail(email);
         if (!user || !user.password_hash) return null;
 
         const valid = await bcrypt.compare(password, user.password_hash);
@@ -53,10 +52,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
-        const existing = getUserByEmail(user.email!);
+        const existing = await getUserByEmail(user.email!);
         if (existing) return true;
 
-        createUser({
+        await createUser({
           email: user.email!,
           name: user.name || "User",
           provider: "google",
@@ -65,42 +64,41 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
+
     async jwt({ token, user }) {
-  if (user) {
-    // Initial sign-in: populate token from DB
-    const dbUser = getUserByEmail(user.email!);
-    if (dbUser) {
-      token.userId = dbUser.id;
-      token.plan = dbUser.plan;
-      token.role = dbUser.role || "user";
-      token.hasSeenOnboarding = dbUser.has_seen_onboarding === 1;
-    }
-  } else if (token.userId) {
-    // Subsequent requests: re-validate user still exists & sync latest data
-    const dbUser = getUserById(token.userId as string);
-    if (!dbUser) {
-      // User was deleted — invalidate the token
-      return { ...token, userId: null, expired: true };
-    }
-    // Sync latest role/plan in case admin changed it
-    token.plan = dbUser.plan;
-    token.role = dbUser.role || "user";
-  }
-  return token;
-},
+      if (user) {
+        // Initial sign-in: populate token from DB
+        const dbUser = await getUserByEmail(user.email!);
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.plan = dbUser.plan;
+          token.role = dbUser.role || "user";
+          token.hasSeenOnboarding = dbUser.has_seen_onboarding ?? false;
+        }
+      } else if (token.userId) {
+        // Subsequent requests: re-validate user still exists & sync latest data
+        const dbUser = await getUserById(token.userId as string);
+        if (!dbUser) {
+          return { ...token, userId: null, expired: true };
+        }
+        token.plan = dbUser.plan;
+        token.role = dbUser.role || "user";
+      }
+      return token;
+    },
+
     async session({ session, token }) {
-  // If user was deleted, return empty session to force re-login
-  if (!token.userId || token.expired) {
-    return { ...session, user: undefined } as typeof session;
-  }
-  if (session.user) {
-    (session.user as Record<string, unknown>).id = token.userId;
-    (session.user as Record<string, unknown>).plan = token.plan;
-    (session.user as Record<string, unknown>).role = token.role;
-    (session.user as Record<string, unknown>).has_seen_onboarding = token.hasSeenOnboarding;
-  }
-  return session;
-},
+      if (!token.userId || token.expired) {
+        return { ...session, user: undefined } as typeof session;
+      }
+      if (session.user) {
+        (session.user as Record<string, unknown>).id = token.userId;
+        (session.user as Record<string, unknown>).plan = token.plan;
+        (session.user as Record<string, unknown>).role = token.role;
+        (session.user as Record<string, unknown>).has_seen_onboarding = token.hasSeenOnboarding;
+      }
+      return session;
+    },
   },
   pages: {
     signIn: "/login",

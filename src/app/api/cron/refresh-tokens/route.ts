@@ -1,7 +1,3 @@
-// api/cron/refresh-tokens/route.ts
-// Daily cron: refresh Instagram tokens expiring within 7 days
-// Called by Vercel Cron at 6am UTC daily
-
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountsWithExpiringTokens, updateAccount } from "@/lib/db";
 import { refreshLongLivedToken, computeExpiryDate } from "@/lib/token-manager";
@@ -22,7 +18,7 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: "Instagram credentials not configured" }, { status: 500 });
   }
 
-  const expiringAccounts = getAccountsWithExpiringTokens(7);
+  const expiringAccounts = await getAccountsWithExpiringTokens(7);
   console.log(`[cron:refresh-tokens] Found ${expiringAccounts.length} accounts with expiring tokens`);
 
   const results: Array<{ account_id: string; username: string; success: boolean; error?: string }> = [];
@@ -31,7 +27,7 @@ async function handler(req: NextRequest) {
     const result = await refreshLongLivedToken(account.access_token, APP_ID, APP_SECRET);
     if (result.success && result.access_token) {
       const expiresAt = computeExpiryDate(result.expires_in ?? 5184000);
-      updateAccount(account.id, { access_token: result.access_token, token_expires_at: expiresAt });
+      await updateAccount(account.id, { access_token: result.access_token, token_expires_at: expiresAt });
       results.push({ account_id: account.id, username: account.instagram_username, success: true });
       console.log(`[cron:refresh-tokens] Refreshed token for @${account.instagram_username}`);
     } else {

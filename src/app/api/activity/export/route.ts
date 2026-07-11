@@ -12,20 +12,13 @@ export async function GET(request: NextRequest) {
   const format = searchParams.get("format") || "csv";
   const limit = Math.min(parseInt(searchParams.get("limit") || "5000", 10), 10000);
 
-  const activities = getActivityLog(limit, 0, { userId });
+  const activities = await getActivityLog(limit, 0, { userId });
 
   if (format === "csv") {
     const headers = [
-      "id",
-      "created_at",
-      "automation_name",
-      "instagram_username",
-      "comment_text",
-      "matched_keyword",
-      "dm_sent",
-      "comment_replied",
-      "ai_generated",
-      "error_message",
+      "id", "created_at", "automation_name", "instagram_username",
+      "comment_text", "matched_keyword", "dm_sent", "comment_replied",
+      "ai_generated", "error_message",
     ];
 
     const escape = (val: unknown) => {
@@ -39,19 +32,13 @@ export async function GET(request: NextRequest) {
 
     const rows = activities.map((a) =>
       [
-        a.id,
-        a.created_at,
-        a.automation_name,
-        a.instagram_username,
-        a.comment_text,
-        a.matched_keyword,
+        a.id, a.created_at, a.automation_name, a.instagram_username,
+        a.comment_text, a.matched_keyword,
         a.dm_sent ? "yes" : "no",
         a.comment_replied ? "yes" : "no",
         a.ai_generated ? "yes" : "no",
         a.error_message ?? "",
-      ]
-        .map(escape)
-        .join(",")
+      ].map(escape).join(",")
     );
 
     const csv = [headers.join(","), ...rows].join("\n");

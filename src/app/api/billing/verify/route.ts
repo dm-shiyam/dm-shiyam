@@ -13,18 +13,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const {
-      razorpay_payment_id,
-      razorpay_subscription_id,
-      razorpay_signature,
-      plan,
-    } = await request.json();
+    const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, plan } =
+      await request.json();
 
     if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature || !plan) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Verify Razorpay signature — format: payment_id|subscription_id
     const expectedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
       .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
@@ -34,18 +29,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
-    const user = getUserByEmail(session.user.email);
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = await getUserByEmail(session.user.email);
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const planConfig = PLANS[plan as PlanType];
-    if (!planConfig) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
+    if (!planConfig) return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
 
-    // Update user plan
-    const updated = updateUserPlan(user.id, {
+    const updated = await updateUserPlan(user.id, {
       plan,
       dm_limit: planConfig.dm_limit,
       razorpay_customer_id: razorpay_payment_id,

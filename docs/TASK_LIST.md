@@ -130,10 +130,10 @@
 | | | 9.1 Set up email service (Resend/SendGrid) | | Pending |
 | | | 9.2 Send alert when DM limit is at 80% | | Pending |
 | | | 9.3 Send alert when token is expiring | | Pending |
-| P10 | **Admin dashboard** | | Low | Pending |
-| | | 10.1 Create `/admin` route with auth guard | | Pending |
-| | | 10.2 Show all users, total DMs sent, error rates | | Pending |
-| | | 10.3 Add user management (ban, upgrade plan) | | Pending |
+| P10 | **Admin dashboard** | | Low | ✅ Done |
+| | | 10.1 Create `/admin` route with auth guard | | ✅ Done |
+| | | 10.2 Show all users, total DMs sent, error rates | | ✅ Done |
+| | | 10.3 Add user management (ban, upgrade plan) | | ✅ Done |
 
 ---
 

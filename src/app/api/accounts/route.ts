@@ -7,8 +7,7 @@ export async function GET() {
     const userId = await getSessionUserId();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const accounts = getAllAccounts(userId);
-    // Strip access tokens from response for security, add token status
+    const accounts = await getAllAccounts(userId);
     const safe = accounts.map((a) => {
       let token_status: "valid" | "expiring_soon" | "expired" | "never_expires" | "unknown" = "unknown";
       if (!a.token_expires_at) {
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
     const userId = await getSessionUserId();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const account = createAccount({
+    const account = await createAccount({
       instagram_account_id: body.instagram_account_id,
       instagram_username: body.instagram_username,
       access_token: body.access_token,
@@ -62,9 +61,10 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error creating account:", error);
-    const msg = error instanceof Error && error.message.includes("UNIQUE")
-      ? "This Instagram account is already connected"
-      : "Failed to create account";
+    const msg =
+      error instanceof Error && error.message.includes("UNIQUE")
+        ? "This Instagram account is already connected"
+        : "Failed to create account";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -75,25 +75,21 @@ export async function PUT(request: NextRequest) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    if (!body.id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
-    }
+    if (!body.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-    const existing = getAccount(body.id);
+    const existing = await getAccount(body.id);
     if (!existing || existing.user_id !== userId) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
-    const account = updateAccount(body.id, {
+    const account = await updateAccount(body.id, {
       instagram_username: body.instagram_username,
       access_token: body.access_token,
       page_id: body.page_id,
       is_active: body.is_active,
     });
 
-    if (!account) {
-      return NextResponse.json({ error: "Account not found" }, { status: 404 });
-    }
+    if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
     return NextResponse.json({
       ...account,
@@ -112,19 +108,16 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
-    }
+    if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-    const existing = getAccount(id);
+    const existing = await getAccount(id);
     if (!existing || existing.user_id !== userId) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
-    const deleted = deleteAccount(id);
-    if (!deleted) {
-      return NextResponse.json({ error: "Account not found" }, { status: 404 });
-    }
+    const deleted = await deleteAccount(id);
+    if (!deleted) return NextResponse.json({ error: "Account not found" }, { status: 404 });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting account:", error);

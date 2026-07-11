@@ -18,7 +18,7 @@ export interface User {
   subscription_status: "active" | "cancelled" | "expired" | "none";
   dm_limit: number; // per month
   dms_used_this_month: number;
-  has_seen_onboarding?: number; // 0 or 1
+has_seen_onboarding?: boolean;
   reset_token?: string;
   reset_token_expires?: string;
   created_at: string;

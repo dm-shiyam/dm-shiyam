@@ -1,9 +1,6 @@
-// app/api/webhook/instagram/route.ts
-// Fixed version — DMs now send correctly
-
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { sendDM, sendPrivateReply, replyToComment, personalizeMessage } from "@/lib/instagram";
+import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
 import {
   getActiveAutomations,
   logActivity,
@@ -22,7 +19,6 @@ const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
 const IG_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID!;
 const APP_SECRET = process.env.INSTAGRAM_APP_SECRET || "";
 
-// ─── GET — webhook verification handshake ───────────────────────────
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode = searchParams.get("hub.mode");
@@ -38,7 +34,6 @@ export async function GET(req: NextRequest) {
   return new NextResponse("Forbidden", { status: 403 });
 }
 
-// ─── Signature verification ─────────────────────────────────────────
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   if (!APP_SECRET) {
     console.warn("[webhook] INSTAGRAM_APP_SECRET not set — skipping signature verification");
@@ -55,16 +50,15 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   return crypto.timingSafeEqual(expected, received);
 }
 
-// ─── Rate limit config ──────────────────────────────────────────────
 const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX) || 100;
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000;
 
-// ─── POST — incoming events ──────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  // Task #4: Rate limiting
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || req.headers.get("x-real-ip")
-    || "unknown";
+  const clientIp =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+
   const rl = rateLimit(clientIp, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   if (!rl.allowed) {
     console.warn(`[webhook] Rate limited IP ${clientIp}`);
@@ -85,7 +79,6 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
-  // Task #7: Verify webhook signature from Meta
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifySignature(rawBody, signature)) {
     console.error("[webhook] Invalid signature — rejecting request");
@@ -99,7 +92,6 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
-  // Acknowledge immediately (Instagram requires < 5 s response)
   processWebhookAsync(body).catch((err) =>
     console.error("[webhook] Async processing error:", err)
   );
@@ -107,27 +99,25 @@ export async function POST(req: NextRequest) {
   return new NextResponse("EVENT_RECEIVED", { status: 200 });
 }
 
-// ─── Core processing ─────────────────────────────────────────────────
 async function processWebhookAsync(body: WebhookPayload) {
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {
-      // V10: Support comments, story/reel mentions
       const field = change.field;
       const isTriggerEvent =
-        field === "comments" ||
-        field === "mentions" ||
-        field === "story_insights";
+        field === "comments" || field === "mentions" || field === "story_insights";
 
       if (!isTriggerEvent) continue;
 
-      // V9: Track webhook health
-      updateWebhookHealth(field);
+      await updateWebhookHealth(field);
 
       const value = change.value;
-
       const senderId: string | undefined = value?.from?.id;
       const senderUsername: string = value?.from?.username ?? "there";
-      const commentText: string = value?.text ?? (value as Record<string, unknown> & { mentioned_in?: { text?: string } })?.mentioned_in?.text ?? "";
+      const commentText: string =
+        value?.text ??
+        (value as Record<string, unknown> & { mentioned_in?: { text?: string } })
+          ?.mentioned_in?.text ??
+        "";
       const commentId: string = value?.id ?? "";
 
       if (!senderId) {
@@ -140,9 +130,8 @@ async function processWebhookAsync(body: WebhookPayload) {
       const automations = await getActiveAutomations();
 
       for (const automation of automations) {
-        // V6: Schedule enforcement
         if (!isAutomationActiveNow(automation)) {
-          console.log(`[webhook] Automation "${automation.name}" is outside scheduled hours — skipping`);
+          console.log(`[webhook] Automation "${automation.name}" outside scheduled hours — skipping`);
           continue;
         }
 
@@ -153,14 +142,12 @@ async function processWebhookAsync(body: WebhookPayload) {
 
         const lowerComment = commentText.toLowerCase();
         const matchedKeyword = keywords.find((kw) => lowerComment.includes(kw));
-
         if (!matchedKeyword) continue;
 
         console.log(`[webhook] Matched keyword "${matchedKeyword}" → automation "${automation.name}"`);
 
-        // V2: Duplicate DM prevention
-        if (hasDmBeenSent(automation.id, senderId)) {
-          console.log(`[webhook] Duplicate DM skipped — already sent to ${senderId} for automation "${automation.name}"`);
+        if (await hasDmBeenSent(automation.id, senderId)) {
+          console.log(`[webhook] Duplicate DM skipped — already sent to ${senderId}`);
           continue;
         }
 
@@ -169,14 +156,13 @@ async function processWebhookAsync(body: WebhookPayload) {
         let commentReplied = false;
         let errorMessage: string | undefined;
 
-        // DM limit enforcement
         const userId = automation.user_id;
         if (userId) {
-          const user = getUserById(userId);
+          const user = await getUserById(userId);
           if (user && user.dm_limit !== -1 && user.dms_used_this_month >= user.dm_limit) {
             errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
             console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
-            const activity = logActivity({
+            const activity = await logActivity({
               automation_id: automation.id,
               automation_name: automation.name,
               instagram_user_id: senderId,
@@ -193,20 +179,18 @@ async function processWebhookAsync(body: WebhookPayload) {
           }
         }
 
-        // Send DM
         const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
 
         if (dmResult.success) {
           dmSent = true;
           console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
-          if (userId) incrementDmsUsed(userId);
-          recordSentDm(automation.id, senderId);
+          if (userId) await incrementDmsUsed(userId);
+          await recordSentDm(automation.id, senderId);
         } else {
           errorMessage = dmResult.error;
           console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
         }
 
-        // Reply to comment (if configured, only for comment events)
         if (field === "comments" && automation.reply_comment && commentId) {
           const replyResult = await replyToComment(commentId, automation.reply_comment, ACCESS_TOKEN);
           commentReplied = replyResult.success;
@@ -215,8 +199,7 @@ async function processWebhookAsync(body: WebhookPayload) {
           }
         }
 
-        // Log to DB
-        const activity = logActivity({
+        const activity = await logActivity({
           automation_id: automation.id,
           automation_name: automation.name,
           instagram_user_id: senderId,
@@ -234,7 +217,6 @@ async function processWebhookAsync(body: WebhookPayload) {
   }
 }
 
-// ─── Types ────────────────────────────────────────────────────────────
 interface WebhookPayload {
   object?: string;
   entry?: Array<{

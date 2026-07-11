@@ -145,13 +145,13 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A0 | **Postgres migration** | | High | Pending |
-| | | 0.1 Install `pg` and `@types/pg` packages | | Pending |
-| | | 0.2 Create Postgres connection module (replace `better-sqlite3`) | | Pending |
-| | | 0.3 Rewrite all DB functions in `src/lib/db.ts` to use Postgres queries | | Pending |
-| | | 0.4 Convert SQLite schema to Postgres DDL (auto-migrations) | | Pending |
-| | | 0.5 Test all DB operations locally with Postgres | | Pending |
-| | | 0.6 Migrate existing SQLite data to Postgres (one-time script) | | Pending |
+| A0 | **Postgres migration** | | High | Done |
+| | | 0.1 Install `pg` and `@types/pg` packages | | Done |
+| | | 0.2 Create Postgres connection module (replace `better-sqlite3`) | | Done |
+| | | 0.3 Rewrite all DB functions in `src/lib/db.ts` to use Postgres queries | | Done |
+| | | 0.4 Convert SQLite schema to Postgres DDL (auto-migrations) | | Done |
+| | | 0.5 Test all DB operations locally with Postgres | | Done |
+| | | 0.6 Migrate existing SQLite data to Postgres (one-time script) | | Done |
 | A1 | **Fix hydration error** | | Medium | Done |
 | | | 1.1 Identify root cause (browser extensions, SSR mismatch, layout) | | Done |
 | | | 1.2 Fix the actual issue, remove `suppressHydrationWarning` | | Done |

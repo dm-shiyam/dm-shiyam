@@ -1,9 +1,14 @@
 // app/privacy/page.tsx  (Next.js 14 App Router)
+import type { Metadata } from "next";
+import { generatePageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Privacy Policy | DM Shiyam",
-  description: "Privacy Policy for DM Shiyam Instagram automation platform.",
-};
+export const metadata: Metadata = generatePageMetadata(
+  "Privacy Policy - DM Shiyam",
+  "Read DM Shiyam's privacy policy. We respect your data and comply with GDPR. Learn how we collect, use, and protect your information.",
+  "/privacy",
+  ["privacy policy", "data protection", "GDPR"]
+);
+
 
 export default function PrivacyPolicy() {
   const lastUpdated = "July 9, 2025";

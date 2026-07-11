@@ -181,23 +181,23 @@
 | | | 4.3 How it works section (3-step visual) | | Done |
 | | | 4.4 Testimonials / social proof section | | Done |
 | | | 4.5 CTA + signup button | | Done |
-| A5 | **Pricing page** | | Medium | Pending |
-| | | 5.1 Design pricing cards (Free / Pro / Business) | | Pending |
-| | | 5.2 Feature comparison table | | Pending |
-| | | 5.3 Connect to Razorpay checkout | | Pending |
-| A6 | **SEO basics** | | Medium | Pending |
-| | | 6.1 Add meta title, description, keywords to all pages | | Pending |
-| | | 6.2 Add Open Graph / Twitter Card tags | | Pending |
-| | | 6.3 Create `sitemap.xml` and `robots.txt` | | Pending |
-| | | 6.4 Submit to Google Search Console | | Pending |
+| A5 | **Pricing page** | | Medium | Done |
+| | | 5.1 Design pricing cards (Free / Pro / Business) | | Done |
+| | | 5.2 Feature comparison table | | Done |
+| | | 5.3 Connect to Razorpay checkout | | Pending - Venkat? |
+| A6 | **SEO basics** | | Medium | Done |
+| | | 6.1 Add meta title, description, keywords to all pages | | Done |
+| | | 6.2 Add Open Graph / Twitter Card tags | | Done |
+| | | 6.3 Create `sitemap.xml` and `robots.txt` | | Done |
+| | | 6.4 Submit to Google Search Console | | To be done after prod deployment - refer - postDeployment/googleSetupGuide.md |
 
 #### Phase 6: Post-Launch
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A7 | **User feedback system** | | Low | Pending |
-| | | 7.1 Add feedback widget (Tally form or custom modal) | | Pending |
-| | | 7.2 Store feedback in DB or send to email | | Pending |
+| A7 | **User feedback system** | | Low | Done |
+| | | 7.1 Add feedback widget (Tally form or custom modal) | | Done |
+| | | 7.2 Store feedback in DB or send to email | | Done |
 
 ---
 

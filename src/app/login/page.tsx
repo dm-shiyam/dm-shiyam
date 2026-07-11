@@ -1,16 +1,14 @@
-"use client";
-import { Suspense } from "react";
-import { RefreshCw } from "lucide-react";
-import LoginForm from "@/components/auth/LoginForm";
+import { Metadata } from "next";
+import { generatePageMetadata } from "@/lib/seo";
+import LoginFormComponent from "@/components/auth/LoginFormComponent";
+
+export const metadata: Metadata = generatePageMetadata(
+  "Login | DM Shiyam",
+  "Sign in to your DM Shiyam account to manage Instagram automations.",
+  "/login",
+  ["login", "sign in", "Instagram automation"]
+);
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
-      </div>
-    }>
-      <LoginForm defaultSignup={false} />
-    </Suspense>
-  );
+  return <LoginFormComponent />;
 }

@@ -1,18 +1,15 @@
+import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
-import Providers from "@/components/Providers";
-import { Toaster } from "sonner";
-import "./globals.css";
+import { defaultMetadata } from "@/lib/seo";
 import CookieConsent from "@/components/CookieConsent";
+import Providers from "@/components/Providers";   // <-- ADD
 
-export const metadata: Metadata = {
-  title: "DM Shiyam — Instagram Comment-to-DM Bot",
-  description:
-    "Automatically send DMs when users comment specific keywords on your Instagram posts.",
-};
+export const metadata: Metadata = defaultMetadata;
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
@@ -21,11 +18,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen" suppressHydrationWarning>
-        <CookieConsent />
-        <Providers>{children}</Providers>
-        <Toaster position="bottom-right" richColors />
+    <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+      </head>
+
+      <body>
+        <Providers>
+          {children}
+          <CookieConsent />
+        </Providers>
       </body>
     </html>
   );

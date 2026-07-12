@@ -828,18 +828,23 @@ export async function markOnboardingSeen(userId: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════
-// ── Duplicate DM Prevention ──
+// ── Duplicate DM Prevention (per-comment) ──
 // ═══════════════════════════════════════
+// Dedup is now keyed on (automation_id, comment_id) so that the SAME user
+// commenting multiple distinct comments with the trigger keyword receives
+// one DM + one reply per comment. Meta can retry-deliver the same webhook
+// event with the same comment_id, so this still protects against retries.
 
 // LEGACY: kept for backwards compat but PREFER claimDmSend below to avoid race conditions
 export async function hasDmBeenSent(
   automationId: string,
-  instagramUserId: string
+  commentId: string
 ): Promise<boolean> {
   await ensureInit();
+  if (!commentId) return false; // No comment_id → cannot dedup, allow through
   const row = await queryOne(
-    "SELECT 1 FROM sent_dms WHERE automation_id = $1 AND instagram_user_id = $2",
-    [automationId, instagramUserId]
+    "SELECT 1 FROM sent_dms WHERE automation_id = $1 AND comment_id = $2",
+    [automationId, commentId]
   );
   return !!row;
 }
@@ -847,14 +852,15 @@ export async function hasDmBeenSent(
 // LEGACY: kept for backwards compat but PREFER claimDmSend below
 export async function recordSentDm(
   automationId: string,
+  commentId: string,
   instagramUserId: string
 ): Promise<void> {
   await ensureInit();
   const id = uuidv4();
   try {
     await execute(
-      "INSERT INTO sent_dms (id, automation_id, instagram_user_id) VALUES ($1, $2, $3)",
-      [id, automationId, instagramUserId]
+      "INSERT INTO sent_dms (id, automation_id, comment_id, instagram_user_id) VALUES ($1, $2, $3, $4)",
+      [id, automationId, commentId, instagramUserId]
     );
   } catch {
     // Unique constraint violation — already recorded, ignore
@@ -862,22 +868,28 @@ export async function recordSentDm(
 }
 
 /**
- * Atomically claim the right to send a DM. Returns true if this call won the
- * race (no prior send existed). Returns false if another concurrent webhook
- * already claimed it. Use this INSTEAD of hasDmBeenSent + recordSentDm to
- * avoid race conditions when Meta delivers the same webhook multiple times.
+ * Atomically claim the right to send a DM for a specific comment. Returns
+ * true if this call won the race (no prior send existed for this comment).
+ * Returns false if another concurrent webhook (or a Meta retry with the
+ * same comment_id) already claimed it.
+ *
+ * Dedup key is (automation_id, comment_id) — the SAME user commenting
+ * multiple distinct keyword-matching comments will receive one DM per
+ * comment. Idempotency is preserved only against exact webhook retries.
  */
 export async function claimDmSend(
   automationId: string,
+  commentId: string,
   instagramUserId: string
 ): Promise<boolean> {
   await ensureInit();
+  if (!commentId) return true; // No comment_id → cannot dedup, allow through
   const id = uuidv4();
   const rowCount = await execute(
-    `INSERT INTO sent_dms (id, automation_id, instagram_user_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (automation_id, instagram_user_id) DO NOTHING`,
-    [id, automationId, instagramUserId]
+    `INSERT INTO sent_dms (id, automation_id, comment_id, instagram_user_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (automation_id, comment_id) DO NOTHING`,
+    [id, automationId, commentId, instagramUserId]
   );
   return rowCount > 0;
 }

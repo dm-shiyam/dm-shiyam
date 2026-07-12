@@ -77,13 +77,18 @@ CREATE TABLE IF NOT EXISTS activity_log (
   FOREIGN KEY (account_id)   REFERENCES accounts(id)   ON DELETE SET NULL
 );
 
+-- DM idempotency: dedup keyed on (automation_id, comment_id) so the SAME
+-- user commenting N distinct keyword-matching comments receives N DMs.
+-- Idempotency is preserved only against Meta webhook retries with the same
+-- comment_id.
 CREATE TABLE IF NOT EXISTS sent_dms (
   id                  TEXT        PRIMARY KEY,
   automation_id       TEXT        NOT NULL,
+  comment_id          TEXT,
   instagram_user_id   TEXT        NOT NULL,
   sent_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE,
-  UNIQUE (automation_id, instagram_user_id)
+  UNIQUE (automation_id, comment_id)
 );
 
 -- Comment-reply idempotency: prevents duplicate replies when Meta retries webhooks.
@@ -190,6 +195,6 @@ END $$;
 
 -- ── P14: Performance indexes ──
 CREATE INDEX IF NOT EXISTS idx_users_reset_token       ON users(reset_token) WHERE reset_token IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_sent_dms_lookup         ON sent_dms(automation_id, instagram_user_id);
+CREATE INDEX IF NOT EXISTS idx_sent_dms_by_comment     ON sent_dms(automation_id, comment_id);
 CREATE INDEX IF NOT EXISTS idx_activity_ig_user        ON activity_log(instagram_user_id);
 CREATE INDEX IF NOT EXISTS idx_automations_is_active   ON automations(is_active) WHERE is_active = TRUE;

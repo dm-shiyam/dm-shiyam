@@ -144,9 +144,13 @@ if [ -n "$INSTAGRAM_APP_ID" ] && [ -n "$INSTAGRAM_APP_SECRET" ]; then
     if echo "$SUBS" | grep -q '"object":"instagram"'; then
       pass "Instagram webhook subscription exists"
       CALLBACK=$(echo "$SUBS" | grep -o '"callback_url":"[^"]*"' | head -1 | cut -d'"' -f4)
-      info "Callback URL: $CALLBACK"
-      if [[ "$CALLBACK" != *"$TUNNEL_URL"* ]] && [ -n "$TUNNEL_URL" ]; then
+      # Meta returns escaped slashes (https:\/\/...); unescape for comparison
+      CALLBACK_UNESCAPED=$(echo "$CALLBACK" | sed 's/\\\//\//g')
+      info "Callback URL: $CALLBACK_UNESCAPED"
+      if [ -n "$TUNNEL_URL" ] && [[ "$CALLBACK_UNESCAPED" != *"$TUNNEL_URL"* ]]; then
         warn "Callback URL doesn't match current ngrok URL — update in Meta Dashboard!"
+      elif [ -n "$TUNNEL_URL" ]; then
+        pass "Callback URL matches current ngrok tunnel"
       fi
     else
       warn "Webhook subscribed but not to Instagram object"

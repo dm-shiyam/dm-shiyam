@@ -149,7 +149,7 @@
 | | | 11.7 SQL injection audit — all queries parameterized, dynamic `${...}` only for hardcoded fragments | | ✅ Done (verified) |
 | P12 | **Security follow-ups** | | Medium | Pending |
 | | | 12.1 Upgrade Next.js to 15+ and next-auth to v5 — fixes 4 high-severity npm audit vulns in `next`, `next-auth`, `postcss`, `uuid` (deferred, see note below) | | Pending — post-MVP |
-| | | 12.2 Add rate limiting to NextAuth Credentials login (currently only forgot/reset are limited) | | Pending |
+| | | 12.2 Add rate limiting to NextAuth Credentials login (10 tries per email per 15min) | | ✅ Done (`src/lib/auth.ts`) |
 | | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | Pending |
 | | | 12.4 Add CSRF token validation on state-changing routes (NextAuth handles for auth; check others) | | Pending |
 

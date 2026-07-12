@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
+import { sendDM, sendPrivateReply, replyToComment, personalizeMessage } from "@/lib/instagram";
 import {
   getActiveAutomations,
   logActivity,
@@ -131,6 +131,14 @@ async function processWebhookAsync(body: WebhookPayload) {
         continue;
       }
 
+      // ── Self-event guard: ignore comments/mentions authored by our own IG account ──
+      // Without this, the bot's own comment reply triggers a new "comments" webhook,
+      // whose text usually contains the trigger keyword — causing an infinite reply loop.
+      if (senderId === IG_ACCOUNT_ID) {
+        console.log(`[webhook] Ignoring self-authored ${field} from own IG account (${senderId})`);
+        continue;
+      }
+
       console.log(`[webhook] ${field} from @${senderUsername} (${senderId}): "${commentText}"`);
 
       const automations = await getActiveAutomations();
@@ -152,10 +160,12 @@ async function processWebhookAsync(body: WebhookPayload) {
 
         console.log(`[webhook] Matched keyword "${matchedKeyword}" → automation "${automation.name}"`);
 
-        // Atomically claim the right to send. If false, another concurrent
-        // webhook (or a Meta retry) already claimed this send — skip.
-        if (!(await claimDmSend(automation.id, senderId))) {
-          console.log(`[webhook] Duplicate DM skipped — already claimed for ${senderId}`);
+        // Atomically claim the right to send for THIS comment. If false,
+        // another concurrent webhook (or a Meta retry with the same
+        // comment_id) already claimed it — skip. Same user commenting a
+        // NEW comment gets a NEW claim (per-comment behavior).
+        if (commentId && !(await claimDmSend(automation.id, commentId, senderId))) {
+          console.log(`[webhook] Duplicate skipped — comment ${commentId} already claimed for automation ${automation.id}`);
           continue;
         }
 
@@ -191,11 +201,18 @@ async function processWebhookAsync(body: WebhookPayload) {
           }
         }
 
-        const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
+        // Prefer POST /{comment-id}/private_replies for comment-triggered DMs —
+        // Meta's dedicated API for this flow; more reliable delivery than /me/messages
+        // and not restricted by the 24-hour messaging window.
+        const dmResult =
+          field === "comments" && commentId
+            ? await sendPrivateReply(commentId, dmText, ACCESS_TOKEN)
+            : await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
 
         if (dmResult.success) {
           dmSent = true;
-          console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
+          const idLabel = "messageId" in dmResult && dmResult.messageId ? ` (message_id: ${dmResult.messageId})` : "";
+          console.log(`[webhook] DM sent to ${senderId}${idLabel} via ${field === "comments" && commentId ? "private_replies" : "messages"}`);
           if (userId) {
             await incrementDmsUsed(userId);
             // Check if user just crossed 80% threshold

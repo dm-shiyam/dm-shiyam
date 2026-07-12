@@ -85,16 +85,26 @@ export async function sendDM(
 
 // ─────────────────────────────────────────────
 // Send a Private Reply (DM) in response to a comment
-// Uses POST /{comment-id}/private_replies
-// This does NOT require the 24-hour messaging window
-// Requires: instagram_manage_comments permission
+//
+// Uses the current Instagram Messaging API:
+//   POST /me/messages
+//   { recipient: { comment_id: "<COMMENT_ID>" }, message: { text: "..." } }
+//
+// This does NOT require the 24-hour messaging window because the comment
+// itself is the messaging trigger.
+// Requires: instagram_manage_messages permission on the token.
 // ─────────────────────────────────────────────
 export async function sendPrivateReply(
   commentId: string,
   messageText: string,
   accessToken: string
-): Promise<{ success: boolean; error?: string }> {
-  const url = `${BASE_URL}/${commentId}/private_replies`;
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const url = `${BASE_URL}/me/messages`;
+
+  const body = {
+    recipient: { comment_id: commentId },
+    message: { text: messageText },
+  };
 
   let lastError = "";
 
@@ -108,11 +118,11 @@ export async function sendPrivateReply(
 
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: messageText,
-          access_token: accessToken,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -125,8 +135,8 @@ export async function sendPrivateReply(
         return { success: false, error: lastError };
       }
 
-      console.log(`[sendPrivateReply] DM sent successfully for comment ${commentId}`);
-      return { success: true };
+      console.log(`[sendPrivateReply] DM sent for comment ${commentId} (message_id: ${data.message_id ?? "?"})`);
+      return { success: true, messageId: data.message_id };
     } catch (err: unknown) {
       lastError = err instanceof Error ? err.message : String(err);
       console.error(`[sendPrivateReply] Fetch error (attempt ${attempt + 1}):`, lastError);
@@ -167,6 +177,7 @@ export async function replyToComment(
       return { success: false, error: errMsg };
     }
 
+    console.log(`[replyToComment] Success — new comment id: ${data.id ?? "(none)"} on parent ${commentId}`);
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

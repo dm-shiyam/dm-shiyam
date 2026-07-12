@@ -78,9 +78,9 @@ CREATE TABLE IF NOT EXISTS activity_log (
 );
 
 -- Records each DM the bot has sent (or claimed the right to send).
--- Dedup key: (automation_id, comment_id) — one DM per comment (per automation).
--- The old key (automation_id, instagram_user_id) is dropped by the migration below.
--- instagram_user_id is retained for audit/analytics but not for dedup.
+--   * Dedup key:      (automation_id, comment_id) — one DM per comment; Meta retries deduped.
+--   * Rate limit key: (automation_id, media_id, instagram_user_id) — max 3 DMs per (recipient × post).
+-- instagram_user_id kept for audit/analytics + rate limit; comment_id is the dedup key.
 CREATE TABLE IF NOT EXISTS sent_dms (
   id                  TEXT        PRIMARY KEY,
   automation_id       TEXT        NOT NULL,
@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS sent_dms (
   media_id            TEXT,
   instagram_user_id   TEXT        NOT NULL,
   sent_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE
+  FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE,
+  CONSTRAINT uq_sent_dms_automation_comment UNIQUE (automation_id, comment_id)
 );
 
 -- Comment-reply idempotency: prevents duplicate replies when Meta retries webhooks.
@@ -226,7 +227,7 @@ END $$;
 
 -- ── P14: Performance indexes ──
 CREATE INDEX IF NOT EXISTS idx_users_reset_token       ON users(reset_token) WHERE reset_token IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_sent_dms_lookup         ON sent_dms(automation_id, comment_id);
-CREATE INDEX IF NOT EXISTS idx_sent_dms_rate_limit      ON sent_dms(automation_id, media_id, instagram_user_id);
+CREATE INDEX IF NOT EXISTS idx_sent_dms_by_comment     ON sent_dms(automation_id, comment_id);
+CREATE INDEX IF NOT EXISTS idx_sent_dms_rate_limit     ON sent_dms(automation_id, media_id, instagram_user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_ig_user        ON activity_log(instagram_user_id);
 CREATE INDEX IF NOT EXISTS idx_automations_is_active   ON automations(is_active) WHERE is_active = TRUE;

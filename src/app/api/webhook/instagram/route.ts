@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { sendDM, replyToComment, personalizeMessage } from "@/lib/instagram";
+import { sendDM, sendPrivateReply, replyToComment, personalizeMessage } from "@/lib/instagram";
 import {
   getActiveAutomations,
   logActivity,
@@ -133,6 +133,14 @@ async function processWebhookAsync(body: WebhookPayload) {
         continue;
       }
 
+      // ── Self-event guard: ignore comments/mentions authored by our own IG account ──
+      // Without this, the bot's own comment reply triggers a new "comments" webhook,
+      // whose text usually contains the trigger keyword — causing an infinite reply loop.
+      if (senderId === IG_ACCOUNT_ID) {
+        console.log(`[webhook] Ignoring self-authored ${field} from own IG account (${senderId})`);
+        continue;
+      }
+
       console.log(`[webhook] ${field} from @${senderUsername} (${senderId}): "${commentText}"`);
 
       const automations = await getActiveAutomations();
@@ -187,8 +195,8 @@ async function processWebhookAsync(body: WebhookPayload) {
         // When rate-limited we still fall through to the reply section below.
         if (claim.claimed) {
           // Atomically claim one DM slot from the user's monthly quota.
-          // This is a single UPDATE with a conditional WHERE — no check-then-act race.
-          // If limit is reached, releases the DM claim so user retriggers after quota resets.
+          // Single UPDATE with a conditional WHERE — no check-then-act race.
+          // If limit reached, release the DM claim so user retriggers after quota resets.
           let slotUsed: number | undefined;
           let slotLimit: number | undefined;
           let planLimitBlocked = false;
@@ -213,11 +221,21 @@ async function processWebhookAsync(body: WebhookPayload) {
           }
 
           if (!planLimitBlocked) {
-            const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
+            // Prefer POST /{comment-id}/private_replies for comment-triggered DMs —
+            // Meta's dedicated API for this flow; more reliable delivery than /me/messages
+            // and not restricted by the 24-hour messaging window.
+            const dmResult =
+              field === "comments"
+                ? await sendPrivateReply(commentId, dmText, ACCESS_TOKEN)
+                : await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
 
             if (dmResult.success) {
               dmSent = true;
-              console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
+              const idLabel = "messageId" in dmResult && dmResult.messageId
+                ? ` (message_id: ${dmResult.messageId})`
+                : "";
+              const via = field === "comments" ? "private_replies" : "messages";
+              console.log(`[webhook] DM sent to ${senderId}${idLabel} via ${via}`);
               // 80% threshold email — use pre-increment values from claimDmSlot to detect crossing
               if (userId && slotUsed !== undefined && slotLimit !== undefined && slotLimit !== -1) {
                 const prevPct = (slotUsed - 1) / slotLimit;

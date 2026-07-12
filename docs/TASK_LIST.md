@@ -151,7 +151,7 @@
 | | | 12.1 Upgrade Next.js to 15+ and next-auth to v5 — fixes 4 high-severity npm audit vulns in `next`, `next-auth`, `postcss`, `uuid` (deferred, see note below) | | Pending — post-MVP |
 | | | 12.2 Add rate limiting to NextAuth Credentials login (10 tries per email per 15min) | | ✅ Done (`src/lib/auth.ts`) |
 | | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | Pending |
-| | | 12.4 Add CSRF token validation on state-changing routes (NextAuth handles for auth; check others) | | Pending |
+| | | 12.4 CSRF audit — all 15 state-changing routes verified protected via SameSite cookie / HMAC signature / CRON_SECRET; explicit NextAuth cookie config + fail-closed IG webhook signature in prod | | ✅ Done |
 
 > **📌 Note on P12.1 (deferred dependency upgrades):**
 > `npm audit --production` reports **4 high-severity vulnerabilities** in transitive/direct deps: `next`, `next-auth`, `postcss`, `uuid`.

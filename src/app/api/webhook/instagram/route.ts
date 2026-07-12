@@ -37,7 +37,12 @@ export async function GET(req: NextRequest) {
 
 function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
   if (!APP_SECRET) {
-    console.warn("[webhook] INSTAGRAM_APP_SECRET not set — skipping signature verification");
+    if (process.env.NODE_ENV === "production") {
+      // Never skip signature verification in production — fail closed
+      console.error("[webhook] INSTAGRAM_APP_SECRET not set in production — rejecting request");
+      return false;
+    }
+    console.warn("[webhook] INSTAGRAM_APP_SECRET not set — skipping signature verification (dev only)");
     return true;
   }
   if (!signatureHeader) {

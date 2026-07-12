@@ -111,10 +111,10 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P6 | **Set up production Postgres** | | High | Pending |
-| | | 6.1 Create free Postgres on Neon/Supabase | | Pending |
-| | | 6.2 Run schema migrations on production DB | | Pending |
-| | | 6.3 Verify all tables and indexes created | | Pending |
+| P6 | **Set up production Postgres** | | High | ✅ Done (Venkat) |
+| | | 6.1 Create free Postgres on Neon/Supabase | | ✅ Done (Neon iad1 via Vercel Marketplace) |
+| | | 6.2 Run schema migrations on production DB | | ✅ Done (`scripts/run-schema.mjs`) |
+| | | 6.3 Verify all tables and indexes created | | ✅ Done (7 tables verified) |
 | P7 | **Update Meta webhook URL** | | High | Pending |
 | | | 7.1 Change webhook callback URL from ngrok to production domain | | Pending |
 | | | 7.2 Re-verify webhook subscription with Meta | | Pending |
@@ -288,7 +288,7 @@
 | V3 | **Deploy to Vercel** | | High | ✅ Done |
 | | | 3.1 Connect GitHub repo to Vercel | | ✅ Done |
 | | | 3.2 Configure build settings (Next.js framework) | | ✅ Done (pnpm install used to fix npm crash) |
-| | | 3.3 Set up all environment variables in Vercel dashboard | | Pending (needs DATABASE_URL from Priyanka) |
+| | | 3.3 Set up all environment variables in Vercel dashboard | | 🔶 In Progress (DATABASE_URL added via Neon integration; other secrets pending) |
 | | | 3.4 Test deployment builds successfully | | ✅ Done (Ready in 47s at dm-shiyam.vercel.app) |
 | V4 | **Custom domain setup** | | High | Pending |
 | | | 4.1 Add dmshiyam.com to Vercel project | | Pending |

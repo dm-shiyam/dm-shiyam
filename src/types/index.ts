@@ -15,12 +15,14 @@ export interface User {
   plan: PlanType;
   razorpay_customer_id?: string;
   razorpay_subscription_id?: string;
-  subscription_status: "active" | "cancelled" | "expired" | "none";
+  subscription_status: "active" | "past_due" | "cancelled" | "expired" | "none";
   dm_limit: number; // per month
   dms_used_this_month: number;
-has_seen_onboarding?: boolean;
+  has_seen_onboarding?: boolean;
   reset_token?: string;
   reset_token_expires?: string;
+  last_login_at?: string | null;
+  email_verified_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +49,7 @@ export interface Account {
   access_token: string;
   page_id?: string;
   token_expires_at?: string | null;
+  last_refreshed_at?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

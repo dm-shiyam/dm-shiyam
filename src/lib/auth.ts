@@ -2,7 +2,7 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, getUserByProviderId, getUserById, createUser } from "./db";
+import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin } from "./db";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -27,6 +27,12 @@ export const authOptions: NextAuthOptions = {
           const existing = await getUserByEmail(email);
           if (existing) throw new Error("Email already registered");
           if (!name) throw new Error("Name is required");
+
+          // Password policy: min 8 chars, must contain letters and digits
+          if (password.length < 8) throw new Error("Password must be at least 8 characters");
+          if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+            throw new Error("Password must contain letters and numbers");
+          }
 
           const hash = await bcrypt.hash(password, 12);
           const user = await createUser({
@@ -74,6 +80,10 @@ export const authOptions: NextAuthOptions = {
           token.plan = dbUser.plan;
           token.role = dbUser.role || "user";
           token.hasSeenOnboarding = dbUser.has_seen_onboarding ?? false;
+          // Track last login (fire-and-forget so slow DB doesn't block auth)
+          touchUserLogin(dbUser.id).catch((err) =>
+            console.error("[auth] touchUserLogin failed:", err)
+          );
         }
       } else if (token.userId) {
         // Subsequent requests: re-validate user still exists & sync latest data
@@ -106,5 +116,15 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET || "dm-shiyam-dev-secret-change-in-production",
+  secret: (() => {
+    const s = process.env.NEXTAUTH_SECRET;
+    if (!s) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("NEXTAUTH_SECRET is required in production");
+      }
+      console.warn("[auth] NEXTAUTH_SECRET not set — using dev-only fallback. DO NOT ship without setting it.");
+      return "dm-shiyam-dev-only-do-not-use-in-prod";
+    }
+    return s;
+  })(),
 };

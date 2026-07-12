@@ -573,6 +573,18 @@ export async function getUserByProviderId(
   );
 }
 
+// Touch users.last_login_at — fire-and-forget from auth callbacks
+export async function touchUserLogin(userId: string): Promise<void> {
+  await ensureInit();
+  await execute("UPDATE users SET last_login_at = NOW() WHERE id = $1", [userId]);
+}
+
+// Touch accounts.last_refreshed_at — called after successful IG token refresh
+export async function touchAccountRefresh(accountId: string): Promise<void> {
+  await ensureInit();
+  await execute("UPDATE accounts SET last_refreshed_at = NOW() WHERE id = $1", [accountId]);
+}
+
 export async function createUser(data: {
   email: string;
   name: string;

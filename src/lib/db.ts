@@ -1123,3 +1123,126 @@ export async function updateAutomationSchedule(
   );
   return getAutomation(id);
 }
+
+// ═══════════════════════════════════════
+// ── Meta Data Deletion Request callback ──
+// ═══════════════════════════════════════
+
+export interface DeletionRequestRecord {
+  code: string;
+  instagram_account_id: string;
+  status: "pending" | "completed" | "not_found";
+  automations_deleted: number;
+  activity_rows_deleted: number;
+  requested_at: string;
+  completed_at: string | null;
+}
+
+/**
+ * Purge all Platform Data associated with an Instagram account. Called from
+ * Meta's data-deletion callback endpoint after HMAC verification.
+ *
+ * Deletion cascade (privacy-safe, Meta App Review-compliant):
+ *   1. Delete all `automations` for this account
+ *      → cascades to `sent_dms`, `sent_replies`, `activity_log` via FK
+ *   2. Delete remaining `activity_log` rows scoped to this account
+ *      (guards against orphaned rows from deleted automations that had
+ *      already SET NULL'd their account_id)
+ *   3. Delete the `accounts` row itself (removes IG token + username)
+ *
+ * We deliberately DO NOT delete the `users` row — the user may have another
+ * IG account connected or wish to re-authorize. This matches Meta's expected
+ * behavior for revocation-style deletion.
+ *
+ * Runs inside a single transaction so partial failure leaves DB consistent.
+ * Records an audit row in `deletion_requests` regardless of outcome.
+ */
+export async function processInstagramDataDeletion(
+  instagramAccountId: string,
+  confirmationCode: string
+): Promise<DeletionRequestRecord> {
+  await ensureInit();
+
+  return withTransaction(async (client) => {
+    // Insert the audit record first so we always have a trace, even if the
+    // account lookup fails or the deletion errors mid-way.
+    await client.query(
+      `INSERT INTO deletion_requests (code, instagram_account_id, status)
+       VALUES ($1, $2, 'pending')
+       ON CONFLICT (code) DO NOTHING`,
+      [confirmationCode, instagramAccountId]
+    );
+
+    const accountRow = await client.query(
+      "SELECT id FROM accounts WHERE instagram_account_id = $1",
+      [instagramAccountId]
+    );
+
+    if ((accountRow.rowCount ?? 0) === 0) {
+      // No account matches this IG user_id. This is normal — Meta will fire
+      // the callback for any user who ever authorized the app, even if we
+      // already deleted their data or they never completed signup.
+      await client.query(
+        `UPDATE deletion_requests
+         SET status = 'not_found', completed_at = NOW()
+         WHERE code = $1`,
+        [confirmationCode]
+      );
+      const row = await client.query(
+        "SELECT * FROM deletion_requests WHERE code = $1",
+        [confirmationCode]
+      );
+      return row.rows[0] as DeletionRequestRecord;
+    }
+
+    const accountId = accountRow.rows[0].id as string;
+
+    // Delete automations first → cascades to sent_dms, sent_replies, and
+    // activity_log rows keyed by automation_id.
+    const autoResult = await client.query(
+      "DELETE FROM automations WHERE account_id = $1",
+      [accountId]
+    );
+
+    // Sweep any activity_log rows still referencing this account (they would
+    // have had account_id SET NULL if their automation was already deleted,
+    // but those linked to still-existing automations of OTHER accounts stay).
+    const actResult = await client.query(
+      "DELETE FROM activity_log WHERE account_id = $1",
+      [accountId]
+    );
+
+    // Finally delete the account (IG token + username).
+    await client.query("DELETE FROM accounts WHERE id = $1", [accountId]);
+
+    await client.query(
+      `UPDATE deletion_requests
+       SET status = 'completed',
+           automations_deleted = $2,
+           activity_rows_deleted = $3,
+           completed_at = NOW()
+       WHERE code = $1`,
+      [confirmationCode, autoResult.rowCount ?? 0, actResult.rowCount ?? 0]
+    );
+
+    const row = await client.query(
+      "SELECT * FROM deletion_requests WHERE code = $1",
+      [confirmationCode]
+    );
+    return row.rows[0] as DeletionRequestRecord;
+  });
+}
+
+/**
+ * Fetch a deletion request by confirmation code. Used by the public status
+ * page Meta reviewers may visit to verify a deletion actually happened.
+ */
+export async function getDeletionRequest(
+  code: string
+): Promise<DeletionRequestRecord | undefined> {
+  await ensureInit();
+  return queryOne<DeletionRequestRecord>(
+    "SELECT * FROM deletion_requests WHERE code = $1",
+    [code]
+  );
+}

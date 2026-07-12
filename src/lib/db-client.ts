@@ -25,9 +25,22 @@ function createPool(): Pool {
   });
 }
 
-// Reuse pool across hot-reloads in dev; create fresh in prod
-export const pool: Pool =
-  global._pgPool ?? (global._pgPool = createPool());
+// Lazy pool getter — only creates on first use (allows build without DATABASE_URL)
+function getPool(): Pool {
+  if (!global._pgPool) {
+    global._pgPool = createPool();
+  }
+  return global._pgPool;
+}
+
+// Proxy that lazily initializes the pool on first property access
+export const pool: Pool = new Proxy({} as Pool, {
+  get(_target, prop) {
+    const actualPool = getPool();
+    const value = actualPool[prop as keyof Pool];
+    return typeof value === "function" ? value.bind(actualPool) : value;
+  },
+});
 
 /** Run a query and return rows */
 export async function query<T = Record<string, unknown>>(

@@ -122,6 +122,23 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  // Explicit cookie hardening (defaults are similar but making it explicit
+  // prevents accidental misconfig; SameSite=Lax is the primary CSRF defense
+  // for our authenticated API routes since cross-origin POST won't send the cookie)
+  cookies: {
+    sessionToken: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.session-token"
+          : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   secret: (() => {
     const s = process.env.NEXTAUTH_SECRET;
     if (!s) {

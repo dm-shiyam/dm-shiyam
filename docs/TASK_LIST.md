@@ -99,8 +99,8 @@
 | | | 3.2 Enter business name, address from Udyam certificate | | ✅ Done |
 | | | 3.3 Upload Udyam certificate as verification document | | ✅ Done |
 | | | 3.4 Wait for verification (1-3 business days) | | ✅ Verified (9 Jul 2026) |
-| P4 | **Meta Access Verification** | | High | Pending |
-| | | 4.1 Complete access verification in Meta App Dashboard | | Pending |
+| P4 | **Meta Access Verification** | | High | 🔶 In Progress |
+| | | 4.1 Complete access verification in Meta App Dashboard | | 🔶 Submitted (awaiting Meta review, 1-5 days) |
 | P5 | **Meta App Review submission** | | High | Pending |
 | | | 5.1 Paste description from `docs/META_APP_REVIEW.md` | | Pending |
 | | | 5.2 Record 30-60 sec screencast (dashboard → comment → DM flow) | | Pending |
@@ -118,9 +118,9 @@
 | P7 | **Update Meta webhook URL** | | High | Pending |
 | | | 7.1 Change webhook callback URL from ngrok to production domain | | Pending |
 | | | 7.2 Re-verify webhook subscription with Meta | | Pending |
-| P8 | **Set up cron job** | | Medium | Pending |
-| | | 8.1 Add `vercel.json` cron config OR set up external cron (cron-job.org) | | Pending |
-| | | 8.2 Test monthly DM reset runs on schedule | | Pending |
+| P8 | **Set up cron job** | | Medium | 🔶 In Progress |
+| | | 8.1 Add `vercel.json` cron config OR set up external cron (cron-job.org) | | ✅ Done (vercel.json configured with 2 crons, endpoints verified locally) |
+| | | 8.2 Test monthly DM reset runs on schedule | | Pending (needs Vercel deployment) |
 
 #### Phase 6: Post-Launch
 

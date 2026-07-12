@@ -831,6 +831,7 @@ export async function markOnboardingSeen(userId: string): Promise<void> {
 // ── Duplicate DM Prevention ──
 // ═══════════════════════════════════════
 
+// LEGACY: kept for backwards compat but PREFER claimDmSend below to avoid race conditions
 export async function hasDmBeenSent(
   automationId: string,
   instagramUserId: string
@@ -843,6 +844,7 @@ export async function hasDmBeenSent(
   return !!row;
 }
 
+// LEGACY: kept for backwards compat but PREFER claimDmSend below
 export async function recordSentDm(
   automationId: string,
   instagramUserId: string
@@ -857,6 +859,45 @@ export async function recordSentDm(
   } catch {
     // Unique constraint violation — already recorded, ignore
   }
+}
+
+/**
+ * Atomically claim the right to send a DM. Returns true if this call won the
+ * race (no prior send existed). Returns false if another concurrent webhook
+ * already claimed it. Use this INSTEAD of hasDmBeenSent + recordSentDm to
+ * avoid race conditions when Meta delivers the same webhook multiple times.
+ */
+export async function claimDmSend(
+  automationId: string,
+  instagramUserId: string
+): Promise<boolean> {
+  await ensureInit();
+  const id = uuidv4();
+  const rowCount = await execute(
+    `INSERT INTO sent_dms (id, automation_id, instagram_user_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (automation_id, instagram_user_id) DO NOTHING`,
+    [id, automationId, instagramUserId]
+  );
+  return rowCount > 0;
+}
+
+/**
+ * Atomically claim the right to reply to a comment. Returns true if this call
+ * won the race. Prevents duplicate comment replies when Meta retries webhooks.
+ */
+export async function claimReply(
+  commentId: string,
+  automationId: string
+): Promise<boolean> {
+  await ensureInit();
+  const rowCount = await execute(
+    `INSERT INTO sent_replies (comment_id, automation_id)
+     VALUES ($1, $2)
+     ON CONFLICT (comment_id) DO NOTHING`,
+    [commentId, automationId]
+  );
+  return rowCount > 0;
 }
 
 // ═══════════════════════════════════════

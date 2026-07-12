@@ -6,8 +6,8 @@ import {
   logActivity,
   getUserById,
   incrementDmsUsed,
-  hasDmBeenSent,
-  recordSentDm,
+  claimDmSend,
+  claimReply,
   updateWebhookHealth,
   isAutomationActiveNow,
 } from "@/lib/db";
@@ -152,8 +152,10 @@ async function processWebhookAsync(body: WebhookPayload) {
 
         console.log(`[webhook] Matched keyword "${matchedKeyword}" → automation "${automation.name}"`);
 
-        if (await hasDmBeenSent(automation.id, senderId)) {
-          console.log(`[webhook] Duplicate DM skipped — already sent to ${senderId}`);
+        // Atomically claim the right to send. If false, another concurrent
+        // webhook (or a Meta retry) already claimed this send — skip.
+        if (!(await claimDmSend(automation.id, senderId))) {
+          console.log(`[webhook] Duplicate DM skipped — already claimed for ${senderId}`);
           continue;
         }
 
@@ -211,17 +213,23 @@ async function processWebhookAsync(body: WebhookPayload) {
               }
             }
           }
-          await recordSentDm(automation.id, senderId);
+          // No need to record — claimDmSend already inserted the row above
         } else {
           errorMessage = dmResult.error;
           console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
         }
 
         if (field === "comments" && automation.reply_comment && commentId) {
-          const replyResult = await replyToComment(commentId, automation.reply_comment, ACCESS_TOKEN);
-          commentReplied = replyResult.success;
-          if (!replyResult.success) {
-            console.error(`[webhook] Comment reply failed:`, replyResult.error);
+          // Atomically claim the reply — prevents duplicate replies on Meta retries.
+          // This is critical: without this check, one comment can receive 100+ replies.
+          if (await claimReply(commentId, automation.id)) {
+            const replyResult = await replyToComment(commentId, automation.reply_comment, ACCESS_TOKEN);
+            commentReplied = replyResult.success;
+            if (!replyResult.success) {
+              console.error(`[webhook] Comment reply failed:`, replyResult.error);
+            }
+          } else {
+            console.log(`[webhook] Duplicate reply skipped for comment ${commentId}`);
           }
         }
 

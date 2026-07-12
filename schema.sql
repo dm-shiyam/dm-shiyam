@@ -86,6 +86,15 @@ CREATE TABLE IF NOT EXISTS sent_dms (
   UNIQUE (automation_id, instagram_user_id)
 );
 
+-- Comment-reply idempotency: prevents duplicate replies when Meta retries webhooks.
+-- comment_id is PRIMARY KEY so INSERT ON CONFLICT acts as atomic mutex.
+CREATE TABLE IF NOT EXISTS sent_replies (
+  comment_id     TEXT        PRIMARY KEY,
+  automation_id  TEXT        NOT NULL,
+  replied_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (automation_id) REFERENCES automations(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS webhook_health (
   id               INTEGER     PRIMARY KEY DEFAULT 1,
   last_received_at TIMESTAMPTZ,

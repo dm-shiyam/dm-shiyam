@@ -19,7 +19,6 @@
   "dependencies": {
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.11.1",
     "lucide-react": "^0.468.0",
     "next": "^16.2.10",
     "next-auth": "^4.24.14",
@@ -35,7 +34,6 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",

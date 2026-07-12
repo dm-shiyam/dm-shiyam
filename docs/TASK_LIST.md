@@ -262,9 +262,9 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V1 | **Domain name** | | High | Pending |
-| | | 1.1 Purchase domain (dmshiyam.com or dmshiyam.in) from Namecheap/GoDaddy/Cloudflare | | Pending |
-| | | 1.2 Set up DNS records | | Pending |
+| V1 | **Domain name** | | High | In Progress |
+| | | 1.1 Purchase domain (dmshiyam.com or dmshiyam.in) from Namecheap/GoDaddy/Cloudflare | | ✅ Done (dmshiyam.com) |
+| | | 1.2 Set up DNS records | | Pending (needs V4 - Vercel domain add) |
 | V2 | **Business email** | | Medium | ✅ Done |
 | | | 2.1 Set up contact@dmshiyam.com (Zoho Mail free / Google Workspace) | | ✅ Done |
 | | | 2.2 Add to Meta App Dashboard contact info | | Pending |
@@ -273,11 +273,11 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V3 | **Deploy to Vercel** | | High | Pending |
-| | | 3.1 Connect GitHub repo to Vercel | | Pending |
-| | | 3.2 Configure build settings (Next.js framework) | | Pending |
-| | | 3.3 Set up all environment variables in Vercel dashboard | | Pending |
-| | | 3.4 Test deployment builds successfully | | Pending |
+| V3 | **Deploy to Vercel** | | High | ✅ Done |
+| | | 3.1 Connect GitHub repo to Vercel | | ✅ Done |
+| | | 3.2 Configure build settings (Next.js framework) | | ✅ Done (pnpm install used to fix npm crash) |
+| | | 3.3 Set up all environment variables in Vercel dashboard | | Pending (needs DATABASE_URL from Priyanka) |
+| | | 3.4 Test deployment builds successfully | | ✅ Done (Ready in 47s at dm-shiyam.vercel.app) |
 | V4 | **Custom domain setup** | | High | Pending |
 | | | 4.1 Add dmshiyam.com to Vercel project | | Pending |
 | | | 4.2 Update DNS CNAME/A records to point to Vercel | | Pending |
@@ -295,9 +295,9 @@
 | | | 6.2 Add GA script to `_app.tsx` or layout | | ✅ Done (G-KDFFVFWBLC added to layout.tsx) |
 | | | 6.3 Set up conversion events (signup, automation created, DM sent) | | Pending |
 | V7 | **Social media accounts** | | Medium | In Progress |
-| | | 7.1 Create @dmshiyam Instagram account | | Pending |
-| | | 7.2 Create @dmshiyam Twitter/X account | | In Progress |
-| | | 7.3 Post launch announcement | | Pending |
+| | | 7.1 Create @dmshiyam Instagram account | | ✅ Done |
+| | | 7.2 Create @dmshiyam Twitter/X account | | ✅ Done |
+| | | 7.3 Post launch announcement | | Pending (after production launch) |
 
 #### Phase 6: Post-Launch
 

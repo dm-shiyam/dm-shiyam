@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin } from "./db";
+import { rateLimit } from "./rate-limiter";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -44,7 +45,12 @@ export const authOptions: NextAuthOptions = {
           return { id: user.id, email: user.email, name: user.name };
         }
 
-        // Login
+        // Login — rate limit by email to prevent brute force (10 tries / 15 min)
+        const rl = rateLimit(`login:${email.toLowerCase()}`, 10, 15 * 60 * 1000);
+        if (!rl.allowed) {
+          throw new Error("Too many login attempts. Please try again later.");
+        }
+
         const user = await getUserByEmail(email);
         if (!user || !user.password_hash) return null;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountsWithExpiringTokens, updateAccount, getUserById } from "@/lib/db";
+import { getAccountsWithExpiringTokens, updateAccount, getUserById, touchAccountRefresh } from "@/lib/db";
 import { refreshLongLivedToken, computeExpiryDate } from "@/lib/token-manager";
 import { sendTokenExpiryWarning } from "@/lib/email";
 
@@ -29,6 +29,7 @@ async function handler(req: NextRequest) {
     if (result.success && result.access_token) {
       const expiresAt = computeExpiryDate(result.expires_in ?? 5184000);
       await updateAccount(account.id, { access_token: result.access_token, token_expires_at: expiresAt });
+      await touchAccountRefresh(account.id);
       results.push({ account_id: account.id, username: account.instagram_username, success: true });
       console.log(`[cron:refresh-tokens] Refreshed token for @${account.instagram_username}`);
     } else {

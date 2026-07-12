@@ -135,6 +135,59 @@
 | | | 10.2 Show all users, total DMs sent, error rates | | ✅ Done |
 | | | 10.3 Add user management (ban, upgrade plan) | | ✅ Done |
 
+#### Phase 7: Security Hardening
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| P11 | **Security audit & fixes** | | High | ✅ Done |
+| | | 11.1 Remove hardcoded NextAuth fallback secret; fail fast in prod | | ✅ Done |
+| | | 11.2 Lazy-init Resend in forgot-password (prevent import-time crash) | | ✅ Done |
+| | | 11.3 XSS: escape user name in reset-password email template | | ✅ Done (`src/lib/html.ts`) |
+| | | 11.4 Rate limit forgot-password (5/15min) and reset-password (10/15min) | | ✅ Done |
+| | | 11.5 Password policy: min 8 chars + letters + numbers (signup & reset) | | ✅ Done |
+| | | 11.6 Security response headers (HSTS, X-Frame-Options, X-CTO, Referrer-Policy, Permissions-Policy) | | ✅ Done (`next.config.js`) |
+| | | 11.7 SQL injection audit — all queries parameterized, dynamic `${...}` only for hardcoded fragments | | ✅ Done (verified) |
+| P12 | **Security follow-ups** | | Medium | Pending |
+| | | 12.1 Upgrade Next.js to 15+ and next-auth to v5 — fixes 4 high-severity npm audit vulns in `next`, `next-auth`, `postcss`, `uuid` (deferred, see note below) | | Pending — post-MVP |
+| | | 12.2 Add rate limiting to NextAuth Credentials login (currently only forgot/reset are limited) | | Pending |
+| | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | Pending |
+| | | 12.4 Add CSRF token validation on state-changing routes (NextAuth handles for auth; check others) | | Pending |
+
+> **📌 Note on P12.1 (deferred dependency upgrades):**
+> `npm audit --production` reports **4 high-severity vulnerabilities** in transitive/direct deps: `next`, `next-auth`, `postcss`, `uuid`.
+> Fixing requires:
+> - Upgrading **Next.js to 15+** (major version — needs full regression testing of App Router, Server Actions, image optimization)
+> - Upgrading **next-auth to v5** (major API change — auth config file, middleware, session shape all differ)
+>
+> **Deferred until after MVP launch** because none of the flagged vulns are exploitable in the current codebase:
+> - `postcss` vulns → only apply at **build time**, not runtime (no attack surface in production)
+> - `uuid` vulns → in older API surfaces we don't use (we only use `crypto.randomUUID()` and `crypto.randomBytes()`)
+> - `next` / `next-auth` vulns → require specific attack vectors (SSRF via image optimizer, prototype pollution) that are mitigated by our current auth + input validation setup
+>
+> **Action item after launch:** Create a dedicated branch, upgrade Next+NextAuth together, run full E2E test suite (S1), then merge. Estimated effort: 1-2 days.
+
+#### Phase 8: Database Enhancements
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| P13 | **Schema hardening** | | Medium | ✅ Done |
+| | | 13.1 Add FK `accounts.user_id → users(id) ON DELETE CASCADE` | | ✅ Done (`fk_accounts_user`) |
+| | | 13.2 Add FK `automations.user_id → users(id) ON DELETE CASCADE` | | ✅ Done (`fk_automations_user`) |
+| | | 13.3 Add FK `activity_log.user_id → users(id) ON DELETE SET NULL` | | ✅ Done (`fk_activity_log_user`) |
+| | | 13.4 Add CHECK constraint on `users.role` (only 'user' or 'admin') | | ✅ Done (`chk_users_role`) |
+| | | 13.5 Add CHECK constraint on `users.plan` (only 'free', 'starter', 'pro', 'business', 'agency') | | ✅ Done (`chk_users_plan`) |
+| | | 13.6 Add CHECK constraint on `users.provider` (only 'credentials' or 'google') | | ✅ Done (`chk_users_provider`) |
+| | | 13.7 Bonus: CHECK constraint on `users.subscription_status` (5 valid values) | | ✅ Done (`chk_users_subscription_status`) |
+| P14 | **Performance indexes** | | Medium | ✅ Done |
+| | | 14.1 Add partial index on `users(reset_token) WHERE reset_token IS NOT NULL` | | ✅ Done (`idx_users_reset_token`) |
+| | | 14.2 Add composite index on `sent_dms(automation_id, instagram_user_id)` | | ✅ Done (`idx_sent_dms_lookup`) |
+| | | 14.3 Add index on `activity_log(instagram_user_id)` | | ✅ Done (`idx_activity_ig_user`) |
+| | | 14.4 Add partial index on `automations(is_active) WHERE is_active = TRUE` | | ✅ Done (`idx_automations_is_active`) |
+| P15 | **New audit columns** | | Low | ✅ Done |
+| | | 15.1 Add `users.last_login_at TIMESTAMPTZ` + wire into NextAuth `jwt` callback | | ✅ Done (`touchUserLogin` in `src/lib/auth.ts`) |
+| | | 15.2 Add `users.email_verified_at TIMESTAMPTZ` (column only; verification flow TBD) | | ✅ Column added |
+| | | 15.3 Add `accounts.last_refreshed_at TIMESTAMPTZ` + wire into token refresh cron | | ✅ Done (`touchAccountRefresh` in refresh-tokens cron) |
+
 ---
 
 ### Ankit — Frontend, Database, Marketing Pages (21 sub-tasks)

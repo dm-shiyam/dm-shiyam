@@ -106,3 +106,81 @@ CREATE INDEX IF NOT EXISTS idx_activity_user       ON activity_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_automations_account ON automations(account_id);
 CREATE INDEX IF NOT EXISTS idx_automations_user    ON automations(user_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user       ON accounts(user_id);
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Migrations (idempotent — safe to re-run on every boot)
+-- P13: Schema hardening | P14: Performance indexes | P15: Audit columns
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── P15: Audit columns (add before FKs/constraints so existing rows are OK) ──
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS last_login_at       TIMESTAMPTZ;
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS email_verified_at   TIMESTAMPTZ;
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_refreshed_at   TIMESTAMPTZ;
+
+-- ── P13.1-13.3: Add FKs on user_id columns (drop-then-add pattern; skip if fails) ──
+DO $$
+BEGIN
+  -- accounts.user_id → users(id) ON DELETE CASCADE
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fk_accounts_user'
+  ) THEN
+    ALTER TABLE accounts
+      ADD CONSTRAINT fk_accounts_user
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+
+  -- automations.user_id → users(id) ON DELETE CASCADE
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fk_automations_user'
+  ) THEN
+    ALTER TABLE automations
+      ADD CONSTRAINT fk_automations_user
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+  END IF;
+
+  -- activity_log.user_id → users(id) ON DELETE SET NULL
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'fk_activity_log_user'
+  ) THEN
+    ALTER TABLE activity_log
+      ADD CONSTRAINT fk_activity_log_user
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- ── P13.4-13.6: CHECK constraints on enum-like text columns ──
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_role') THEN
+    ALTER TABLE users
+      ADD CONSTRAINT chk_users_role
+      CHECK (role IN ('user', 'admin'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_plan') THEN
+    ALTER TABLE users
+      ADD CONSTRAINT chk_users_plan
+      CHECK (plan IN ('free', 'starter', 'pro', 'business', 'agency'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_provider') THEN
+    ALTER TABLE users
+      ADD CONSTRAINT chk_users_provider
+      CHECK (provider IN ('credentials', 'google'));
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_users_subscription_status') THEN
+    ALTER TABLE users
+      ADD CONSTRAINT chk_users_subscription_status
+      CHECK (subscription_status IN ('none', 'active', 'past_due', 'cancelled', 'expired'));
+  END IF;
+END $$;
+
+-- ── P14: Performance indexes ──
+CREATE INDEX IF NOT EXISTS idx_users_reset_token       ON users(reset_token) WHERE reset_token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sent_dms_lookup         ON sent_dms(automation_id, instagram_user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_ig_user        ON activity_log(instagram_user_id);
+CREATE INDEX IF NOT EXISTS idx_automations_is_active   ON automations(is_active) WHERE is_active = TRUE;

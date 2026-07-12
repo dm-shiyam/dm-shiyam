@@ -2,10 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, setResetToken } from "@/lib/db";
 import { Resend } from "resend";
 import crypto from "crypto";
+import { escapeHtml } from "@/lib/html";
+import { rateLimit } from "@/lib/rate-limiter";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-init Resend so a missing key doesn't crash the route at import time
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+  if (_resend) return _resend;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  _resend = new Resend(key);
+  return _resend;
+}
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 5 requests per IP per 15 minutes to prevent abuse & email enumeration
+  const clientIp =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = rateLimit(`forgot-password:${clientIp}`, 5, 15 * 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    );
+  }
+
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
@@ -20,7 +43,14 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
   await setResetToken(email, token, expiresAt);
 
-  const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}`;
+  const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${encodeURIComponent(token)}`;
+  const safeName = escapeHtml(user.name || "there");
+
+  const resend = getResend();
+  if (!resend) {
+    console.warn("[forgot-password] RESEND_API_KEY not set — skipping email send");
+    return NextResponse.json({ success: true });
+  }
 
   try {
     const result = await resend.emails.send({
@@ -30,7 +60,7 @@ export async function POST(req: NextRequest) {
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
           <h2 style="color: #111;">Reset your password</h2>
-          <p>Hi ${user.name},</p>
+          <p>Hi ${safeName},</p>
           <p>We received a request to reset your DM Shiyam password. Click the button below to choose a new one.</p>
           <a href="${resetUrl}"
              style="display: inline-block; margin: 24px 0; padding: 12px 24px;
@@ -47,7 +77,6 @@ export async function POST(req: NextRequest) {
 
     console.log("[resend] Result:", result);
   } catch (err) {
-    console.error("[resend] Email send failed:", err);
     console.error("[forgot-password] Email send failed:", err);
     // Don't expose email errors to the client
   }

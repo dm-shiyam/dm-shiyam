@@ -13,6 +13,7 @@ import {
 } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
 import { emitNewActivity } from "@/lib/activity-events";
+import { sendDmLimitWarning, sendDmLimitReached } from "@/lib/email";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
@@ -162,6 +163,10 @@ async function processWebhookAsync(body: WebhookPayload) {
           if (user && user.dm_limit !== -1 && user.dms_used_this_month >= user.dm_limit) {
             errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
             console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
+            // Send limit-reached email (fire-and-forget)
+            if (user.email) {
+              sendDmLimitReached({ to: user.email, name: user.name || "", limit: user.dm_limit }).catch(() => {});
+            }
             const activity = await logActivity({
               automation_id: automation.id,
               automation_name: automation.name,
@@ -184,7 +189,23 @@ async function processWebhookAsync(body: WebhookPayload) {
         if (dmResult.success) {
           dmSent = true;
           console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
-          if (userId) await incrementDmsUsed(userId);
+          if (userId) {
+            await incrementDmsUsed(userId);
+            // Check if user just crossed 80% threshold
+            const updatedUser = await getUserById(userId);
+            if (updatedUser && updatedUser.dm_limit !== -1 && updatedUser.email) {
+              const pct = updatedUser.dms_used_this_month / updatedUser.dm_limit;
+              const prevPct = (updatedUser.dms_used_this_month - 1) / updatedUser.dm_limit;
+              if (pct >= 0.8 && prevPct < 0.8) {
+                sendDmLimitWarning({
+                  to: updatedUser.email,
+                  name: updatedUser.name || "",
+                  used: updatedUser.dms_used_this_month,
+                  limit: updatedUser.dm_limit,
+                }).catch(() => {});
+              }
+            }
+          }
           await recordSentDm(automation.id, senderId);
         } else {
           errorMessage = dmResult.error;

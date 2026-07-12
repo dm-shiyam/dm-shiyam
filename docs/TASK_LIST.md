@@ -126,10 +126,10 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P9 | **Email notifications** | | Low | Pending |
-| | | 9.1 Set up email service (Resend/SendGrid) | | Pending |
-| | | 9.2 Send alert when DM limit is at 80% | | Pending |
-| | | 9.3 Send alert when token is expiring | | Pending |
+| P9 | **Email notifications** | | Low | ✅ Done |
+| | | 9.1 Set up email service (Resend/SendGrid) | | ✅ Done (Resend) |
+| | | 9.2 Send alert when DM limit is at 80% | | ✅ Done |
+| | | 9.3 Send alert when token is expiring | | ✅ Done |
 | P10 | **Admin dashboard** | | Low | ✅ Done |
 | | | 10.1 Create `/admin` route with auth guard | | ✅ Done |
 | | | 10.2 Show all users, total DMs sent, error rates | | ✅ Done |

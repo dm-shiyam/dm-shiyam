@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountsWithExpiringTokens, updateAccount } from "@/lib/db";
+import { getAccountsWithExpiringTokens, updateAccount, getUserById } from "@/lib/db";
 import { refreshLongLivedToken, computeExpiryDate } from "@/lib/token-manager";
+import { sendTokenExpiryWarning } from "@/lib/email";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const APP_ID = process.env.INSTAGRAM_APP_ID!;
@@ -33,6 +34,23 @@ async function handler(req: NextRequest) {
     } else {
       results.push({ account_id: account.id, username: account.instagram_username, success: false, error: result.error });
       console.error(`[cron:refresh-tokens] Failed for @${account.instagram_username}:`, result.error);
+
+      // Notify user that their token needs manual reconnection
+      if (account.user_id && account.token_expires_at) {
+        const user = await getUserById(account.user_id);
+        if (user?.email) {
+          const daysLeft = Math.max(0, Math.ceil(
+            (new Date(account.token_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          ));
+          sendTokenExpiryWarning({
+            to: user.email,
+            name: user.name || "",
+            igUsername: account.instagram_username,
+            expiresAt: account.token_expires_at,
+            daysLeft,
+          }).catch(() => {});
+        }
+      }
     }
   }
 

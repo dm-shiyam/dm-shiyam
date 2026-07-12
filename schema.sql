@@ -108,6 +108,22 @@ CREATE TABLE IF NOT EXISTS webhook_health (
   total_received   INTEGER     NOT NULL DEFAULT 0
 );
 
+-- ── Meta Data Deletion Request audit log ─────────────────────────────────────
+-- Records every deletion request received from Meta's data-deletion callback.
+-- The `code` is returned to Meta as `confirmation_code` and appears in the
+-- public status URL Meta reviewers may visit to verify processing.
+-- Status transitions: pending → completed | not_found (no matching account).
+CREATE TABLE IF NOT EXISTS deletion_requests (
+  code                  TEXT        PRIMARY KEY,
+  instagram_account_id  TEXT        NOT NULL,
+  status                TEXT        NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending', 'completed', 'not_found')),
+  automations_deleted   INTEGER     NOT NULL DEFAULT 0,
+  activity_rows_deleted INTEGER     NOT NULL DEFAULT 0,
+  requested_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at          TIMESTAMPTZ
+);
+
 -- Seed the single webhook_health row (idempotent)
 INSERT INTO webhook_health (id, total_received)
 VALUES (1, 0)

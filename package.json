@@ -14,6 +14,7 @@
     "test:logic": "node tests/test-logic.js",
     "test:db": "node tests/test-db.js",
     "test:api": "node tests/test-api.js",
+    "test:dedup": "node scripts/test-dedup-rate-limit.mjs",
     "test": "node tests/test-logic.js && node tests/test-db.js && node tests/test-api.js"
   },
   "dependencies": {

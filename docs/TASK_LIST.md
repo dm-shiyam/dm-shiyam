@@ -152,6 +152,18 @@
 | | | 12.2 Add rate limiting to NextAuth Credentials login (10 tries per email per 15min) | | ✅ Done (`src/lib/auth.ts`) |
 | | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | Pending |
 | | | 12.4 CSRF audit — all 15 state-changing routes verified protected via SameSite cookie / HMAC signature / CRON_SECRET; explicit NextAuth cookie config + fail-closed IG webhook signature in prod | | ✅ Done |
+| | | 12.5 Idempotency fix — replaced check-then-write with atomic `INSERT ON CONFLICT` for DMs (`claimDmSend`) + added `sent_replies` table + `claimReply` for comment replies. Prevents duplicate DMs/replies under Meta webhook retries | | ✅ Done |
+| | | 12.6 Deep-scan race conditions — added `claimDmSlot` (atomic DM quota enforcement, prevents users exceeding paid plan under concurrent webhooks); wrapped `createUser` in try/catch for unique_violation (23505) so concurrent signup returns friendly error instead of PG crash | | ✅ Done |
+| | | 12.7 Timing-safe signature in `/api/billing/verify` (parity with webhook route) — replaced `!==` with `crypto.timingSafeEqual` | | ✅ Done |
+| | | 12.8 Token-expiry email throttle — `claimTokenWarningEmail(accountId, 24h)` prevents cron from spamming user 4x/day when refresh keeps failing | | ✅ Done |
+| | | 12.9 Redesign DM/reply dedup key from `(automation_id, user_id)` → `(automation_id, comment_id)` — each comment gets 1 DM+reply, user can trigger multiple times via distinct comments; Meta retries still deduped | | ✅ Done |
+| | | 12.10 Per-post rate limit — max 3 DMs per (recipient × post). Prevents commenter spam ("info info info..." 100x → 100 DMs). Fresh budget on each new post. Comment reply still fires when DM is rate-limited (public engagement stays intact). | | ✅ Done |
+| | | 12.11 CRITICAL: Concurrency fix — first version of `claimDmSend` used `INSERT ... SELECT WHERE (count) < 3` which is NOT atomic under READ COMMITTED. Load-test caught this: 50 concurrent claims all succeeded (cap defeated). Fixed with `pg_advisory_xact_lock` inside a transaction — serializes claims for the same (automation, media, user) triple. Cap now strictly enforced under 200-way concurrency (verified). | | ✅ Done |
+| | | 12.12 Regression suite: `scripts/test-dedup-rate-limit.mjs` — 23 tests including 200-way parallel storms, retry floods, multi-user/multi-post independence. Run via `npm run test:dedup`. | | ✅ Done |
+| P16 | **Testing patterns to remember** | | Low | Notes |
+| | | 16.1 Security tests should cover BOTH: (a) invalid inputs rejected, AND (b) valid inputs produce correct side effects exactly once | | 📌 Note |
+| | | 16.2 Every check-then-act pattern in webhook/cron handlers is a race condition — audit for atomic alternatives (INSERT ON CONFLICT, SELECT FOR UPDATE, advisory locks) | | 📌 Note |
+| | | 16.3 Idempotency test: fire same webhook payload 100× concurrently → assert exactly 1 side effect | | 📌 Note |
 
 > **📌 Note on P12.1 (deferred dependency upgrades):**
 > `npm audit --production` reports **4 high-severity vulnerabilities** in transitive/direct deps: `next`, `next-auth`, `postcss`, `uuid`.

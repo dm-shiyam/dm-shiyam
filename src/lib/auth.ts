@@ -36,13 +36,23 @@ export const authOptions: NextAuthOptions = {
           }
 
           const hash = await bcrypt.hash(password, 12);
-          const user = await createUser({
-            email,
-            name,
-            password_hash: hash,
-            provider: "credentials",
-          });
-          return { id: user.id, email: user.email, name: user.name };
+          try {
+            const user = await createUser({
+              email,
+              name,
+              password_hash: hash,
+              provider: "credentials",
+            });
+            return { id: user.id, email: user.email, name: user.name };
+          } catch (err) {
+            // Postgres unique_violation code — race condition: another concurrent
+            // signup created the same email between our check and insert. Return
+            // the friendly duplicate-email error instead of a raw DB crash.
+            if ((err as { code?: string })?.code === "23505") {
+              throw new Error("Email already registered");
+            }
+            throw err;
+          }
         }
 
         // Login — rate limit by email to prevent brute force (10 tries / 15 min)
@@ -67,12 +77,18 @@ export const authOptions: NextAuthOptions = {
         const existing = await getUserByEmail(user.email!);
         if (existing) return true;
 
-        await createUser({
-          email: user.email!,
-          name: user.name || "User",
-          provider: "google",
-          provider_id: account.providerAccountId,
-        });
+        try {
+          await createUser({
+            email: user.email!,
+            name: user.name || "User",
+            provider: "google",
+            provider_id: account.providerAccountId,
+          });
+        } catch (err) {
+          // unique_violation: another concurrent sign-in created the user first.
+          // Treat as success — the user exists now, which is what we wanted.
+          if ((err as { code?: string })?.code !== "23505") throw err;
+        }
       }
       return true;
     },

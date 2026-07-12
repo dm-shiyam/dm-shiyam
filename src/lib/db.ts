@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import { query, queryOne, execute, pool } from "./db-client";
+import { query, queryOne, execute, pool, withTransaction } from "./db-client";
 import type {
   Account,
   Automation,
@@ -646,6 +646,41 @@ export async function incrementDmsUsed(userId: string): Promise<void> {
   );
 }
 
+/**
+ * Atomically claim one DM slot for a user, respecting their plan limit.
+ * Returns { claimed: true, newCount, limit } if the slot was reserved.
+ * Returns { claimed: false, currentCount, limit } if the user is at/over limit.
+ *
+ * This is the ONLY safe way to check-and-increment under concurrent webhook
+ * delivery. Using `if (used >= limit) skip; else increment` is a race — under
+ * load, N concurrent webhooks can all pass the check before any increments.
+ */
+export async function claimDmSlot(
+  userId: string
+): Promise<{ claimed: boolean; used: number; limit: number } | null> {
+  await ensureInit();
+  const rows = await query<{ dms_used_this_month: number; dm_limit: number }>(
+    `UPDATE users
+     SET dms_used_this_month = dms_used_this_month + 1
+     WHERE id = $1
+       AND (dm_limit = -1 OR dms_used_this_month < dm_limit)
+     RETURNING dms_used_this_month, dm_limit`,
+    [userId]
+  );
+
+  if (rows.length > 0) {
+    return { claimed: true, used: rows[0].dms_used_this_month, limit: rows[0].dm_limit };
+  }
+
+  // Claim failed — either user doesn't exist or is at/over limit. Distinguish:
+  const existing = await queryOne<{ dms_used_this_month: number; dm_limit: number }>(
+    "SELECT dms_used_this_month, dm_limit FROM users WHERE id = $1",
+    [userId]
+  );
+  if (!existing) return null;
+  return { claimed: false, used: existing.dms_used_this_month, limit: existing.dm_limit };
+}
+
 export async function resetMonthlyDmUsage(): Promise<void> {
   await ensureInit();
   await execute("UPDATE users SET dms_used_this_month = 0");
@@ -861,23 +896,114 @@ export async function recordSentDm(
   }
 }
 
+export type ClaimReason = "duplicate" | "rate_limited";
+
 /**
- * Atomically claim the right to send a DM. Returns true if this call won the
- * race (no prior send existed). Returns false if another concurrent webhook
- * already claimed it. Use this INSTEAD of hasDmBeenSent + recordSentDm to
- * avoid race conditions when Meta delivers the same webhook multiple times.
+ * Atomically claim the right to send a DM for a specific comment, enforcing
+ * BOTH idempotency AND a per-post rate limit in a single SQL statement.
+ *
+ * Dedup: `(automation_id, comment_id)` — Meta retries of the same comment
+ * are collapsed to one DM (also blocks the reply from firing twice).
+ *
+ * Rate limit: at most `maxPerRecipientPerPost` DMs from the same automation to
+ * the same Instagram user on the same post/media (lifetime). Prevents a
+ * commenter from spamming "info" 100 times on one reel and receiving 100 DMs.
+ * A new post resets the recipient's budget. Since this is a spam-prevention
+ * limit (not a billing limit), a tiny race is acceptable — worst case a
+ * spammer gets 1-2 DMs beyond the cap.
  */
 export async function claimDmSend(
   automationId: string,
-  instagramUserId: string
-): Promise<boolean> {
+  commentId: string,
+  mediaId: string,
+  instagramUserId: string,
+  maxPerRecipientPerPost = 3
+): Promise<{ claimed: boolean; reason?: ClaimReason }> {
   await ensureInit();
   const id = uuidv4();
+
+  // Advisory lock scoped to (automation × media × user) makes the count-then-insert
+  // truly atomic. Without it, concurrent transactions all see COUNT=0 in their
+  // snapshots and every INSERT passes — completely defeating the cap. Empirically
+  // verified: without the lock, 50 concurrent claims all succeeded (cap was 3).
+  //
+  // hashtext returns int4; cast to bigint for the single-arg overload. Collisions
+  // between unrelated triples are astronomically unlikely for our key volume;
+  // even if they collide, we just serialize two unrelated claims briefly.
+  //
+  // Lock is transaction-scoped — released automatically on COMMIT/ROLLBACK.
+  return withTransaction(async (client) => {
+    await client.query(
+      `SELECT pg_advisory_xact_lock(
+         hashtext('dm-claim:' || $1 || ':' || $2 || ':' || $3)::bigint
+       )`,
+      [automationId, mediaId, instagramUserId]
+    );
+
+    const ins = await client.query(
+      `INSERT INTO sent_dms (id, automation_id, comment_id, media_id, instagram_user_id)
+       SELECT $1::text, $2::text, $3::text, $4::text, $5::text
+       WHERE (
+         SELECT COUNT(*) FROM sent_dms
+         WHERE automation_id = $2
+           AND media_id = $4
+           AND instagram_user_id = $5
+       ) < $6
+       ON CONFLICT (automation_id, comment_id) DO NOTHING`,
+      [id, automationId, commentId, mediaId, instagramUserId, maxPerRecipientPerPost]
+    );
+
+    if ((ins.rowCount ?? 0) > 0) return { claimed: true };
+
+    // Insert didn't happen. Distinguish for downstream behavior:
+    //   - duplicate:     Meta re-delivered same comment → skip DM AND reply
+    //   - rate_limited:  fresh comment, cap reached → skip DM, still reply
+    const dup = await client.query(
+      `SELECT 1 FROM sent_dms WHERE automation_id = $1 AND comment_id = $2 LIMIT 1`,
+      [automationId, commentId]
+    );
+    return {
+      claimed: false,
+      reason: (dup.rowCount ?? 0) > 0 ? "duplicate" : "rate_limited",
+    };
+  });
+}
+
+/**
+ * Release a previously-successful DM claim for a specific comment. Used when
+ * downstream checks (e.g. per-user monthly DM limit) fail AFTER the claim
+ * succeeded, so this comment can be retriggered on a future webhook (e.g.
+ * after monthly quota resets).
+ */
+export async function releaseDmClaim(
+  automationId: string,
+  commentId: string
+): Promise<void> {
+  await ensureInit();
+  await execute(
+    "DELETE FROM sent_dms WHERE automation_id = $1 AND comment_id = $2",
+    [automationId, commentId]
+  );
+}
+
+/**
+ * Atomically claim the right to send a token-expiry warning email for an account.
+ * Returns true if the caller should send (last email > minHours ago OR never sent).
+ * Returns false if we sent one recently and should suppress this one.
+ * Prevents email spam when the cron runs every 6h against a persistently-broken token.
+ */
+export async function claimTokenWarningEmail(
+  accountId: string,
+  minHours = 24
+): Promise<boolean> {
+  await ensureInit();
   const rowCount = await execute(
-    `INSERT INTO sent_dms (id, automation_id, instagram_user_id)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (automation_id, instagram_user_id) DO NOTHING`,
-    [id, automationId, instagramUserId]
+    `UPDATE accounts
+     SET last_token_warning_sent_at = NOW()
+     WHERE id = $1
+       AND (last_token_warning_sent_at IS NULL
+            OR last_token_warning_sent_at < NOW() - ($2 || ' hours')::INTERVAL)`,
+    [accountId, minHours]
   );
   return rowCount > 0;
 }

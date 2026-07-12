@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountsWithExpiringTokens, updateAccount, getUserById, touchAccountRefresh } from "@/lib/db";
+import { getAccountsWithExpiringTokens, updateAccount, getUserById, touchAccountRefresh, claimTokenWarningEmail } from "@/lib/db";
 import { refreshLongLivedToken, computeExpiryDate } from "@/lib/token-manager";
 import { sendTokenExpiryWarning } from "@/lib/email";
 
@@ -36,20 +36,28 @@ async function handler(req: NextRequest) {
       results.push({ account_id: account.id, username: account.instagram_username, success: false, error: result.error });
       console.error(`[cron:refresh-tokens] Failed for @${account.instagram_username}:`, result.error);
 
-      // Notify user that their token needs manual reconnection
+      // Notify user that their token needs manual reconnection — but at most
+      // once per 24h per account, otherwise the 6h cron would send 4 emails/day.
       if (account.user_id && account.token_expires_at) {
-        const user = await getUserById(account.user_id);
-        if (user?.email) {
-          const daysLeft = Math.max(0, Math.ceil(
-            (new Date(account.token_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-          ));
-          sendTokenExpiryWarning({
-            to: user.email,
-            name: user.name || "",
-            igUsername: account.instagram_username,
-            expiresAt: account.token_expires_at,
-            daysLeft,
-          }).catch(() => {});
+        const shouldSend = await claimTokenWarningEmail(account.id, 24);
+        if (shouldSend) {
+          const user = await getUserById(account.user_id);
+          if (user?.email) {
+            const daysLeft = Math.max(0, Math.ceil(
+              (new Date(account.token_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            ));
+            sendTokenExpiryWarning({
+              to: user.email,
+              name: user.name || "",
+              igUsername: account.instagram_username,
+              expiresAt: account.token_expires_at,
+              daysLeft,
+            }).catch((emailErr) =>
+              console.error(`[cron:refresh-tokens] Email failed for @${account.instagram_username}:`, emailErr)
+            );
+          }
+        } else {
+          console.log(`[cron:refresh-tokens] Warning email throttled for @${account.instagram_username} (sent recently)`);
         }
       }
     }

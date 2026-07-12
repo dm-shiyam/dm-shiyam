@@ -5,9 +5,10 @@ import {
   getActiveAutomations,
   logActivity,
   getUserById,
-  incrementDmsUsed,
+  claimDmSlot,
   claimDmSend,
   claimReply,
+  releaseDmClaim,
   updateWebhookHealth,
   isAutomationActiveNow,
 } from "@/lib/db";
@@ -125,6 +126,7 @@ async function processWebhookAsync(body: WebhookPayload) {
           ?.mentioned_in?.text ??
         "";
       const commentId: string = value?.id ?? "";
+      const mediaId: string = value?.media?.id ?? "";
 
       if (!senderId) {
         console.warn("[webhook] No sender ID in payload — skipping:", JSON.stringify(value));
@@ -152,10 +154,20 @@ async function processWebhookAsync(body: WebhookPayload) {
 
         console.log(`[webhook] Matched keyword "${matchedKeyword}" → automation "${automation.name}"`);
 
-        // Atomically claim the right to send. If false, another concurrent
-        // webhook (or a Meta retry) already claimed this send — skip.
-        if (!(await claimDmSend(automation.id, senderId))) {
-          console.log(`[webhook] Duplicate DM skipped — already claimed for ${senderId}`);
+        // Require both a comment ID and a media/post ID. The comment ID enables
+        // per-comment dedup (Meta retries); the media ID scopes the per-post
+        // rate limit (max 3 DMs per recipient per post).
+        if (!commentId || !mediaId) {
+          console.warn(`[webhook] Missing commentId or mediaId — skipping to avoid unsafe send`);
+          continue;
+        }
+
+        // Atomically claim the right to send. Two failure modes:
+        //   - duplicate:     Meta re-delivered this same comment → skip DM + reply
+        //   - rate_limited:  fresh comment, but recipient hit 3-DM cap on this post → skip DM, still reply
+        const claim = await claimDmSend(automation.id, commentId, mediaId, senderId);
+        if (!claim.claimed && claim.reason === "duplicate") {
+          console.log(`[webhook] Duplicate skipped — comment ${commentId} already processed`);
           continue;
         }
 
@@ -164,59 +176,71 @@ async function processWebhookAsync(body: WebhookPayload) {
         let commentReplied = false;
         let errorMessage: string | undefined;
 
-        const userId = automation.user_id;
-        if (userId) {
-          const user = await getUserById(userId);
-          if (user && user.dm_limit !== -1 && user.dms_used_this_month >= user.dm_limit) {
-            errorMessage = `DM limit reached (${user.dms_used_this_month}/${user.dm_limit})`;
-            console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
-            // Send limit-reached email (fire-and-forget)
-            if (user.email) {
-              sendDmLimitReached({ to: user.email, name: user.name || "", limit: user.dm_limit }).catch(() => {});
-            }
-            const activity = await logActivity({
-              automation_id: automation.id,
-              automation_name: automation.name,
-              instagram_user_id: senderId,
-              instagram_username: senderUsername,
-              comment_text: commentText,
-              matched_keyword: matchedKeyword,
-              dm_sent: false,
-              comment_replied: false,
-              error_message: errorMessage,
-              user_id: userId,
-            });
-            emitNewActivity(userId, activity);
-            break;
-          }
+        if (claim.reason === "rate_limited") {
+          errorMessage = `Rate limit: max 3 DMs per recipient per post`;
+          console.warn(`[webhook] ${errorMessage} — user ${senderId} on media ${mediaId} — skipping DM (reply still allowed)`);
         }
 
-        const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
+        const userId = automation.user_id;
 
-        if (dmResult.success) {
-          dmSent = true;
-          console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
+        // Only attempt the actual DM if the per-post rate limit didn't block us.
+        // When rate-limited we still fall through to the reply section below.
+        if (claim.claimed) {
+          // Atomically claim one DM slot from the user's monthly quota.
+          // This is a single UPDATE with a conditional WHERE — no check-then-act race.
+          // If limit is reached, releases the DM claim so user retriggers after quota resets.
+          let slotUsed: number | undefined;
+          let slotLimit: number | undefined;
+          let planLimitBlocked = false;
+
           if (userId) {
-            await incrementDmsUsed(userId);
-            // Check if user just crossed 80% threshold
-            const updatedUser = await getUserById(userId);
-            if (updatedUser && updatedUser.dm_limit !== -1 && updatedUser.email) {
-              const pct = updatedUser.dms_used_this_month / updatedUser.dm_limit;
-              const prevPct = (updatedUser.dms_used_this_month - 1) / updatedUser.dm_limit;
-              if (pct >= 0.8 && prevPct < 0.8) {
-                sendDmLimitWarning({
-                  to: updatedUser.email,
-                  name: updatedUser.name || "",
-                  used: updatedUser.dms_used_this_month,
-                  limit: updatedUser.dm_limit,
-                }).catch(() => {});
+            const slot = await claimDmSlot(userId);
+            if (slot && !slot.claimed) {
+              // Plan quota exhausted — release the earlier DM claim so this comment can
+              // be retriggered on a future webhook (e.g. after monthly quota reset).
+              await releaseDmClaim(automation.id, commentId);
+              errorMessage = `DM limit reached (${slot.used}/${slot.limit})`;
+              console.warn(`[webhook] ${errorMessage} for user ${userId} — skipping DM`);
+              const user = await getUserById(userId);
+              if (user?.email) {
+                sendDmLimitReached({ to: user.email, name: user.name || "", limit: slot.limit }).catch(() => {});
               }
+              planLimitBlocked = true;
+            } else if (slot?.claimed) {
+              slotUsed = slot.used;
+              slotLimit = slot.limit;
             }
           }
-          // No need to record — claimDmSend already inserted the row above
-        } else {
-          errorMessage = dmResult.error;
-          console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
+
+          if (!planLimitBlocked) {
+            const dmResult = await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
+
+            if (dmResult.success) {
+              dmSent = true;
+              console.log(`[webhook] DM sent to ${senderId} (message_id: ${dmResult.messageId})`);
+              // 80% threshold email — use pre-increment values from claimDmSlot to detect crossing
+              if (userId && slotUsed !== undefined && slotLimit !== undefined && slotLimit !== -1) {
+                const prevPct = (slotUsed - 1) / slotLimit;
+                const pct = slotUsed / slotLimit;
+                if (pct >= 0.8 && prevPct < 0.8) {
+                  const user = await getUserById(userId);
+                  if (user?.email) {
+                    sendDmLimitWarning({
+                      to: user.email,
+                      name: user.name || "",
+                      used: slotUsed,
+                      limit: slotLimit,
+                    }).catch(() => {});
+                  }
+                }
+              }
+            } else {
+              errorMessage = dmResult.error;
+              console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
+              // DM failed — do NOT release claim. Assume persistent failure
+              // (blocked recipient, invalid ID, etc). Retry would just fail again.
+            }
+          }
         }
 
         if (field === "comments" && automation.reply_comment && commentId) {

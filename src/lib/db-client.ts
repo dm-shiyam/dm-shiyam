@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 
 declare global {
   // Prevent multiple Pool instances in Next.js dev hot-reload
@@ -54,4 +54,26 @@ export async function execute(
 ): Promise<number> {
   const result = await pool.query(sql, params);
   return result.rowCount ?? 0;
+}
+
+/**
+ * Run a series of queries inside a transaction using a dedicated pooled
+ * client. Automatically COMMITs on success or ROLLBACKs on throw. Required
+ * for advisory-lock patterns and any multi-statement atomicity guarantee.
+ */
+export async function withTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }

@@ -863,18 +863,23 @@ export async function markOnboardingSeen(userId: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════
-// ── Duplicate DM Prevention ──
+// ── Duplicate DM Prevention (per-comment) ──
 // ═══════════════════════════════════════
+// Dedup is now keyed on (automation_id, comment_id) so that the SAME user
+// commenting multiple distinct comments with the trigger keyword receives
+// one DM + one reply per comment. Meta can retry-deliver the same webhook
+// event with the same comment_id, so this still protects against retries.
 
 // LEGACY: kept for backwards compat but PREFER claimDmSend below to avoid race conditions
 export async function hasDmBeenSent(
   automationId: string,
-  instagramUserId: string
+  commentId: string
 ): Promise<boolean> {
   await ensureInit();
+  if (!commentId) return false; // No comment_id → cannot dedup, allow through
   const row = await queryOne(
-    "SELECT 1 FROM sent_dms WHERE automation_id = $1 AND instagram_user_id = $2",
-    [automationId, instagramUserId]
+    "SELECT 1 FROM sent_dms WHERE automation_id = $1 AND comment_id = $2",
+    [automationId, commentId]
   );
   return !!row;
 }
@@ -882,14 +887,15 @@ export async function hasDmBeenSent(
 // LEGACY: kept for backwards compat but PREFER claimDmSend below
 export async function recordSentDm(
   automationId: string,
+  commentId: string,
   instagramUserId: string
 ): Promise<void> {
   await ensureInit();
   const id = uuidv4();
   try {
     await execute(
-      "INSERT INTO sent_dms (id, automation_id, instagram_user_id) VALUES ($1, $2, $3)",
-      [id, automationId, instagramUserId]
+      "INSERT INTO sent_dms (id, automation_id, comment_id, instagram_user_id) VALUES ($1, $2, $3, $4)",
+      [id, automationId, commentId, instagramUserId]
     );
   } catch {
     // Unique constraint violation — already recorded, ignore
@@ -900,17 +906,19 @@ export type ClaimReason = "duplicate" | "rate_limited";
 
 /**
  * Atomically claim the right to send a DM for a specific comment, enforcing
- * BOTH idempotency AND a per-post rate limit in a single SQL statement.
+ * BOTH idempotency AND a per-post rate limit inside an advisory-locked
+ * transaction.
  *
  * Dedup: `(automation_id, comment_id)` — Meta retries of the same comment
  * are collapsed to one DM (also blocks the reply from firing twice).
  *
  * Rate limit: at most `maxPerRecipientPerPost` DMs from the same automation to
- * the same Instagram user on the same post/media (lifetime). Prevents a
- * commenter from spamming "info" 100 times on one reel and receiving 100 DMs.
- * A new post resets the recipient's budget. Since this is a spam-prevention
- * limit (not a billing limit), a tiny race is acceptable — worst case a
- * spammer gets 1-2 DMs beyond the cap.
+ * the same Instagram user on the same post/media (lifetime of that post).
+ * A new post resets the recipient's budget. Prevents a commenter from spamming
+ * "info" 100× on one reel and receiving 100 DMs.
+ *
+ * Advisory lock is required — verified by regression suite: without it, 50
+ * concurrent claims all bypassed a cap of 3 (READ COMMITTED snapshot race).
  */
 export async function claimDmSend(
   automationId: string,

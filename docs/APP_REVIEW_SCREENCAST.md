@@ -10,13 +10,13 @@
 
 ## Permissions covered by this video
 
+DM Shiyam uses **Instagram API with Instagram Login** (Meta's newer, Instagram-native OAuth flow). It does **not** use Facebook Login and does **not** require users to have a Facebook Page linked to their Instagram Business account.
+
 | Permission | Where in the video |
 |---|---|
-| `instagram_business_basic` | Scene 2 (OAuth connect) |
-| `pages_show_list` | Scene 2 (Facebook page selection) |
+| `instagram_business_basic` | Scene 2 (Instagram OAuth consent → dashboard shows connected username) |
 | `instagram_business_manage_comments` | Scene 4 (webhook receives comment → public reply posts) |
-| `instagram_business_manage_messages` | Scene 4 (Private Reply DM arrives in commenter's inbox) |
-| `business_management` *(if requested)* | Scene 2 (Business account selection screen) |
+| `instagram_business_manage_messages` | Scene 4 & 5 (Private Reply DM arrives in commenter's inbox) |
 
 ---
 
@@ -24,7 +24,7 @@
 
 Before you hit record, prepare **two Instagram accounts** you own:
 
-- **Account A** (the "creator"): The IG Business account that will connect to DM Shiyam. Must be a Business or Creator account linked to a Facebook Page.
+- **Account A** (the "creator"): The IG Business or Creator account that will connect to DM Shiyam. Must be switched to Business or Creator (Settings → Account → Switch to Professional Account). A linked Facebook Page is **not required** for this flow.
 - **Account B** (the "commenter"): A regular personal IG account that will post the trigger comment. Log into Account B on a **different device or browser profile** so you can screen-record its inbox in Scene 5.
 
 Also prepare:
@@ -56,23 +56,21 @@ Have a **fresh account** ready to demonstrate signup, OR delete `dmshiyamofficia
 
 ---
 
-### Scene 2 · Connect Instagram (0:25–0:55) — **[proves `instagram_business_basic` + `pages_show_list`]**
+### Scene 2 · Connect Instagram (0:25–0:55) — **[proves `instagram_business_basic`]**
 
-**Show:** Dashboard → click **"Connect Instagram"** button
+**Show:** Dashboard → Accounts tab → click **"Connect Instagram"** button
 
-*"When the user clicks Connect Instagram, they're taken to Meta's official OAuth consent screen."*
+*"When the user clicks Connect Instagram, they're redirected to Meta's official Instagram OAuth consent screen."*
 
-- The browser navigates to `facebook.com/dialog/oauth` (Meta's own domain — visible in URL bar)
-- **[If two-factor required, complete it]**
-- Consent screen shows the permissions being requested — *pause here for 3 seconds so reviewers can see the exact permission list*
-- Select the **Facebook Page** linked to Account A
-- Select the **Instagram Business account** to connect
-- Click **Continue** / **Allow**
-- Browser redirects back to DM Shiyam dashboard
+- The browser navigates to `instagram.com/oauth/authorize` (Meta's own domain — visible in URL bar)
+- **[If not already signed into Instagram, complete Instagram login]**
+- Consent screen shows the exact permissions being requested — *pause here for 3 seconds so reviewers can see the permission list*: `instagram_business_basic`, `instagram_business_manage_messages`, `instagram_business_manage_comments`
+- Click **Allow**
+- Browser redirects back to `dm-shiyam.vercel.app/api/instagram/oauth/callback` → then to the dashboard
 
-*"The user grants permission, selects which Facebook Page and Instagram account to connect, and we're redirected back to DM Shiyam. The Instagram account is now linked."*
+*"The user grants permission on Instagram's own consent screen, and we're redirected back to DM Shiyam. The Instagram Business account is now linked."*
 
-- Show the dashboard now displaying the connected Instagram username
+- Show the dashboard now displaying the connected Instagram username as an active card in the Accounts tab
 
 ---
 
@@ -117,7 +115,7 @@ Have a **fresh account** ready to demonstrate signup, OR delete `dmshiyamofficia
 
 **Show:** Still on Account B's device — open Instagram Direct inbox
 
-*"On the commenter's phone, a direct message has just arrived from my Instagram account, sent via Meta's Private Replies API."*
+*"On the commenter's phone, a direct message has just arrived from my Instagram account, sent via Meta's Private Replies API using the `instagram_business_manage_messages` permission."*
 
 - Show the DM in Account B's inbox from Account A
 - Open the DM — display the message body: *"Hi [username]! Here's the info you asked for..."*

@@ -1,0 +1,83 @@
+# DM Shiyam — Meta App Review — Pickup Notes
+
+## Status as of 2026-07-12 evening
+- Data deletion endpoint LIVE at https://dm-shiyam.vercel.app/api/instagram/data-deletion
+- Deletion status page LIVE at https://dm-shiyam.vercel.app/deletion-status/[code]
+- All concurrency/dedup/rate-limit fixes pushed to main (commits ec89104, 32c82bb, 5732c9b)
+- Privacy policy updated with sub-processors (Vercel, Neon, OpenAI, Resend, Razorpay, Meta, Google)
+
+## Critical decision made 2026-07-12
+SWITCH from old Facebook Login for Business flow to NEW Instagram Business Login flow.
+
+### Why we switched
+- Current submission had 6 permissions (instagram_basic, instagram_manage_comments,
+  instagram_manage_messages, pages_show_list, pages_manage_metadata, pages_read_engagement)
+- pages_read_engagement had no legitimate justification → guaranteed rejection risk
+- New flow needs only 3 permissions, all clearly justified
+- No FB Page dependency for end users
+
+## TOMORROW'S TODO — do these in order
+
+### STEP 1 — User does in Meta App Dashboard (~5 min)
+1. Go to App Review > Permissions and Features
+2. DELETE (trash icon) all 6 current permissions:
+   - pages_show_list
+   - pages_manage_metadata
+   - pages_read_engagement
+   - instagram_basic
+   - instagram_manage_comments
+   - instagram_manage_messages
+3. Go to Settings > Advanced > Products > REMOVE "Facebook Login for Business"
+4. Products > ADD "Instagram" > select "API setup with Instagram Login"
+5. In Instagram > API Setup with Instagram Login > Business login settings:
+   - OAuth Redirect URI: https://dm-shiyam.vercel.app/api/instagram/oauth/callback
+   - Deauthorize callback: https://dm-shiyam.vercel.app/api/instagram/data-deletion
+   - Data Deletion Request URL: https://dm-shiyam.vercel.app/api/instagram/data-deletion
+   - Add scopes: instagram_business_basic, instagram_business_manage_comments,
+     instagram_business_manage_messages
+6. App Review > add the 3 new instagram_business_* permissions to submission
+
+### STEP 2 — Cascade builds (~30 min)
+Files to create:
+- src/app/api/instagram/oauth/authorize/route.ts
+  → GET: build authorize URL with client_id, redirect_uri, scope, state (JWT-signed to prevent CSRF)
+  → 302 redirect to https://www.instagram.com/oauth/authorize?...
+- src/app/api/instagram/oauth/callback/route.ts
+  → GET: verify state, exchange code via POST https://api.instagram.com/oauth/access_token
+  → Exchange short-lived for long-lived: GET https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=...&access_token=...
+  → Fetch account details: GET https://graph.instagram.com/me?fields=id,username&access_token=...
+  → Call createAccount() with instagram_account_id, instagram_username, access_token, user_id
+  → Redirect to /dashboard?connected=1
+Files to modify:
+- src/components/AccountsTab.tsx
+  → Replace manual token form with big "Connect Instagram" button linking to /api/instagram/oauth/authorize
+  → Keep manual form behind "Advanced" toggle for test/dev use
+- .env.example
+  → Add INSTAGRAM_APP_ID, INSTAGRAM_APP_SECRET (already there), INSTAGRAM_REDIRECT_URI, OAUTH_STATE_SECRET
+- docs/APP_REVIEW_SCREENCAST.md
+  → Remove all Facebook Page selection mentions
+  → Remove pages_show_list and business_management from permission map
+  → Rewrite Scene 2 to be Instagram-only OAuth
+  → New permission map: instagram_business_basic, instagram_business_manage_comments, instagram_business_manage_messages
+- docs/META_APP_REVIEW.md (stale — either delete or rewrite for new flow)
+
+### STEP 3 — User records screencast + submits (~30 min)
+- Follow updated APP_REVIEW_SCREENCAST.md
+- Test IG account already connected (dmshiyamofficial@gmail.com credentials in Meta dashboard testing box)
+- Upload video to each of the 3 permissions in App Review
+- Paste reviewer instructions (Cascade will provide finalized text after code is done)
+- Click Submit
+
+## Key facts to remember
+- Deployed URL: https://dm-shiyam.vercel.app
+- GitHub: AnkitVats99/dm-shiyam, main branch
+- Test contact email for Meta: dmshiyamofficial@gmail.com
+- Legal entity for Data Handling form: "DM Shiyam" (Udyam-registered proprietorship, India)
+- Sub-processors disclosed: Vercel, Neon Postgres, OpenAI, Resend, Razorpay, Meta, Google
+- Data deletion callback verified working (21-test regression suite passing)
+- Concurrency-safe DM claim via PG advisory locks (200 concurrent test passing)
+
+## Optional after Meta submission
+- Push small privacy policy update referencing Udyam registration number
+- Delete stale docs/META_APP_REVIEW.md (references old flow)
+- Delete stale docs/APP_REVIEW_GUIDE.md sections about instagram_manage_messages

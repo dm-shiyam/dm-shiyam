@@ -4,25 +4,39 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import {
   Instagram,
-  Plus,
   Trash2,
   ToggleLeft,
   ToggleRight,
   RefreshCw,
-  X,
   CheckCircle2,
   Key,
   User,
   Hash,
   Eye,
   EyeOff,
+  ChevronDown,
 } from "lucide-react";
 import type { Account } from "@/types";
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_params: "Instagram did not return an authorization code. Please try again.",
+  bad_state: "Session expired or invalid. Please try connecting again.",
+  misconfigured: "Instagram app credentials are not configured on the server.",
+  code_exchange_failed: "Instagram rejected the authorization code.",
+  code_exchange_error: "Network error while contacting Instagram. Please retry.",
+  long_lived_failed: "Could not obtain a long-lived access token.",
+  long_lived_error: "Network error while extending the access token.",
+  profile_fetch_failed: "Could not read your Instagram profile.",
+  profile_fetch_error: "Network error while reading your Instagram profile.",
+  already_connected: "This Instagram account is already connected to another DM Shiyam user.",
+  persist_failed: "Could not save the connected account.",
+  access_denied: "You cancelled the Instagram authorization.",
+};
 
 export default function AccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -38,6 +52,46 @@ export default function AccountsTab() {
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // Surface OAuth callback outcomes as toasts, then strip the query params.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("ig_connected");
+    const err = params.get("ig_error");
+    if (!connected && !err) return;
+
+    if (connected) {
+      const username = params.get("username");
+      toast.success(
+        username
+          ? `Connected @${username} successfully`
+          : "Instagram account connected"
+      );
+    } else if (err) {
+      const msg =
+        OAUTH_ERROR_MESSAGES[err] ||
+        params.get("ig_error_desc") ||
+        "Failed to connect Instagram account";
+      toast.error(msg);
+    }
+
+    // Clean URL so refresh doesn't re-trigger the toast
+    params.delete("ig_connected");
+    params.delete("ig_error");
+    params.delete("ig_error_desc");
+    params.delete("username");
+    const qs = params.toString();
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + (qs ? `?${qs}` : "")
+    );
+  }, []);
+
+  const startInstagramOAuth = () => {
+    window.location.href = "/api/instagram/oauth/authorize";
+  };
 
   const handleToggle = async (account: Account) => {
   await fetch("/api/accounts", {
@@ -72,23 +126,13 @@ const handleDelete = async (id: string) => {
           Connected Accounts ({accounts.length})
         </h2>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={startInstagramOAuth}
           className="btn-primary !py-2"
         >
-          {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showForm ? "Cancel" : "Connect Account"}
+          <Instagram className="h-4 w-4" />
+          Connect Instagram
         </button>
       </div>
-
-      {showForm && (
-        <AccountForm
-          onSave={() => {
-            setShowForm(false);
-            fetchAccounts();
-          }}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
 
       {accounts.length === 0 ? (
         <div className="card py-16 text-center">
@@ -97,10 +141,11 @@ const handleDelete = async (id: string) => {
             No accounts connected
           </h3>
           <p className="mb-6 text-sm text-gray-500">
-            Connect your Instagram Business accounts to manage multiple profiles.
+            Click below to sign in with Instagram. You&apos;ll be redirected to Meta&apos;s
+            official OAuth screen to grant access.
           </p>
-          <button onClick={() => setShowForm(true)} className="btn-primary">
-            <Plus className="h-4 w-4" /> Connect Account
+          <button onClick={startInstagramOAuth} className="btn-primary">
+            <Instagram className="h-4 w-4" /> Connect Instagram
           </button>
         </div>
       ) : (
@@ -165,6 +210,35 @@ const handleDelete = async (id: string) => {
           <li>3. Webhooks auto-route to the correct account based on the Instagram Account ID</li>
           <li>4. Each account uses its own access token for API calls</li>
         </ul>
+      </div>
+
+      {/* Advanced: manual paste of access token (dev / recovery only) */}
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+          />
+          Advanced: paste access token manually
+        </button>
+        {showAdvanced && (
+          <div className="mt-3">
+            <p className="mb-3 text-xs text-gray-500">
+              Only use this if the OAuth flow above doesn&apos;t work (e.g. sandbox
+              testing with a manually generated token).
+            </p>
+            <AccountForm
+              onSave={() => {
+                setShowAdvanced(false);
+                fetchAccounts();
+              }}
+              onCancel={() => setShowAdvanced(false)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

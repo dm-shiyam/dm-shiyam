@@ -33,6 +33,11 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You cancelled the Instagram authorization.",
 };
 
+const OAUTH_WARNING_MESSAGES: Record<string, string> = {
+  subscription_failed:
+    "Account connected, but webhook subscription failed — comments won't trigger DMs. Try Reconnect to retry.",
+};
+
 export default function AccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +73,15 @@ export default function AccountsTab() {
           ? `Connected @${username} successfully`
           : "Instagram account connected"
       );
+      // Additionally check for a warning (subscription failure, etc.)
+      const warn = params.get("ig_warn");
+      if (warn) {
+        const warnMsg =
+          OAUTH_WARNING_MESSAGES[warn] ||
+          params.get("ig_error_desc") ||
+          "Connected with a non-fatal warning.";
+        toast.warning(warnMsg, { duration: 8000 });
+      }
     } else if (err) {
       const msg =
         OAUTH_ERROR_MESSAGES[err] ||
@@ -80,6 +94,7 @@ export default function AccountsTab() {
     params.delete("ig_connected");
     params.delete("ig_error");
     params.delete("ig_error_desc");
+    params.delete("ig_warn");
     params.delete("username");
     const qs = params.toString();
     window.history.replaceState(

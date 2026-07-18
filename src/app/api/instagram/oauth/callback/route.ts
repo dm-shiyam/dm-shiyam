@@ -13,6 +13,7 @@ import {
   getAccountByInstagramId,
   updateAccount,
 } from "@/lib/db";
+import { subscribeAccountToWebhooks } from "@/lib/instagram-subscription";
 
 const TOKEN_URL = "https://api.instagram.com/oauth/access_token";
 const LONG_LIVED_URL = "https://graph.instagram.com/access_token";
@@ -171,20 +172,15 @@ export async function GET(req: NextRequest) {
         token_expires_at: expiresAt,
         is_active: true,
       });
-      return dashboardRedirect(req, {
-        ig_connected: "1",
-        username,
+    } else {
+      await createAccount({
+        instagram_account_id: instagramAccountId,
+        instagram_username: username,
+        access_token: longLived.access_token,
+        token_expires_at: expiresAt,
+        user_id: userId,
       });
     }
-
-    await createAccount({
-      instagram_account_id: instagramAccountId,
-      instagram_username: username,
-      access_token: longLived.access_token,
-      token_expires_at: expiresAt,
-      user_id: userId,
-    });
-    return dashboardRedirect(req, { ig_connected: "1", username });
   } catch (err) {
     console.error("[ig-oauth] persist failed:", err);
     const msg = err instanceof Error ? err.message : String(err);
@@ -193,4 +189,30 @@ export async function GET(req: NextRequest) {
       ig_error_desc: msg,
     });
   }
+
+  // ── Step 5: subscribe the account to webhook events ──
+  // Without this call, Meta will not deliver any comment/message webhook events
+  // for this account. This is the step that "turns on" the automation.
+  // Idempotent — safe to call again if we're reconnecting an existing account.
+  const sub = await subscribeAccountToWebhooks(
+    instagramAccountId,
+    longLived.access_token
+  );
+  if (!sub.ok) {
+    console.error("[ig-oauth] webhook subscription failed:", sub.error);
+    // Account is saved, but webhooks won't fire until we successfully subscribe.
+    // Surface this to the user so they can retry via a "Reconnect" action.
+    return dashboardRedirect(req, {
+      ig_connected: "1",
+      username,
+      ig_warn: "subscription_failed",
+      ig_error_desc: sub.error?.message || "Unknown subscription error",
+    });
+  }
+
+  console.log(
+    `[ig-oauth] subscribed @${username} (${instagramAccountId}) to webhook fields: ${sub.subscribed_fields?.join(",")}`
+  );
+
+  return dashboardRedirect(req, { ig_connected: "1", username });
 }

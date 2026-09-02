@@ -329,10 +329,10 @@
 | | | 1.1 Test signup → login → connect IG → create automation → comment → DM | | Pending |
 | | | 1.2 Test billing flow (Razorpay checkout → plan upgrade → DM limit increase) | | Pending |
 | | | 1.3 Test edge cases (expired token, rate limit, duplicate comment) | | Pending |
-| S2 | **Demo video** | | Medium | Pending |
-| | | 2.1 Write script / storyboard | | Pending |
-| | | 2.2 Screen record the full product flow | | Pending |
-| | | 2.3 Edit and upload to YouTube / landing page | | Pending |
+| S2 | **Demo video** | | Medium | ✅ Done |
+| | | 2.1 Write script / storyboard | | ✅ Done |
+| | | 2.2 Screen record the full product flow | | ✅ Done |
+| | | 2.3 Edit and upload to YouTube / landing page | | ✅ Done |
 | S3 | **Product Hunt launch** | | Low | Pending |
 | | | 3.1 Create Product Hunt maker account | | Pending |
 | | | 3.2 Prepare tagline, description, screenshots | | Pending |
@@ -370,3 +370,197 @@
 | **Week 3** | P7 (Webhook URL), P8 (Cron) | A4 (Landing page), A5 (Pricing page) | V6 (Analytics), V7 (Social media) |
 | **Week 4** | S1 (E2E testing) | A6 (SEO), S2 (Demo video) | S3 (Product Hunt prep) |
 | **Ongoing** | P9 (Emails), P10 (Admin) | A7 (Feedback), S4 (Content) | V8 (API docs), S5-S6 (Outreach) |
+
+---
+
+## Sprint 3 — Launch (Post Meta-Approval, Sep 2026)
+
+> Meta App Review approved ✅. Focus now: E2E testing → payment testing → prod cutover → launch → marketing.
+> Duration: ~4 weeks. Tasks split by each person's Sprint 1/2 focus area.
+
+---
+
+### Priyanka — Backend Verification, Monitoring, Reliability (16 sub-tasks)
+
+*Focus: End-to-end backend testing, observability, production reliability, IG API verification*
+
+#### Phase 9: End-to-End Backend Testing
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| P17 | **cURL smoke tests for all 3 IG permissions** | | High | Pending |
+| | | 17.1 Verify token scopes via `debug_token` endpoint for each connected account | | Pending |
+| | | 17.2 Test `instagram_business_basic` — fetch profile + recent media | | Pending |
+| | | 17.3 Test `instagram_business_manage_comments` — read comments + POST reply | | Pending |
+| | | 17.4 Test `instagram_business_manage_messages` — list conversations + send DM (within 24hr window) | | Pending |
+| | | 17.5 Commit results as `scripts/test-ig-perms.sh` | | Pending |
+| P18 | **Webhook end-to-end verification** | | High | Pending |
+| | | 18.1 Real comment from second IG account → verify webhook received → verify reply posted → verify DM sent | | Pending |
+| | | 18.2 Verify Meta webhook signature validation is enforced in production | | Pending |
+| | | 18.3 Test webhook idempotency — Meta retry same payload → single side effect | | Pending |
+| P19 | **Rate limit + dedup regression run** | | High | Pending |
+| | | 19.1 Run `npm run test:dedup` against production DB (read-only assertions) | | Pending |
+| | | 19.2 Load test: 100 concurrent webhook posts → verify quota enforcement | | Pending |
+| P20 | **Token lifecycle in production** | | High | Pending |
+| | | 20.1 Verify long-lived token exchange works on prod OAuth callback | | Pending |
+| | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | Pending |
+| | | 20.3 Verify token-expiry warning email actually sends via Resend | | Pending |
+
+#### Phase 10: Observability & Alerting
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| P21 | **Health check endpoint** | | High | Pending |
+| | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | Pending |
+| | | 21.2 Return JSON with per-dependency status + latency | | Pending |
+| P22 | **Error monitoring** | | Medium | Pending |
+| | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | Pending |
+| | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | Pending |
+| P23 | **Admin dashboard MRR/metrics** | | Medium | Pending |
+| | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | Pending |
+| | | 23.2 Add "Meta API errors last 24h" widget | | Pending |
+
+---
+
+### Ankit — Frontend Polish, Onboarding, Marketing Content (15 sub-tasks)
+
+*Focus: Onboarding UX, marketing pages, launch content, feedback loops*
+
+#### Phase 9: End-to-End Frontend Testing
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| A8 | **Cross-browser + device QA** | | High | Pending |
+| | | 8.1 Full flow test on Chrome, Safari, Firefox (desktop) | | Pending |
+| | | 8.2 Full flow test on mobile Chrome + mobile Safari | | Pending |
+| | | 8.3 Fix any layout/OAuth breakage found | | Pending |
+| A9 | **Onboarding funnel audit** | | High | Pending |
+| | | 9.1 Time signup → first connected account → first automation → first DM sent | | Pending |
+| | | 9.2 Identify drop-off points, add inline help / tooltips where users get stuck | | Pending |
+| | | 9.3 Add empty-state CTAs on Dashboard / Automations / Accounts when empty | | Pending |
+
+#### Phase 10: Launch Content
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| A10 | **Landing page conversion polish** | | High | Pending |
+| | | 10.1 Add real testimonials (from beta users — target 3-5) | | Pending |
+| | | 10.2 Add "As approved by Meta ✓" trust badge near hero | | Pending |
+| | | 10.3 Add FAQ section addressing: pricing, cancellation, IG safety, data privacy | | Pending |
+| | | 10.4 Add sticky "Start free trial" CTA on scroll | | Pending |
+| A12 | **Blog posts (S4 owner)** | | Medium | Pending |
+| | | 12.1 "How to automate Instagram DMs" (SEO target: "instagram dm automation") | | Pending |
+| | | 12.2 "ManyChat alternative for Indian creators" (comparison post) | | Pending |
+| | | 12.3 "Turn Instagram comments into leads (with keyword automation)" | | Pending |
+| A13 | **Onboarding emails** | | Medium | Pending |
+| | | 13.1 Welcome email (Day 0) | | Pending |
+| | | 13.2 "Connect your first IG account" nudge (Day 1, if not connected) | | Pending |
+| | | 13.3 "Create your first automation" nudge (Day 3) | | Pending |
+| | | 13.4 Case study email (Day 7) | | Pending |
+| | | 13.5 Upgrade nudge (Day 12, near trial end) | | Pending |
+| A14 | **In-app feedback nudge** | | Low | Pending |
+| | | 14.1 After first DM sent → toast: "How was it? [thumbs up/down]" | | Pending |
+| | | 14.2 Route feedback to support email + dashboard | | Pending |
+
+---
+
+### Venkat — Production Cutover, Payments, Launch Ops (17 sub-tasks)
+
+*Focus: Domain cutover, live payments, analytics events, distribution channels*
+
+#### Phase 9: Production Cutover
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| V9 | **Complete custom domain cutover (V4/V5 continuation)** | | High | Pending |
+| | | 9.1 Add `dmshiyam.com` to Vercel project + verify DNS | | Pending |
+| | | 9.2 Confirm SSL active + www redirect working | | Pending |
+| | | 9.3 Update `APP_URL`, `NEXTAUTH_URL` env vars to `https://dmshiyam.com` | | Pending |
+| | | 9.4 Update Meta App Dashboard: OAuth redirect URI, deauth callback, data deletion URL | | Pending |
+| | | 9.5 Update Razorpay webhook URL to new domain | | Pending |
+| | | 9.6 Update Google OAuth authorized redirect URIs | | Pending |
+| V10 | **Razorpay live mode (KYC done ✅)** | | High | Pending |
+| | | 10.1 Swap test keys → live keys in Vercel env vars | | Pending |
+| | | 10.2 Do one real ₹1 test transaction end-to-end, then refund | | Pending |
+| | | 10.3 Verify live webhook signature validates | | Pending |
+| | | 10.4 Enable Razorpay's automatic email invoices (GST compliance) | | Pending |
+
+#### Phase 10: Payment Reliability
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| V11 | **Payment reconciliation cron** | | Medium | Pending |
+| | | 11.1 Nightly job: pull Razorpay payments last 24h, compare with our subscriptions table | | Pending |
+| | | 11.2 Alert on mismatch (missed webhook, orphan payment) | | Pending |
+| V12 | **Failure scenario testing** | | Medium | Pending |
+| | | 12.1 Card declined → verify no subscription created | | Pending |
+| | | 12.2 User closes checkout → verify no orphan pending state | | Pending |
+| | | 12.3 Network drop mid-payment → verify webhook eventually reconciles | | Pending |
+
+#### Phase 11: Analytics & Distribution
+
+| # | Task | Sub-tasks | Priority | Status |
+|---|------|-----------|----------|--------|
+| V13 | **GA conversion events (V6.3 continuation)** | | Medium | Pending |
+| | | 13.1 Fire `signup_completed` event | | Pending |
+| | | 13.2 Fire `account_connected` event | | Pending |
+| | | 13.3 Fire `automation_created` event | | Pending |
+| | | 13.4 Fire `subscription_started` event (with plan + amount) | | Pending |
+| V14 | **Product Hunt launch (S3 owner)** | | Medium | Pending |
+| | | 14.1 Create maker profile, prep hunter | | Pending |
+| | | 14.2 Prepare: tagline, first comment, gallery, GIF/video | | Pending |
+| | | 14.3 Schedule Tuesday-Thursday launch, coordinate launch-day pings | | Pending |
+| V15 | **Social launch (V7.3 continuation)** | | Medium | Pending |
+| | | 15.1 Post launch on @dmshiyam IG + X | | Pending |
+| | | 15.2 Founder LinkedIn post about the Meta approval journey (proven high-engagement angle) | | Pending |
+| | | 15.3 Reddit posts in r/InstagramMarketing, r/Entrepreneur, r/SocialMediaMarketing | | Pending |
+| V16 | **Paid ads (small budget start)** | | Low | Pending |
+| | | 16.1 Meta Ads: ₹500/day on IG Reels targeting Indian coaches (25-45) | | Pending |
+| | | 16.2 Google Ads: ₹300/day on "instagram auto dm", "manychat alternative", "comment to dm" | | Pending |
+| | | 16.3 Track CPA per channel in GA | | Pending |
+| V17 | **Influencer/creator outreach (S5 owner)** | | Low | Pending |
+| | | 17.1 List 20 Indian coaches/course creators on IG (10K-100K followers) | | Pending |
+| | | 17.2 DM outreach offering free Pro plan for honest review | | Pending |
+| | | 17.3 Track responses + conversions in a sheet | | Pending |
+
+---
+
+### Cascade (Me) — Automation, Scripts, Code Support
+
+*Focus: Anything Priyanka/Ankit/Venkat delegate that's pure code work. Available on-demand for:*
+
+- Writing test scripts (e.g. `scripts/test-ig-perms.sh` for P17)
+- Building new endpoints (e.g. `/api/health` for P21)
+- Code review + bug fixes surfaced during E2E testing
+- Drafting blog post content for A12 (Ankit reviews + publishes)
+- Writing onboarding email copy for A13
+- Refactoring / debugging on request
+- Documentation updates
+
+*Just @-mention the specific task ID and I'll pick it up.*
+
+---
+
+## Sprint 3 Execution Plan
+
+| Week | Priyanka | Ankit | Venkat |
+|------|----------|-------|--------|
+| **Week 1 (Sep 2-8)** | P17 (IG cURL tests), P18 (webhook E2E) | A8 (cross-browser QA), A9 (onboarding audit) | V9 (domain cutover), V10 (Razorpay live) |
+| **Week 2 (Sep 9-15)** | P19 (dedup regression), P20 (token lifecycle) | A10 (landing polish) | V11 (payment reconciliation), V12 (failure tests) |
+| **Week 3 (Sep 16-22)** | P21 (health endpoint), P22 (Sentry) | A12 (blog posts), A13 (onboarding emails) | V13 (GA events), V14 (Product Hunt prep) |
+| **Week 4 (Sep 23-29)** | P23 (MRR dashboard) | A14 (feedback nudge) | V15 (social launch), V16 (paid ads live), V17 (outreach) |
+
+---
+
+## Sprint 3 Success Metrics (End of Week 4)
+
+| Metric | Target |
+|---|---|
+| P0/P1 bugs found in E2E | 0 open |
+| Custom domain live with SSL | ✅ |
+| Razorpay live mode processing payments | ✅ |
+| Signups | 100+ |
+| Users who created ≥1 automation | 30+ |
+| Paying customers | 10+ |
+| MRR | ₹15,000+ |
+| Uptime | 99.5%+ |

@@ -81,3 +81,27 @@ Files to modify:
 - Push small privacy policy update referencing Udyam registration number
 - Delete stale docs/META_APP_REVIEW.md (references old flow)
 - Delete stale docs/APP_REVIEW_GUIDE.md sections about instagram_manage_messages
+
+## v2 backlog (AFTER initial approval)
+### Insights dashboard feature — requires instagram_business_manage_insights
+Goal: show creators the ROI of each automation.
+
+UI:
+  For each automation card, display:
+    - Post reach (from IG insights)
+    - Total comments vs matched keyword comments (match rate %)
+    - DMs sent (already tracked in our DB)
+    - Reply rate (% of DM recipients who replied — from message threads)
+    - "Best-performing automation this month" badge
+
+Code sketch:
+  - New endpoint: /api/insights/automation/[id]
+  - Calls GET graph.instagram.com/{ig-media-id}/insights?metric=reach,impressions,engagement,saved
+  - Cache in Postgres (new table: post_insights, TTL 1 hour) to avoid rate limits
+  - Add InsightsCard component to AccountsTab and each automation row
+
+Submission plan:
+  1. Build feature over 1-2 weeks after initial approval
+  2. Record 30-sec screencast showing the insights UI
+  3. Submit ONLY instagram_business_manage_insights as an add-on review
+  4. Reference the already-approved use case in the description

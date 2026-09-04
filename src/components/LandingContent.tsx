@@ -2,8 +2,34 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function LandingContent() {
+  const [showStickyCta, setShowStickyCta] = useState(false);
+  const [ctaDismissed, setCtaDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("dms_sticky_cta_dismissed") === "1") {
+      setCtaDismissed(true);
+      return;
+    }
+    const onScroll = () => {
+      // Show once user has scrolled roughly past the hero (~600px)
+      setShowStickyCta(window.scrollY > 600);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const dismissCta = () => {
+    setCtaDismissed(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dms_sticky_cta_dismissed", "1");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
       {/* Navbar */}
@@ -36,23 +62,81 @@ export default function LandingContent() {
           <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto leading-relaxed">
             Connect with your Instagram followers instantly. Send personalized DMs triggered by keywords, automate responses, and grow your business without the manual work.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          {/* CTAs + Meta Tech Provider badge (Task 10.2) */}
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-6">
             <Link
               href="/register"
-              className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors text-center"
+              className="inline-flex items-center gap-2 px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-center shadow-sm"
             >
               Start Free Trial
+              <span aria-hidden="true">→</span>
             </Link>
+
+            <div
+              title="Meta Tech Provider — approved via Instagram App Review"
+              className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
+            >
+              {/* Meta wordmark (infinity / \u2135) */}
+              <svg
+                className="w-7 h-7"
+                viewBox="0 0 36 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="metaGrad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#0064E0" />
+                    <stop offset="50%" stopColor="#0082FB" />
+                    <stop offset="100%" stopColor="#0081FB" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M6 18c-2.2 0-4-2.7-4-6s1.8-6 4-6c2.6 0 4.6 2.4 7.2 6.3C15.9 16.4 17.7 18 20 18c2.2 0 4-2.7 4-6s-1.8-6-4-6c-2.3 0-4.1 1.6-6.8 5.7C10.6 15.6 8.6 18 6 18z"
+                  stroke="url(#metaGrad)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="text-left leading-tight">
+                <div className="font-semibold text-gray-900 dark:text-white text-base">
+                  Meta
+                </div>
+                <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  Tech Provider
+                </div>
+              </div>
+            </div>
+
             <Link
               href="#how-it-works"
-              className="px-8 py-3 border-2 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:border-gray-400 dark:hover:border-gray-600 transition-colors text-center"
+              className="px-6 py-3 text-gray-700 dark:text-gray-300 font-medium hover:text-gray-900 dark:hover:text-white transition-colors text-center"
             >
-              See How It Works
+              See how it works →
             </Link>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            No credit card required. Free for 14 days.
-          </p>
+
+          {/* Trust checks */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-12">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
+              </svg>
+              Meta Approved
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
+              </svg>
+              No Credit Card
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
+              </svg>
+              14-Day Free Trial
+            </span>
+          </div>
         </div>
 
         {/* Hero Image Placeholder */}
@@ -67,7 +151,7 @@ export default function LandingContent() {
       </section>
 
       {/* Features Section */}
-      <section className="bg-gray-50 dark:bg-gray-900 py-20 sm:py-32">
+      <section id="features" className="bg-gray-50 dark:bg-gray-900 py-20 sm:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
@@ -179,7 +263,8 @@ export default function LandingContent() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Testimonials Section — hidden until we have real beta-user quotes (Task 10.1) */}
+      {false && (
       <section className="bg-gray-50 dark:bg-gray-900 py-20 sm:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -260,6 +345,59 @@ export default function LandingContent() {
           </div>
         </div>
       </section>
+      )}
+
+      {/* FAQ Section (Task 10.3) */}
+      <section id="faq" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-400">
+            Everything you need to know before you start.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {[
+            {
+              q: "How much does DM Shiyam cost?",
+              a: "We offer a 14-day free trial with no credit card required. Paid plans start affordably and scale with your usage — see the pricing page for current tiers. All plans include unlimited automations; you only pay based on the volume of DMs sent.",
+            },
+            {
+              q: "Can I cancel anytime?",
+              a: "Yes. There are no long-term contracts. You can cancel your subscription from your dashboard at any time and you will retain access until the end of your current billing period. No cancellation fees, ever.",
+            },
+            {
+              q: "Is this safe for my Instagram account?",
+              a: "Yes. DM Shiyam uses Meta's official Instagram Graph API — the same infrastructure Meta approves for business messaging. We never scrape, never use unofficial endpoints, and we respect Instagram's messaging policy (24-hour window, per-user rate limits, dedup). Our app has passed Meta's official App Review.",
+            },
+            {
+              q: "How is my data handled and protected?",
+              a: "Your Instagram access token and message data are encrypted at rest and only used to power your automations. We never sell your data or share it with third parties for advertising. You can request full deletion at any time via the deletion link on your dashboard or by emailing dmshiyamofficial@gmail.com. See our Privacy Policy for the full list of sub-processors.",
+            },
+            {
+              q: "Do I need a Facebook Page to use DM Shiyam?",
+              a: "No. We use Instagram Login directly — you only need an Instagram Business or Creator account. No Facebook Page required.",
+            },
+          ].map((item) => (
+            <details
+              key={item.q}
+              className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 open:shadow-sm"
+            >
+              <summary className="flex items-center justify-between cursor-pointer list-none font-semibold text-gray-900 dark:text-white text-lg">
+                <span>{item.q}</span>
+                <span className="ml-4 text-indigo-600 transition-transform group-open:rotate-45 text-2xl leading-none">
+                  +
+                </span>
+              </summary>
+              <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
+                {item.a}
+              </p>
+            </details>
+          ))}
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
@@ -298,9 +436,19 @@ export default function LandingContent() {
                   </a>
                 </li>
                 <li>
-                  <a href="#pricing" className="hover:text-white">
+                  <Link href="/pricing" className="hover:text-white">
                     Pricing
+                  </Link>
+                </li>
+                <li>
+                  <a href="#faq" className="hover:text-white">
+                    FAQ
                   </a>
+                </li>
+                <li>
+                  <Link href="/blog" className="hover:text-white">
+                    Blog
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -338,6 +486,51 @@ export default function LandingContent() {
           </div>
         </div>
       </footer>
+
+      {/* Sticky bottom CTA (Task 10.4) */}
+      {showStickyCta && !ctaDismissed && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 bg-indigo-600 text-white shadow-lg border-t border-indigo-700 animate-in slide-in-from-bottom"
+          role="region"
+          aria-label="Start free trial"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+            <p className="text-sm sm:text-base font-medium">
+              <span className="hidden sm:inline">
+                Ready to automate your Instagram DMs?{" "}
+              </span>
+              14-day free trial. No credit card required.
+            </p>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/register"
+                className="px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors text-sm whitespace-nowrap"
+              >
+                Start Free Trial
+              </Link>
+              <button
+                type="button"
+                onClick={dismissCta}
+                aria-label="Dismiss"
+                className="p-2 text-indigo-100 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

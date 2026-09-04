@@ -460,6 +460,7 @@
 | | | 13.4 Case study email (Day 7) | | ✅ Done — `sendCaseStudyEmail` with real-world DM stats example + links to `/blog/how-to-automate-instagram-dms` |
 | | | 13.5 Upgrade nudge (Day 12, near trial end) | | ✅ Done — `sendUpgradeNudge`, skipped if user already on paid plan (`plan != free` or `subscription_status = active`) |
 | | | 13.6 Drip cron infrastructure | | ✅ Done — `src/app/api/cron/send-onboarding-emails/route.ts` runs daily at 09:00 UTC (`vercel.json`), pulls candidates by signup age via `getOnboardingCandidates`, atomic `sent_onboarding_emails(user_id, email_type)` PK guarantees at-most-once delivery across cron retries |
+| | | 13.7 Regression test | | ✅ Done — `scripts/test-onboarding-drip.mjs` end-to-end tests all 4 delayed steps + idempotency + conditionals (skip IG-connected, skip paying users); snapshots/restores user state. Run: `node scripts/test-onboarding-drip.mjs your@email.com`. 7/7 passing. |
 | A14 | **In-app feedback nudge** | | Low | Pending |
 | | | 14.1 After first DM sent → toast: "How was it? [thumbs up/down]" | | Pending |
 | | | 14.2 Route feedback to support email + dashboard | | Pending |

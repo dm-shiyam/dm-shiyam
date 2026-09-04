@@ -431,7 +431,7 @@
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
 | A8 | **Cross-browser + device QA** | | High | Pending |
-| | | 8.1 Full flow test on Chrome, Safari, Firefox (desktop) | | Pending |
+| | | 8.1 Full flow test on Chrome, Safari, Firefox (desktop) | | Issues Found |
 | | | 8.2 Full flow test on mobile Chrome + mobile Safari | | Pending |
 | | | 8.3 Fix any layout/OAuth breakage found | | Pending |
 | A9 | **Onboarding funnel audit** | | High | Pending |
@@ -443,15 +443,16 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| A10 | **Landing page conversion polish** | | High | Pending |
-| | | 10.1 Add real testimonials (from beta users — target 3-5) | | Pending |
-| | | 10.2 Add "As approved by Meta ✓" trust badge near hero | | Pending |
-| | | 10.3 Add FAQ section addressing: pricing, cancellation, IG safety, data privacy | | Pending |
-| | | 10.4 Add sticky "Start free trial" CTA on scroll | | Pending |
-| A12 | **Blog posts (S4 owner)** | | Medium | Pending |
-| | | 12.1 "How to automate Instagram DMs" (SEO target: "instagram dm automation") | | Pending |
-| | | 12.2 "ManyChat alternative for Indian creators" (comparison post) | | Pending |
-| | | 12.3 "Turn Instagram comments into leads (with keyword automation)" | | Pending |
+| A10 | **Landing page conversion polish** | | High | 🟡 Partial |
+| | | 10.1 Add real testimonials (from beta users — target 3-5) | | Deferred — no beta users yet; existing fake testimonials wrapped in `{false && (...)}` in `LandingContent.tsx` to hide from render until real quotes are collected |
+| | | 10.2 Add "As approved by Meta ✓" trust badge near hero | | ✅ Done — Meta "Tech Provider" logo card next to hero CTA + three green check labels (Meta Approved, No Credit Card, 14-Day Free Trial) |
+| | | 10.3 Add FAQ section addressing: pricing, cancellation, IG safety, data privacy | | ✅ Done — `#faq` section with 5 questions (pricing, cancellation, IG safety, data privacy, FB Page not required), native `<details>` accordions, footer link |
+| | | 10.4 Add sticky "Start free trial" CTA on scroll | | ✅ Done — indigo bottom bar appears after 600px scroll, dismissible with × persisted in `localStorage` |
+| A12 | **Blog posts (S4 owner)** | | Medium | ✅ Done |
+| | | 12.1 "How to automate Instagram DMs" (SEO target: "instagram dm automation") | | ✅ Done — `src/content/blog/how-to-automate-instagram-dms.md` (~1450 words, dated 2026-07-15) |
+| | | 12.2 "ManyChat alternative for Indian creators" (comparison post) | | ✅ Done — `src/content/blog/manychat-alternative-for-indian-creators.md` (~1500 words, dated 2026-09-04) |
+| | | 12.3 "Turn Instagram comments into leads (with keyword automation)" | | ✅ Done — `src/content/blog/turn-instagram-comments-into-leads.md` (~1600 words, dated 2026-08-12) |
+| | | 12.4 Blog infrastructure (routes, markdown parser, sitemap, dynamic OG images) | | ✅ Done — `/blog` index + `/blog/[slug]` detail (statically generated), `src/lib/blog.ts` (gray-matter + marked), `src/app/og/blog/[slug]/route.tsx` (1200×630 `ImageResponse`), sitemap includes all posts, JSON-LD BlogPosting schema, `@tailwindcss/typography` for prose, footer link |
 | A13 | **Onboarding emails** | | Medium | Pending |
 | | | 13.1 Welcome email (Day 0) | | Pending |
 | | | 13.2 "Connect your first IG account" nudge (Day 1, if not connected) | | Pending |

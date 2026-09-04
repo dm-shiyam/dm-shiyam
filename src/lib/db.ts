@@ -1052,6 +1052,56 @@ export async function claimOnboardingEmail(
  * `minDays` inclusive lower bound, `maxDays` inclusive upper bound relative to NOW().
  * Filters out users who've already been sent this email type.
  */
+// ═══════════════════════════════════════════════════════════════════════════
+//  A14: In-app feedback
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type FeedbackRating = "up" | "down";
+export interface FeedbackRow {
+  id: string;
+  user_id: string | null;
+  rating: FeedbackRating;
+  comment: string | null;
+  source: string;
+  created_at: string;
+}
+
+export async function createFeedback(data: {
+  userId: string | null;
+  rating: FeedbackRating;
+  comment?: string | null;
+  source?: string;
+}): Promise<FeedbackRow> {
+  await ensureInit();
+  const id = uuidv4();
+  await execute(
+    `INSERT INTO feedback (id, user_id, rating, comment, source)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, data.userId, data.rating, data.comment ?? null, data.source ?? "first_dm_toast"]
+  );
+  const row = await queryOne<FeedbackRow>(
+    "SELECT * FROM feedback WHERE id = $1",
+    [id]
+  );
+  return row!;
+}
+
+export async function listFeedback(limit = 100): Promise<
+  Array<FeedbackRow & { user_email: string | null; user_name: string | null }>
+> {
+  await ensureInit();
+  return query<
+    FeedbackRow & { user_email: string | null; user_name: string | null }
+  >(
+    `SELECT f.*, u.email AS user_email, u.name AS user_name
+     FROM feedback f
+     LEFT JOIN users u ON u.id = f.user_id
+     ORDER BY f.created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+}
+
 export async function getOnboardingCandidates(
   emailType: OnboardingEmailType,
   minDays: number,

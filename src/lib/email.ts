@@ -74,6 +74,57 @@ function wrapTemplate(body: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  A14: In-app feedback → support inbox
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "dmshiyamofficial@gmail.com";
+
+export async function sendFeedbackToSupport({
+  rating,
+  comment,
+  userEmail,
+  userName,
+  source,
+}: {
+  rating: "up" | "down";
+  comment?: string | null;
+  userEmail?: string | null;
+  userName?: string | null;
+  source: string;
+}) {
+  const emoji = rating === "up" ? "👍" : "👎";
+  const subject = `${emoji} Feedback (${rating}) from ${userName || userEmail || "anon"}`;
+  const commentHtml = comment
+    ? `<p><strong>Comment:</strong></p><blockquote style="border-left:3px solid #ddd;padding-left:12px;color:#333;white-space:pre-wrap;">${escapeHtml(
+        comment
+      )}</blockquote>`
+    : `<p style="color:#666;">No comment provided.</p>`;
+
+  return sendEmail({
+    to: SUPPORT_EMAIL,
+    subject,
+    html: `
+      <h2 style="color:#111;font-size:18px;margin:0 0 12px;">New in-app feedback</h2>
+      <table style="font-size:14px;color:#333;line-height:1.6;">
+        <tr><td><strong>Rating:</strong></td><td>${emoji} ${rating}</td></tr>
+        <tr><td><strong>User:</strong></td><td>${escapeHtml(userName || "(no name)")} &lt;${escapeHtml(userEmail || "anonymous")}&gt;</td></tr>
+        <tr><td><strong>Source:</strong></td><td>${escapeHtml(source)}</td></tr>
+      </table>
+      ${commentHtml}
+      <p style="color:#666;font-size:13px;margin-top:20px;">View all feedback in the <a href="${APP_URL}/admin?tab=feedback">admin dashboard</a>.</p>
+    `,
+  });
+}
+
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  A13: Onboarding drip emails
 //  Sent by /api/cron/send-onboarding-emails (daily) except welcome (immediate).
 //  Idempotency guarded by claimOnboardingEmail() in db.ts.

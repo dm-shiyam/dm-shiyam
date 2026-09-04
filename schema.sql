@@ -124,6 +124,21 @@ CREATE TABLE IF NOT EXISTS deletion_requests (
   completed_at          TIMESTAMPTZ
 );
 
+-- ── A14: In-app feedback ─────────────────────────────────────────────────────
+-- Captures the thumbs-up/down prompt shown after a user's first DM lands,
+-- plus any subsequent feedback submissions. Rating is validated at the DB
+-- boundary so the API doesn't have to trust the client.
+CREATE TABLE IF NOT EXISTS feedback (
+  id          TEXT        PRIMARY KEY,
+  user_id     TEXT,
+  rating      TEXT        NOT NULL CHECK (rating IN ('up', 'down')),
+  comment     TEXT,
+  source      TEXT        NOT NULL DEFAULT 'first_dm_toast',
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
+
 -- ── A13: Onboarding email drip idempotency ──────────────────────────────────
 -- Records which onboarding emails have been sent to which user.
 -- (user_id, email_type) is PK so INSERT ON CONFLICT acts as an atomic mutex,

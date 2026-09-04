@@ -388,12 +388,12 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P17 | **cURL smoke tests for all 3 IG permissions** | | High | Pending |
-| | | 17.1 Verify token scopes via `debug_token` endpoint for each connected account | | Pending |
-| | | 17.2 Test `instagram_business_basic` — fetch profile + recent media | | Pending |
-| | | 17.3 Test `instagram_business_manage_comments` — read comments + POST reply | | Pending |
-| | | 17.4 Test `instagram_business_manage_messages` — list conversations + send DM (within 24hr window) | | Pending |
-| | | 17.5 Commit results as `scripts/test-ig-perms.sh` | | Pending |
+| P17 | **cURL smoke tests for all 3 IG permissions** | | High | 🔶 In Progress |
+| | | 17.1 Verify token scopes via `debug_token` endpoint for each connected account | | Pending (needs prod token) |
+| | | 17.2 Test `instagram_business_basic` — fetch profile + recent media | | Pending (needs prod token) |
+| | | 17.3 Test `instagram_business_manage_comments` — read comments + POST reply | | Pending (needs prod token) |
+| | | 17.4 Test `instagram_business_manage_messages` — list conversations + send DM (within 24hr window) | | Pending (needs prod token) |
+| | | 17.5 Commit results as `scripts/test-ig-perms.sh` | | ✅ Done |
 | P18 | **Webhook end-to-end verification** | | High | Pending |
 | | | 18.1 Real comment from second IG account → verify webhook received → verify reply posted → verify DM sent | | Pending |
 | | | 18.2 Verify Meta webhook signature validation is enforced in production | | Pending |

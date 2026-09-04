@@ -1016,6 +1016,64 @@ export async function claimTokenWarningEmail(
   return rowCount > 0;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  A13: Onboarding email drip
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type OnboardingEmailType =
+  | "welcome_day0"
+  | "connect_ig_day1"
+  | "first_automation_day3"
+  | "case_study_day7"
+  | "upgrade_day12";
+
+/**
+ * Atomically claim the right to send an onboarding email of a given type
+ * to a user. Uses INSERT ... ON CONFLICT DO NOTHING so parallel cron runs
+ * or accidental double-invocations can never send the same drip twice.
+ * Returns true if the caller should send; false if it was already sent.
+ */
+export async function claimOnboardingEmail(
+  userId: string,
+  emailType: OnboardingEmailType
+): Promise<boolean> {
+  await ensureInit();
+  const rowCount = await execute(
+    `INSERT INTO sent_onboarding_emails (user_id, email_type)
+     VALUES ($1, $2)
+     ON CONFLICT (user_id, email_type) DO NOTHING`,
+    [userId, emailType]
+  );
+  return rowCount > 0;
+}
+
+/**
+ * Fetch candidate users for a given drip step, filtered by signup age window.
+ * `minDays` inclusive lower bound, `maxDays` inclusive upper bound relative to NOW().
+ * Filters out users who've already been sent this email type.
+ */
+export async function getOnboardingCandidates(
+  emailType: OnboardingEmailType,
+  minDays: number,
+  maxDays: number
+): Promise<Array<User & { has_account: boolean; automation_count: number }>> {
+  await ensureInit();
+  const rows = await query<User & { has_account: boolean; automation_count: number }>(
+    `SELECT u.*,
+            EXISTS(SELECT 1 FROM accounts a WHERE a.user_id = u.id AND a.is_active = TRUE) AS has_account,
+            (SELECT COUNT(*)::int FROM automations au WHERE au.user_id = u.id) AS automation_count
+     FROM users u
+     WHERE u.created_at >= NOW() - ($2 || ' days')::INTERVAL
+       AND u.created_at <  NOW() - ($1 || ' days')::INTERVAL
+       AND NOT EXISTS (
+         SELECT 1 FROM sent_onboarding_emails s
+         WHERE s.user_id = u.id AND s.email_type = $3
+       )`,
+    [minDays, maxDays, emailType]
+  );
+  return rows;
+}
+
 /**
  * Atomically claim the right to reply to a comment. Returns true if this call
  * won the race. Prevents duplicate comment replies when Meta retries webhooks.

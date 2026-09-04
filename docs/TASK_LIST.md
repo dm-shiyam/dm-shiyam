@@ -453,12 +453,13 @@
 | | | 12.2 "ManyChat alternative for Indian creators" (comparison post) | | ✅ Done — `src/content/blog/manychat-alternative-for-indian-creators.md` (~1500 words, dated 2026-09-04) |
 | | | 12.3 "Turn Instagram comments into leads (with keyword automation)" | | ✅ Done — `src/content/blog/turn-instagram-comments-into-leads.md` (~1600 words, dated 2026-08-12) |
 | | | 12.4 Blog infrastructure (routes, markdown parser, sitemap, dynamic OG images) | | ✅ Done — `/blog` index + `/blog/[slug]` detail (statically generated), `src/lib/blog.ts` (gray-matter + marked), `src/app/og/blog/[slug]/route.tsx` (1200×630 `ImageResponse`), sitemap includes all posts, JSON-LD BlogPosting schema, `@tailwindcss/typography` for prose, footer link |
-| A13 | **Onboarding emails** | | Medium | Pending |
-| | | 13.1 Welcome email (Day 0) | | Pending |
-| | | 13.2 "Connect your first IG account" nudge (Day 1, if not connected) | | Pending |
-| | | 13.3 "Create your first automation" nudge (Day 3) | | Pending |
-| | | 13.4 Case study email (Day 7) | | Pending |
-| | | 13.5 Upgrade nudge (Day 12, near trial end) | | Pending |
+| A13 | **Onboarding emails** | | Medium | ✅ Done |
+| | | 13.1 Welcome email (Day 0) | | ✅ Done — `sendWelcomeEmail` fires from `POST /api/auth/register` and Google `signIn` callback in `lib/auth.ts`, guarded by atomic `claimOnboardingEmail("welcome_day0")` |
+| | | 13.2 "Connect your first IG account" nudge (Day 1, if not connected) | | ✅ Done — `sendConnectIgNudge`, sent only if user has no active account (checked via `EXISTS accounts.is_active`) |
+| | | 13.3 "Create your first automation" nudge (Day 3) | | ✅ Done — `sendFirstAutomationNudge`, sent only if user has zero automations |
+| | | 13.4 Case study email (Day 7) | | ✅ Done — `sendCaseStudyEmail` with real-world DM stats example + links to `/blog/how-to-automate-instagram-dms` |
+| | | 13.5 Upgrade nudge (Day 12, near trial end) | | ✅ Done — `sendUpgradeNudge`, skipped if user already on paid plan (`plan != free` or `subscription_status = active`) |
+| | | 13.6 Drip cron infrastructure | | ✅ Done — `src/app/api/cron/send-onboarding-emails/route.ts` runs daily at 09:00 UTC (`vercel.json`), pulls candidates by signup age via `getOnboardingCandidates`, atomic `sent_onboarding_emails(user_id, email_type)` PK guarantees at-most-once delivery across cron retries |
 | A14 | **In-app feedback nudge** | | Low | Pending |
 | | | 14.1 After first DM sent → toast: "How was it? [thumbs up/down]" | | Pending |
 | | | 14.2 Route feedback to support email + dashboard | | Pending |

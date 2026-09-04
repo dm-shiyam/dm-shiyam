@@ -73,6 +73,160 @@ function wrapTemplate(body: string): string {
   `;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  A13: Onboarding drip emails
+//  Sent by /api/cron/send-onboarding-emails (daily) except welcome (immediate).
+//  Idempotency guarded by claimOnboardingEmail() in db.ts.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function ctaButton(href: string, label: string, color = "#6366f1"): string {
+  return `<a href="${href}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:${color};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${label}</a>`;
+}
+
+// 13.1 Welcome (Day 0) — sent immediately on signup
+export async function sendWelcomeEmail({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `Welcome to ${APP_NAME} 👋 — your 14-day trial has started`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Welcome, ${name || "there"}!</h2>
+      <p>You just started your <strong>14-day free trial</strong> of ${APP_NAME}. No credit card, no strings.</p>
+      <p>Here's what most creators do in the first 10 minutes:</p>
+      <ol style="padding-left:20px;line-height:1.7;">
+        <li><strong>Connect Instagram</strong> — 30-second Meta-approved OAuth.</li>
+        <li><strong>Create your first automation</strong> — pick a keyword, write a DM.</li>
+        <li><strong>Post the Reel</strong> and tell viewers to comment the keyword.</li>
+      </ol>
+      <p>Followers who comment get an instant DM — while you keep making content.</p>
+      ${ctaButton(`${APP_URL}/dashboard`, "Open your dashboard →")}
+      <p style="color:#666;font-size:14px;">Reply to this email if you get stuck — we read every message.</p>
+    `,
+  });
+}
+
+// 13.2 Connect IG nudge (Day 1) — sent if no IG account connected
+export async function sendConnectIgNudge({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `Ready to connect Instagram? (takes 30 seconds)`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">One step to activate ${APP_NAME}</h2>
+      <p>Hi ${name || "there"},</p>
+      <p>Noticed you haven't connected your Instagram account yet. Without it, your automations can't run — and your 14-day trial is ticking.</p>
+      <p><strong>What connecting does:</strong></p>
+      <ul style="padding-left:20px;line-height:1.7;">
+        <li>Uses Meta's official Instagram Business Login (Tech Provider approved).</li>
+        <li>Only three permissions: read profile, read/reply comments, send DMs.</li>
+        <li>No Facebook Page required. Disconnect anytime.</li>
+      </ul>
+      ${ctaButton(`${APP_URL}/dashboard`, "Connect Instagram →")}
+      <p style="color:#666;font-size:14px;">Prefer a walkthrough? Watch our 60-second setup video on the dashboard.</p>
+    `,
+  });
+}
+
+// 13.3 First automation nudge (Day 3)
+export async function sendFirstAutomationNudge({
+  to,
+  name,
+  hasAccount,
+}: {
+  to: string;
+  name: string;
+  hasAccount: boolean;
+}) {
+  return sendEmail({
+    to,
+    subject: `Your first automation earns while you sleep 🌙`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Time to build automation #1</h2>
+      <p>Hi ${name || "there"},</p>
+      <p>Your account's set up${hasAccount ? " and Instagram is connected" : ""} — but no automation is live yet. Let's fix that.</p>
+      <p><strong>The 3-minute starter automation that always works:</strong></p>
+      <ol style="padding-left:20px;line-height:1.7;">
+        <li>Pick your best-performing Reel or post.</li>
+        <li>Add a caption: <em>"Comment <strong>GUIDE</strong> and I'll DM you the free version."</em></li>
+        <li>Create an automation triggered by <code>GUIDE</code> with the resource link in the DM.</li>
+      </ol>
+      <p>Most creators get 20–100 qualified DMs from a single post using this pattern.</p>
+      ${ctaButton(`${APP_URL}/dashboard`, "Create automation →")}
+      <p style="color:#666;font-size:14px;">Need copy inspiration? Check our <a href="${APP_URL}/blog/turn-instagram-comments-into-leads">comments-to-leads playbook</a>.</p>
+    `,
+  });
+}
+
+// 13.4 Case study email (Day 7)
+export async function sendCaseStudyEmail({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `How creators are turning comments into leads with ${APP_NAME}`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">A quick real-world example</h2>
+      <p>Hi ${name || "there"},</p>
+      <p>You're a week into your trial — perfect time to see what other creators are pulling off.</p>
+      <p><strong>The comment-to-DM playbook (2 Reels, 1 week):</strong></p>
+      <ul style="padding-left:20px;line-height:1.7;">
+        <li>Reel 1 — CTA: <em>"Comment HOOKS for the swipe file."</em> Result: 312 comments, 287 DMs auto-sent, 118 replied.</li>
+        <li>Reel 2 — CTA: <em>"Comment PRICE for the guide."</em> Result: 176 comments, 168 DMs, 74 replied.</li>
+      </ul>
+      <p>That's <strong>192 warm conversations in 7 days</strong> — 100% automated, 0 grey-hat scrapers, 100% Meta-approved.</p>
+      <p>The two levers that made it work:</p>
+      <ol style="padding-left:20px;line-height:1.7;">
+        <li>A <strong>specific keyword</strong> in the caption (not "info" or "yes").</li>
+        <li>A <strong>24h follow-up DM</strong> to non-repliers — doubled reply rate.</li>
+      </ol>
+      ${ctaButton(`${APP_URL}/dashboard`, "Build your own →")}
+      <p style="color:#666;font-size:14px;">Full breakdown on the blog: <a href="${APP_URL}/blog/how-to-automate-instagram-dms">How to automate Instagram DMs</a>.</p>
+    `,
+  });
+}
+
+// 13.5 Upgrade nudge (Day 12, near trial end)
+export async function sendUpgradeNudge({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `Your ${APP_NAME} trial ends in 2 days ⏰`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Keep your automations running</h2>
+      <p>Hi ${name || "there"},</p>
+      <p>Your 14-day free trial ends in <strong>2 days</strong>. When it does, your active automations will pause until you pick a plan.</p>
+      <p><strong>Why creators upgrade:</strong></p>
+      <ul style="padding-left:20px;line-height:1.7;">
+        <li>Unlimited automations, keyword-triggered DMs, follow-up sequences.</li>
+        <li>UPI &amp; card billing via Razorpay. GST-compliant invoices.</li>
+        <li>Priority support during Indian working hours.</li>
+        <li>Cancel anytime — no contracts.</li>
+      </ul>
+      ${ctaButton(`${APP_URL}/pricing`, "See plans & upgrade →")}
+      <p style="color:#666;font-size:14px;">Not ready? Reply to this email and tell us what's missing — we read every reply and often ship fixes the same week.</p>
+    `,
+  });
+}
+
 // ═══════════════════════════════════════
 //  DM Limit Warning (80%)
 // ═══════════════════════════════════════

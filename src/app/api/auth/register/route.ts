@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { createUser, getUserByEmail } from "@/lib/db";
+import { createUser, getUserByEmail, claimOnboardingEmail } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,6 +70,19 @@ export async function POST(req: NextRequest) {
         password_hash,
         provider: "credentials",
       });
+
+      // A13.1 — welcome email (fire-and-forget, atomic claim so dup registers can't
+      // trigger duplicate sends if any race happens upstream).
+      (async () => {
+        try {
+          if (await claimOnboardingEmail(user.id, "welcome_day0")) {
+            await sendWelcomeEmail({ to: user.email, name: user.name });
+          }
+        } catch (err) {
+          console.error("[register] welcome email failed:", err);
+        }
+      })();
+
       return NextResponse.json({
         success: true,
         user: { id: user.id, email: user.email, name: user.name },

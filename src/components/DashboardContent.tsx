@@ -135,6 +135,18 @@ export default function DashboardContent() {
     }
   }, []);
 
+  // A14.1 — Fire the first-DM feedback toast whenever we notice at least
+  // one activity with dm_sent === true, guarded once-per-browser via
+  // localStorage. Watching `activities` (not just SSE) means this also works
+  // after a page reload and via 30s polling.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("dms_first_dm_feedback") === "1") return;
+    if (!activities.some((a) => a.dm_sent === true)) return;
+    localStorage.setItem("dms_first_dm_feedback", "pending");
+    showFirstDmFeedbackToast();
+  }, [activities]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -152,17 +164,6 @@ export default function DashboardContent() {
           setActivities((prev) => [newActivity, ...prev].slice(0, 50));
           toast.success(`New activity: @${newActivity.instagram_username}`);
           fetchData();
-
-          // A14.1 — After the user's first successful DM, prompt for feedback.
-          // Guarded by localStorage so we ask once per browser.
-          if (
-            newActivity.dm_sent === true &&
-            typeof window !== "undefined" &&
-            localStorage.getItem("dms_first_dm_feedback") !== "1"
-          ) {
-            localStorage.setItem("dms_first_dm_feedback", "pending");
-            showFirstDmFeedbackToast();
-          }
         } catch {
           // ignore
         }

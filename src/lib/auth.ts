@@ -2,8 +2,22 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin } from "./db";
+import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin, claimOnboardingEmail } from "./db";
 import { rateLimit } from "./rate-limiter";
+import { sendWelcomeEmail } from "./email";
+
+// A13.1 — fire-and-forget welcome. Atomic claim prevents dup sends on races.
+function fireWelcomeEmail(userId: string, email: string, name: string) {
+  (async () => {
+    try {
+      if (await claimOnboardingEmail(userId, "welcome_day0")) {
+        await sendWelcomeEmail({ to: email, name });
+      }
+    } catch (err) {
+      console.error("[auth] welcome email failed:", err);
+    }
+  })();
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -43,6 +57,7 @@ export const authOptions: NextAuthOptions = {
               password_hash: hash,
               provider: "credentials",
             });
+            fireWelcomeEmail(user.id, user.email, user.name);
             return { id: user.id, email: user.email, name: user.name };
           } catch (err) {
             // Postgres unique_violation code — race condition: another concurrent
@@ -78,12 +93,13 @@ export const authOptions: NextAuthOptions = {
         if (existing) return true;
 
         try {
-          await createUser({
+          const created = await createUser({
             email: user.email!,
             name: user.name || "User",
             provider: "google",
             provider_id: account.providerAccountId,
           });
+          fireWelcomeEmail(created.id, created.email, created.name);
         } catch (err) {
           // unique_violation: another concurrent sign-in created the user first.
           // Treat as success — the user exists now, which is what we wanted.

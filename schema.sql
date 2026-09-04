@@ -124,6 +124,19 @@ CREATE TABLE IF NOT EXISTS deletion_requests (
   completed_at          TIMESTAMPTZ
 );
 
+-- ── A13: Onboarding email drip idempotency ──────────────────────────────────
+-- Records which onboarding emails have been sent to which user.
+-- (user_id, email_type) is PK so INSERT ON CONFLICT acts as an atomic mutex,
+-- guaranteeing each drip step fires at most once per user even if the daily
+-- cron overlaps or is re-invoked (Vercel occasionally retries).
+CREATE TABLE IF NOT EXISTS sent_onboarding_emails (
+  user_id     TEXT        NOT NULL,
+  email_type  TEXT        NOT NULL,
+  sent_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, email_type),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Seed the single webhook_health row (idempotent)
 INSERT INTO webhook_health (id, total_received)
 VALUES (1, 0)

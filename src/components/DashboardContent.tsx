@@ -42,6 +42,66 @@ import AccountsTab from "@/components/AccountsTab";
 
 type Tab = "automations" | "activity" | "analytics" | "accounts" | "setup";
 
+// A14.1 — Custom sonner toast: 👍 / 👎 prompt after first DM.
+// Persists until dismissed. Submitting flips localStorage so we never re-prompt.
+async function submitFirstDmFeedback(rating: "up" | "down") {
+  try {
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ rating, source: "first_dm_toast" }),
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    localStorage.setItem("dms_first_dm_feedback", "1");
+    toast.success(rating === "up" ? "Awesome, thanks! 🙌" : "Thanks — we'll dig in.");
+  } catch (err) {
+    console.error("[feedback] submit failed:", err);
+    toast.error("Couldn't send feedback. Try again in a bit.");
+    // allow retry: revert pending flag
+    localStorage.removeItem("dms_first_dm_feedback");
+  }
+}
+
+function showFirstDmFeedbackToast() {
+  toast(
+    (id) => (
+      <div className="flex flex-col gap-3">
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white">
+            Your first DM just went out 🎉
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            How was it?
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              submitFirstDmFeedback("up");
+              toast.dismiss(id);
+            }}
+            className="flex-1 px-3 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-sm font-medium border border-emerald-200 dark:border-emerald-800"
+          >
+            👍 Great
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              submitFirstDmFeedback("down");
+              toast.dismiss(id);
+            }}
+            className="flex-1 px-3 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-sm font-medium border border-rose-200 dark:border-rose-800"
+          >
+            👎 Not quite
+          </button>
+        </div>
+      </div>
+    ),
+    { duration: Infinity, id: "first-dm-feedback" }
+  );
+}
+
 export default function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -92,6 +152,17 @@ export default function DashboardContent() {
           setActivities((prev) => [newActivity, ...prev].slice(0, 50));
           toast.success(`New activity: @${newActivity.instagram_username}`);
           fetchData();
+
+          // A14.1 — After the user's first successful DM, prompt for feedback.
+          // Guarded by localStorage so we ask once per browser.
+          if (
+            newActivity.dm_sent === true &&
+            typeof window !== "undefined" &&
+            localStorage.getItem("dms_first_dm_feedback") !== "1"
+          ) {
+            localStorage.setItem("dms_first_dm_feedback", "pending");
+            showFirstDmFeedbackToast();
+          }
         } catch {
           // ignore
         }

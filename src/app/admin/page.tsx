@@ -21,10 +21,24 @@ import {
   Instagram,
   CheckCircle2,
   XCircle,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import type { AdminStats, User } from "@/types";
 
-type Tab = "overview" | "users" | "errors";
+type Tab = "overview" | "users" | "errors" | "feedback";
+
+type FeedbackRow = {
+  id: string;
+  user_id: string | null;
+  rating: "up" | "down";
+  comment: string | null;
+  source: string;
+  created_at: string;
+  user_email: string | null;
+  user_name: string | null;
+};
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -192,6 +206,7 @@ export default function AdminPage() {
             { id: "overview" as Tab, label: "Overview", icon: BarChart3 },
             { id: "users" as Tab, label: `Users (${users.length})`, icon: Users },
             { id: "errors" as Tab, label: "Errors", icon: AlertTriangle },
+            { id: "feedback" as Tab, label: "Feedback", icon: MessageSquare },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -224,6 +239,7 @@ export default function AdminPage() {
           />
         )}
         {activeTab === "errors" && stats && <ErrorsTab stats={stats} />}
+        {activeTab === "feedback" && <FeedbackTab />}
       </main>
     </div>
   );
@@ -563,6 +579,143 @@ function ErrorsTab({ stats }: { stats: AdminStats }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Feedback Tab (A14.2) ──────────────────────────────────────────────────
+
+function FeedbackTab() {
+  const [rows, setRows] = useState<FeedbackRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/feedback");
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        setRows(data.feedback || []);
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        Loading feedback…
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="text-center py-12 text-red-600">Failed to load: {error}</div>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 py-16 text-center">
+        <MessageSquare className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+        <h3 className="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">
+          No feedback yet
+        </h3>
+        <p className="text-sm text-gray-500">
+          User feedback from the in-app prompt will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  const upCount = rows.filter((r) => r.rating === "up").length;
+  const downCount = rows.length - upCount;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+          <div className="text-sm text-gray-500">Total</div>
+          <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+            {rows.length}
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-900/20 p-4">
+          <div className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+            <ThumbsUp className="h-4 w-4" /> Positive
+          </div>
+          <div className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
+            {upCount}
+          </div>
+        </div>
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-900/20 p-4">
+          <div className="flex items-center gap-1.5 text-sm text-rose-700 dark:text-rose-300">
+            <ThumbsDown className="h-4 w-4" /> Negative
+          </div>
+          <div className="text-2xl font-semibold text-rose-700 dark:text-rose-300">
+            {downCount}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 dark:bg-gray-900">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Rating
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Comment
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Source
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                When
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {rows.map((r) => (
+              <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td className="px-4 py-3">
+                  {r.rating === "up" ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-medium">
+                      <ThumbsUp className="h-4 w-4" /> Up
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300 font-medium">
+                      <ThumbsDown className="h-4 w-4" /> Down
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  <div className="text-gray-900 dark:text-white">
+                    {r.user_name || "(no name)"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {r.user_email || "anonymous"}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-md">
+                  {r.comment || <span className="text-gray-400 italic">—</span>}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-500">{r.source}</td>
+                <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                  {new Date(r.created_at).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

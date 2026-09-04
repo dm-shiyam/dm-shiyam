@@ -461,9 +461,9 @@
 | | | 13.5 Upgrade nudge (Day 12, near trial end) | | ✅ Done — `sendUpgradeNudge`, skipped if user already on paid plan (`plan != free` or `subscription_status = active`) |
 | | | 13.6 Drip cron infrastructure | | ✅ Done — `src/app/api/cron/send-onboarding-emails/route.ts` runs daily at 09:00 UTC (`vercel.json`), pulls candidates by signup age via `getOnboardingCandidates`, atomic `sent_onboarding_emails(user_id, email_type)` PK guarantees at-most-once delivery across cron retries |
 | | | 13.7 Regression test | | ✅ Done — `scripts/test-onboarding-drip.mjs` end-to-end tests all 4 delayed steps + idempotency + conditionals (skip IG-connected, skip paying users); snapshots/restores user state. Run: `node scripts/test-onboarding-drip.mjs your@email.com`. 7/7 passing. |
-| A14 | **In-app feedback nudge** | | Low | Pending |
-| | | 14.1 After first DM sent → toast: "How was it? [thumbs up/down]" | | Pending |
-| | | 14.2 Route feedback to support email + dashboard | | Pending |
+| A14 | **In-app feedback nudge** | | Low | ✅ Done |
+| | | 14.1 After first DM sent → toast: "How was it? [thumbs up/down]" | | ✅ Done — custom sonner toast in `DashboardContent.tsx` fires on first SSE event with `dm_sent === true`, one-shot via `localStorage.dms_first_dm_feedback` |
+| | | 14.2 Route feedback to support email + dashboard | | ✅ Done — `POST /api/feedback` (auth + rate-limited 10/hr) persists to `feedback` table and fires `sendFeedbackToSupport` email to `SUPPORT_EMAIL` (default `dmshiyamofficial@gmail.com`); new **Feedback** tab in `/admin` shows totals + up/down split + table via `GET /api/admin/feedback` |
 
 ---
 

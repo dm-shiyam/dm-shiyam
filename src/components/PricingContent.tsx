@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export default function PricingContent() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
@@ -14,6 +15,16 @@ export default function PricingContent() {
     // Replace with your actual Razorpay key and plan details
     const amount = plan === "pro" ? 9900 : 99900; // in paise (INR 99 or INR 999)
     const planName = plan === "pro" ? "DM Shiyam Pro" : "DM Shiyam Business";
+
+    // GA4 conversion — V13.4 subscription_started (checkout intent).
+    // Fired here (before Razorpay redirect) because the hosted checkout page
+    // takes over the browser session and we lose the opportunity to fire it
+    // after payment succeeds. The actual "paid" event is tracked server-side
+    // via the Razorpay webhook (see `src/app/api/billing/webhook/route.ts`).
+    trackEvent({
+      name: "subscription_started",
+      params: { plan, amount, currency: "INR" },
+    });
 
     // Create order on backend
     fetch("/api/billing/checkout", {

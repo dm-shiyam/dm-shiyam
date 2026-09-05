@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Send, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
+import { trackEvent } from "@/lib/analytics";
 
 interface Props {
   defaultSignup?: boolean;
@@ -47,6 +48,13 @@ export default function LoginForm({ defaultSignup = false }: Props) {
       setError(msg);
       toast.error(msg);
     } else {
+      if (isSignup) {
+        // GA4 conversion — V13.1 signup_completed
+        trackEvent({
+          name: "signup_completed",
+          params: { method: "credentials" },
+        });
+      }
       toast.success(isSignup ? "Account created! Welcome 🎉" : "Welcome back!");
       router.push(callbackUrl);
     }

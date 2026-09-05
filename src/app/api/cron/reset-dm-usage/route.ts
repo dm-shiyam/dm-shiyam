@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resetMonthlyDmUsage } from "@/lib/db";
+import { captureError } from "@/lib/monitoring";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
@@ -27,7 +28,7 @@ async function handler(req: NextRequest) {
       resetAt: new Date().toISOString(),
     });
   } catch (err) {
-    console.error("[cron] Failed to reset DM usage:", err);
+    captureError(err, { route: "cron/reset-dm-usage" });
     return NextResponse.json({ error: "Reset failed" }, { status: 500 });
   }
 }

@@ -413,9 +413,9 @@
 | P21 | **Health check endpoint** | | High | ✅ Done |
 | | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | ✅ Done (`src/app/api/health/route.ts`) |
 | | | 21.2 Return JSON with per-dependency status + latency | | ✅ Done (parallel checks + timeout + 503 on down) |
-| P22 | **Error monitoring** | | Medium | Pending |
-| | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | Pending |
-| | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | Pending |
+| P22 | **Error monitoring** | | Medium | ✅ Done (DSN-gated) |
+| | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | ✅ Done (`@sentry/nextjs` + `src/lib/monitoring.ts`) |
+| | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | ✅ Done (`captureError`/`captureAlert` wired in all 5 critical routes; see `docs/SENTRY_SETUP.md`) |
 | P23 | **Admin dashboard MRR/metrics** | | Medium | Pending |
 | | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | Pending |
 | | | 23.2 Add "Meta API errors last 24h" widget | | Pending |

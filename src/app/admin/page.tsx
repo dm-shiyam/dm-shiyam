@@ -24,6 +24,10 @@ import {
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
+  IndianRupee,
+  TrendingUp,
+  TrendingDown,
+  UserPlus,
 } from "lucide-react";
 import type { AdminStats, User } from "@/types";
 
@@ -197,6 +201,9 @@ export default function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
+        {/* Revenue Metrics (P23.1) */}
+        {stats && <RevenueGrid stats={stats} />}
+
         {/* Stats Overview */}
         {stats && <StatsGrid stats={stats} />}
 
@@ -210,6 +217,7 @@ export default function AdminPage() {
           ].map((tab) => (
             <button
               key={tab.id}
+              data-tab={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
                 activeTab === tab.id
@@ -241,6 +249,83 @@ export default function AdminPage() {
         {activeTab === "errors" && stats && <ErrorsTab stats={stats} />}
         {activeTab === "feedback" && <FeedbackTab />}
       </main>
+    </div>
+  );
+}
+
+// ── Revenue Grid (P23.1) ──
+// Displays MRR, ARR, active subs, ARPU, churn, and trialing users.
+// Prices are stored in paise (₹1 = 100 paise), formatted for display in ₹.
+
+function formatRupees(paise: number): string {
+  const rupees = paise / 100;
+  if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(2)}L`;
+  if (rupees >= 1000) return `₹${(rupees / 1000).toFixed(1)}K`;
+  return `₹${rupees.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function RevenueGrid({ stats }: { stats: AdminStats }) {
+  const cards = [
+    {
+      label: "MRR",
+      value: formatRupees(stats.mrr_paise),
+      sub: `ARR: ${formatRupees(stats.arr_paise)}`,
+      icon: IndianRupee,
+      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40",
+    },
+    {
+      label: "Active Subscribers",
+      value: stats.active_subscribers.toLocaleString(),
+      sub: stats.active_subscribers > 0
+        ? `ARPU: ${formatRupees(stats.arpu_paise)}`
+        : "No paying users yet",
+      icon: Crown,
+      color: "text-amber-600 bg-amber-50 dark:bg-amber-950/40",
+    },
+    {
+      label: "Trialing (14d)",
+      value: stats.trialing_users.toLocaleString(),
+      sub: "Free plan, joined <14d",
+      icon: UserPlus,
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/40",
+    },
+    {
+      label: "Churned (30d)",
+      value: stats.churned_last_30d.toLocaleString(),
+      sub: stats.churned_last_30d === 0
+        ? "No churn — nice"
+        : "cancelled + expired",
+      icon: stats.churned_last_30d === 0 ? TrendingUp : TrendingDown,
+      color:
+        stats.churned_last_30d === 0
+          ? "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40"
+          : "text-rose-600 bg-rose-50 dark:bg-rose-950/40",
+    },
+  ];
+
+  return (
+    <div className="mb-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {cards.map((card) => (
+        <div
+          key={card.label}
+          className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`rounded-lg p-1.5 ${card.color}`}>
+              <card.icon className="h-3.5 w-3.5" />
+            </div>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {card.label}
+            </span>
+          </div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {card.value}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            {card.sub}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -283,8 +368,63 @@ function OverviewTab({ stats, users }: { stats: AdminStats; users: User[] }) {
 
   const recentUsers = users.slice(0, 5);
 
+  // P23.2: elevate error count to a first-class widget so it's visible
+  // above the fold on the Overview tab. Threshold: 10 errors/24h = warn,
+  // 50 = critical (matches Sentry alert rules in docs/SENTRY_SETUP.md).
+  const errorSeverity: "ok" | "warn" | "critical" =
+    stats.errors_last_24h >= 50
+      ? "critical"
+      : stats.errors_last_24h >= 10
+        ? "warn"
+        : "ok";
+  const errorColor =
+    errorSeverity === "critical"
+      ? "border-rose-300 bg-rose-50 dark:bg-rose-950/30"
+      : errorSeverity === "warn"
+        ? "border-amber-300 bg-amber-50 dark:bg-amber-950/30"
+        : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30";
+  const errorTextColor =
+    errorSeverity === "critical"
+      ? "text-rose-700 dark:text-rose-300"
+      : errorSeverity === "warn"
+        ? "text-amber-700 dark:text-amber-300"
+        : "text-emerald-700 dark:text-emerald-300";
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Meta API Errors (last 24h) — P23.2 */}
+      <div className={`rounded-xl border-2 p-6 lg:col-span-2 ${errorColor}`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className={`flex items-center gap-2 text-sm font-semibold mb-1 ${errorTextColor}`}>
+              <AlertTriangle className="h-4 w-4" />
+              Meta API Errors — Last 24h
+            </div>
+            <p className={`text-3xl font-bold ${errorTextColor}`}>
+              {stats.errors_last_24h.toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              {stats.errors_last_7d.toLocaleString()} in last 7 days
+              {" · "}
+              {errorSeverity === "critical"
+                ? "🚨 Investigate now — likely token expiry or Meta outage"
+                : errorSeverity === "warn"
+                  ? "⚠️ Elevated — check Errors tab"
+                  : "✅ Healthy"}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const el = document.querySelector('[data-tab="errors"]') as HTMLButtonElement | null;
+              el?.click();
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+          >
+            View Errors →
+          </button>
+        </div>
+      </div>
+
       {/* Plan Distribution */}
       <div className="rounded-xl border border-gray-100 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Plan Distribution</h3>

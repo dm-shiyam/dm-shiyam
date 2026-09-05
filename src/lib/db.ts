@@ -806,6 +806,12 @@ export async function getAdminStats(): Promise<AdminStats> {
     total_accounts,
     plans,
     recent_errors,
+    // ── P23: Revenue + reliability queries ──
+    active_paid_users,
+    churned_last_30d,
+    trialing_users,
+    errors_last_24h,
+    errors_last_7d,
   ] = await Promise.all([
     cnt("SELECT COUNT(*)::int AS count FROM users"),
     cnt(`SELECT COUNT(DISTINCT user_id)::int AS count FROM activity_log
@@ -832,7 +838,51 @@ export async function getAdminStats(): Promise<AdminStats> {
        ORDER BY count DESC
        LIMIT 10`
     ),
+
+    // Paid subscribers grouped by plan (excludes free tier)
+    query<{ plan: string; count: number }>(
+      `SELECT plan, COUNT(*)::int AS count FROM users
+       WHERE subscription_status = 'active' AND plan != 'free'
+       GROUP BY plan`
+    ),
+
+    // Churned: cancelled or expired in last 30 days
+    cnt(`SELECT COUNT(*)::int AS count FROM users
+         WHERE subscription_status IN ('cancelled', 'expired')
+         AND updated_at >= NOW() - INTERVAL '30 days'`),
+
+    // Trialing: free plan, joined within last 14 days (typical trial window)
+    cnt(`SELECT COUNT(*)::int AS count FROM users
+         WHERE plan = 'free' AND created_at >= NOW() - INTERVAL '14 days'`),
+
+    // API errors in last 24h (Meta API failures surface here as dm_sent=false + error_message)
+    cnt(`SELECT COUNT(*)::int AS count FROM activity_log
+         WHERE error_message IS NOT NULL AND error_message != ''
+         AND created_at >= NOW() - INTERVAL '24 hours'`),
+
+    cnt(`SELECT COUNT(*)::int AS count FROM activity_log
+         WHERE error_message IS NOT NULL AND error_message != ''
+         AND created_at >= NOW() - INTERVAL '7 days'`),
   ]);
+
+  // Compute MRR from active subscriber counts × plan prices.
+  // Plan prices are the source of truth — never query Razorpay for MRR to
+  // avoid rate limits / inconsistent snapshots on dashboard load.
+  const { PLANS } = await import("./plans");
+  const paid_by_plan = active_paid_users.map((row) => {
+    const price = PLANS[row.plan as keyof typeof PLANS]?.price_monthly ?? 0;
+    return {
+      plan: row.plan,
+      count: row.count,
+      mrr_paise: price * row.count,
+    };
+  });
+
+  const mrr_paise = paid_by_plan.reduce((sum, p) => sum + p.mrr_paise, 0);
+  const active_subscribers = paid_by_plan.reduce((sum, p) => sum + p.count, 0);
+  const arpu_paise =
+    active_subscribers > 0 ? Math.round(mrr_paise / active_subscribers) : 0;
+  const arr_paise = mrr_paise * 12;
 
   return {
     total_users,
@@ -846,6 +896,15 @@ export async function getAdminStats(): Promise<AdminStats> {
     total_accounts,
     plans,
     recent_errors,
+    mrr_paise,
+    arr_paise,
+    active_subscribers,
+    arpu_paise,
+    churned_last_30d,
+    trialing_users,
+    paid_by_plan,
+    errors_last_24h,
+    errors_last_7d,
   };
 }
 

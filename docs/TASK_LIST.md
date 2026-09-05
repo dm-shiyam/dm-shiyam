@@ -413,12 +413,16 @@
 | P21 | **Health check endpoint** | | High | ✅ Done |
 | | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | ✅ Done (`src/app/api/health/route.ts`) |
 | | | 21.2 Return JSON with per-dependency status + latency | | ✅ Done (parallel checks + timeout + 503 on down) |
-| P22 | **Error monitoring** | | Medium | ✅ Done (DSN-gated) |
+| P22 | **Error monitoring** | | Medium | 🔶 Code done, awaiting activation |
 | | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | ✅ Done (`@sentry/nextjs` + `src/lib/monitoring.ts`) |
 | | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | ✅ Done (`captureError`/`captureAlert` wired in all 5 critical routes; see `docs/SENTRY_SETUP.md`) |
-| P23 | **Admin dashboard MRR/metrics** | | Medium | Pending |
-| | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | Pending |
-| | | 23.2 Add "Meta API errors last 24h" widget | | Pending |
+| | | 22.3 Sign up at sentry.io (free tier) and create `dm-shiyam` project | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md steps 1-2) |
+| | | 22.4 Copy DSN + add 5 env vars to Vercel (SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN) | | Pending (Priyanka — 5 min) |
+| | | 22.5 Redeploy Vercel + trigger test error via `/api/health?force_error=1` to confirm Sentry receives it | | Pending (Priyanka — after 22.4) |
+| | | 22.6 Configure alert rules in Sentry (payment failures, cron failures, IG webhook sig failures) | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md step 5) |
+| P23 | **Admin dashboard MRR/metrics** | | Medium | ✅ Done |
+| | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | ✅ Done (`RevenueGrid` widget with MRR/ARR/ARPU/churn/trialing on `/admin`) |
+| | | 23.2 Add "Meta API errors last 24h" widget | | ✅ Done (traffic-light widget in Overview tab: green<10, amber 10-49, red≥50) |
 
 ---
 

@@ -133,6 +133,17 @@ export interface AdminStats {
   total_accounts: number;
   plans: Array<{ plan: string; count: number }>;
   recent_errors: Array<{ error_message: string; count: number; last_seen: string }>;
+  // ── P23: Revenue metrics ──
+  mrr_paise: number;                    // Monthly Recurring Revenue in paise
+  arr_paise: number;                    // Annual Recurring Revenue (mrr * 12)
+  active_subscribers: number;           // paid users with subscription_status='active'
+  arpu_paise: number;                   // Average Revenue Per User (mrr / active_subscribers)
+  churned_last_30d: number;             // users with subscription_status in cancelled/expired in last 30 days
+  trialing_users: number;               // free plan users, joined in last 14 days
+  paid_by_plan: Array<{ plan: string; count: number; mrr_paise: number }>;
+  // ── P23: Reliability metrics ──
+  errors_last_24h: number;              // activity_log rows with error_message in last 24h
+  errors_last_7d: number;               // activity_log rows with error_message in last 7d
 }
 
 // ── Webhook Payload ──

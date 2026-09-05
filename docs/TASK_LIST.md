@@ -410,9 +410,9 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| P21 | **Health check endpoint** | | High | Pending |
-| | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | Pending |
-| | | 21.2 Return JSON with per-dependency status + latency | | Pending |
+| P21 | **Health check endpoint** | | High | ✅ Done |
+| | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | ✅ Done (`src/app/api/health/route.ts`) |
+| | | 21.2 Return JSON with per-dependency status + latency | | ✅ Done (parallel checks + timeout + 503 on down) |
 | P22 | **Error monitoring** | | Medium | Pending |
 | | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | Pending |
 | | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | Pending |

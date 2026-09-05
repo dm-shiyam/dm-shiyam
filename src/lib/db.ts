@@ -747,6 +747,42 @@ export async function getAllUsers(): Promise<User[]> {
   );
 }
 
+// V11: Return users whose local subscription row is marked "active". Used by
+// the nightly payment-reconciliation cron to verify each active user has at
+// least one recent successful Razorpay charge on file.
+export async function getActiveSubscribers(): Promise<
+  Array<{
+    id: string;
+    email: string;
+    plan: string;
+    razorpay_subscription_id: string | null;
+    razorpay_customer_id: string | null;
+    updated_at: Date;
+  }>
+> {
+  await ensureInit();
+  return query(
+    `SELECT id, email, plan, razorpay_subscription_id, razorpay_customer_id, updated_at
+     FROM users
+     WHERE subscription_status = 'active'
+       AND plan <> 'free'
+       AND razorpay_subscription_id IS NOT NULL`
+  );
+}
+
+// V11: Reverse lookup for reconciliation — given a Razorpay subscription id,
+// find our user row. Returns undefined if no matching subscription is linked
+// (i.e. we received a webhook / payment for a subscription we never issued).
+export async function getUserByRazorpaySubscriptionId(
+  subscriptionId: string
+): Promise<User | undefined> {
+  await ensureInit();
+  return queryOne<User>(
+    "SELECT * FROM users WHERE razorpay_subscription_id = $1",
+    [subscriptionId]
+  );
+}
+
 export async function updateUserRole(
   userId: string,
   role: string

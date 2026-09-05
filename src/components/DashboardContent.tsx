@@ -39,6 +39,7 @@ import {
 import type { Automation, ActivityLog, DashboardStats, Account } from "@/types";
 import AnalyticsTab from "@/components/AnalyticsTab";
 import AccountsTab from "@/components/AccountsTab";
+import { trackEvent } from "@/lib/analytics";
 
 type Tab = "automations" | "activity" | "analytics" | "accounts" | "setup";
 
@@ -63,7 +64,9 @@ async function submitFirstDmFeedback(rating: "up" | "down") {
 }
 
 function showFirstDmFeedbackToast() {
-  toast(
+  // Use `toast.custom` — the plain `toast(...)` overload expects a string/
+  // ReactNode title, not a `(id) => ReactElement` render function.
+  toast.custom(
     (id) => (
       <div className="flex flex-col gap-3">
         <div>
@@ -831,6 +834,21 @@ function AutomationForm({
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error("Failed to save");
+      if (!initial) {
+        // GA4 conversion — V13.3 automation_created (only on POST, not PUT)
+        const keywordCount = keywords
+          .split(",")
+          .map((k) => k.trim())
+          .filter(Boolean).length;
+        trackEvent({
+          name: "automation_created",
+          params: {
+            trigger_type: "comment_keyword",
+            keyword_count: keywordCount,
+            ai_enabled: aiEnabled,
+          },
+        });
+      }
       toast.success(
         initial ? "Automation updated" : "Automation created!"
       );

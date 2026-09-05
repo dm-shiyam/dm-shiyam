@@ -496,9 +496,9 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V11 | **Payment reconciliation cron** | | Medium | Pending |
-| | | 11.1 Nightly job: pull Razorpay payments last 24h, compare with our subscriptions table | | Pending |
-| | | 11.2 Alert on mismatch (missed webhook, orphan payment) | | Pending |
+| V11 | **Payment reconciliation cron** | | Medium | ✅ Done |
+| | | 11.1 Nightly job: pull Razorpay payments last 24h, compare with our subscriptions table | | ✅ Done (`src/app/api/cron/reconcile-payments/route.ts` — 25h window, paginated fetch, forward + reverse pass) |
+| | | 11.2 Alert on mismatch (missed webhook, orphan payment) | | ✅ Done (Sentry `captureAlert` with clipped mismatch sample; regression test `scripts/test-reconcile-payments.mjs` 6/6 passing; scheduled 03:00 UTC daily in `vercel.json`) |
 | V12 | **Failure scenario testing** | | Medium | Pending |
 | | | 12.1 Card declined → verify no subscription created | | Pending |
 | | | 12.2 User closes checkout → verify no orphan pending state | | Pending |
@@ -508,11 +508,12 @@
 
 | # | Task | Sub-tasks | Priority | Status |
 |---|------|-----------|----------|--------|
-| V13 | **GA conversion events (V6.3 continuation)** | | Medium | Pending |
-| | | 13.1 Fire `signup_completed` event | | Pending |
-| | | 13.2 Fire `account_connected` event | | Pending |
-| | | 13.3 Fire `automation_created` event | | Pending |
-| | | 13.4 Fire `subscription_started` event (with plan + amount) | | Pending |
+| V13 | **GA conversion events (V6.3 continuation)** | | Medium | ✅ Done |
+| | | 13.1 Fire `signup_completed` event | | ✅ Done (`LoginForm.tsx` + `LoginFormComponent.tsx` on credentials-signup success; Google-signup event deferred until `provider` is surfaced in session/JWT) |
+| | | 13.2 Fire `account_connected` event | | ✅ Done (`AccountsTab.tsx` on `?ig_connected=1` query param) |
+| | | 13.3 Fire `automation_created` event | | ✅ Done (`DashboardContent.tsx` on POST /api/automations success; PUT edits deliberately skipped) |
+| | | 13.4 Fire `subscription_started` event (with plan + amount) | | ✅ Done (`PricingContent.tsx` — fires before Razorpay redirect since hosted checkout takes over the tab; server-side "paid" tracked via existing Razorpay webhook) |
+| | | 13.5 Typed helper (bonus) | | ✅ Done (`src/lib/analytics.ts` — `trackEvent()` with discriminated-union `ConversionEvent`, no-op on SSR / missing gtag) |
 | V14 | **Product Hunt launch (S3 owner)** | | Medium | Pending |
 | | | 14.1 Create maker profile, prep hunter | | Pending |
 | | | 14.2 Prepare: tagline, first comment, gallery, GIF/video | | Pending |

@@ -17,6 +17,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { Account } from "@/types";
+import { trackEvent } from "@/lib/analytics";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   missing_params: "Instagram did not return an authorization code. Please try again.",
@@ -68,6 +69,14 @@ export default function AccountsTab() {
 
     if (connected) {
       const username = params.get("username");
+      // GA4 conversion — V13.2 account_connected
+      trackEvent({
+        name: "account_connected",
+        params: {
+          provider: "instagram",
+          ...(username ? { username } : {}),
+        },
+      });
       toast.success(
         username
           ? `Connected @${username} successfully`

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Send, Mail, Lock, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { Suspense } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 function LoginFormContent({ defaultSignup }: { defaultSignup?: boolean }) {
   const router = useRouter();
@@ -64,6 +65,11 @@ function LoginFormContent({ defaultSignup }: { defaultSignup?: boolean }) {
         });
 
         if (signInRes?.ok) {
+          // GA4 conversion — V13.1 signup_completed
+          trackEvent({
+            name: "signup_completed",
+            params: { method: "credentials" },
+          });
           router.push("/dashboard");
         } else {
           setError("Sign-in failed after registration");

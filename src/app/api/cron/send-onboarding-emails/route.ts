@@ -14,6 +14,7 @@ import {
   sendCaseStudyEmail,
   sendUpgradeNudge,
 } from "@/lib/email";
+import { captureError } from "@/lib/monitoring";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
@@ -106,15 +107,16 @@ async function runStep(
         else result.skipped++;
       } catch (err) {
         result.errors++;
-        console.error(
-          `[cron:onboarding-emails] ${step} failed for user ${user.id}:`,
-          err
-        );
+        captureError(err, {
+          route: "cron/send-onboarding-emails",
+          step,
+          user_id: user.id,
+        });
       }
     }
   } catch (err) {
     result.errors++;
-    console.error(`[cron:onboarding-emails] ${step} step failed:`, err);
+    captureError(err, { route: "cron/send-onboarding-emails", step });
   }
 
   return result;

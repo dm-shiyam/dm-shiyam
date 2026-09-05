@@ -15,6 +15,7 @@ import {
 import { rateLimit } from "@/lib/rate-limiter";
 import { emitNewActivity } from "@/lib/activity-events";
 import { sendDmLimitWarning, sendDmLimitReached } from "@/lib/email";
+import { captureError, captureAlert } from "@/lib/monitoring";
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN!;
 const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN!;
@@ -88,7 +89,11 @@ export async function POST(req: NextRequest) {
 
   const signature = req.headers.get("x-hub-signature-256");
   if (!verifySignature(rawBody, signature)) {
-    console.error("[webhook] Invalid signature — rejecting request");
+    captureAlert(
+      "IG webhook: invalid signature",
+      { route: "webhook/instagram", ip: clientIp, has_signature: signature !== null },
+      "warning"
+    );
     return new NextResponse("Forbidden", { status: 403 });
   }
 
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
   }
 
   processWebhookAsync(body).catch((err) =>
-    console.error("[webhook] Async processing error:", err)
+    captureError(err, { route: "webhook/instagram", phase: "async_processing" })
   );
 
   return new NextResponse("EVENT_RECEIVED", { status: 200 });

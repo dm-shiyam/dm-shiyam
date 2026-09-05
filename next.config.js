@@ -32,4 +32,22 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Wrap with Sentry only when SENTRY_ORG + SENTRY_PROJECT are set (source map upload).
+// If those env vars are unset, we still export the plain config so builds work
+// on any machine without Sentry credentials.
+let finalConfig = nextConfig;
+if (process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { withSentryConfig } = require("@sentry/nextjs");
+  finalConfig = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    disableLogger: true,
+    // Automatically tree-shake Sentry logger statements in prod
+    automaticVercelMonitors: true,
+  });
+}
+
+module.exports = finalConfig;

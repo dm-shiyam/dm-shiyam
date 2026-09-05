@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserById, updateUserPlan } from "@/lib/db";
 import crypto from "crypto";
+import { captureError, captureAlert } from "@/lib/monitoring";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,11 @@ export async function POST(request: NextRequest) {
       crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 
     if (!sigValid) {
+      captureAlert(
+        "Razorpay webhook: invalid signature",
+        { route: "billing/webhook", ip: request.headers.get("x-forwarded-for") ?? "" },
+        "warning"
+      );
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
@@ -61,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ status: "ok" });
   } catch (error) {
-    console.error("Razorpay webhook error:", error);
+    captureError(error, { route: "billing/webhook" });
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

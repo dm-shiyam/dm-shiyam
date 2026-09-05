@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAccountsWithExpiringTokens, updateAccount, getUserById, touchAccountRefresh, claimTokenWarningEmail } from "@/lib/db";
 import { refreshLongLivedToken, computeExpiryDate } from "@/lib/token-manager";
 import { sendTokenExpiryWarning } from "@/lib/email";
+import { captureError, captureAlert } from "@/lib/monitoring";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const APP_ID = process.env.INSTAGRAM_APP_ID!;
 const APP_SECRET = process.env.INSTAGRAM_APP_SECRET!;
 
 async function handler(req: NextRequest) {
+  try {
   const authHeader = req.headers.get("authorization");
   const providedSecret = authHeader?.replace("Bearer ", "") || "";
 
@@ -16,6 +18,7 @@ async function handler(req: NextRequest) {
   }
 
   if (!APP_ID || !APP_SECRET) {
+    captureAlert("cron:refresh-tokens missing IG credentials", { route: "cron/refresh-tokens" }, "error");
     return NextResponse.json({ error: "Instagram credentials not configured" }, { status: 500 });
   }
 
@@ -63,11 +66,24 @@ async function handler(req: NextRequest) {
     }
   }
 
+  const failedCount = results.filter((r) => !r.success).length;
+  if (failedCount > 0) {
+    captureAlert(
+      `cron:refresh-tokens had ${failedCount} failures`,
+      { route: "cron/refresh-tokens", total: expiringAccounts.length, failed: failedCount },
+      "warning"
+    );
+  }
+
   return NextResponse.json({
     refreshed_at: new Date().toISOString(),
     total_checked: expiringAccounts.length,
     results,
   });
+  } catch (err) {
+    captureError(err, { route: "cron/refresh-tokens" });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
 }
 
 export async function GET(req: NextRequest) { return handler(req); }

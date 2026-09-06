@@ -45,10 +45,12 @@ export default function PricingContent() {
 
       const data = await res.json();
 
-      if (data.subscription_id) {
-        window.location.href = data.shortUrl || "/dashboard";
+      if (data.short_url) {
+        window.location.href = data.short_url;
       } else if (data.error) {
         alert(`Unable to start checkout: ${data.error}`);
+      } else {
+        alert("Checkout URL missing from response. Please contact support.");
       }
     } catch (err) {
       console.error("Checkout error:", err);

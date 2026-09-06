@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       subscription_id: subscription.id,
       razorpay_key: process.env.RAZORPAY_KEY_ID,
+      short_url: subscription.short_url,
     });
   } catch (error) {
     console.error("Checkout error:", error);

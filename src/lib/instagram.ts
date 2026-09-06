@@ -1,8 +1,13 @@
 // lib/instagram.ts
 // Fixed version — resolves DM-not-sending bug
 
-const GRAPH_API_VERSION = "v19.0";
-const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+// IMPORTANT: Instagram Business Login tokens (prefix "IGAA...") only work
+// against graph.instagram.com. Hitting graph.facebook.com with an IGBL token
+// returns { code: 190, "Invalid OAuth access token" } → every DM silently fails.
+// If we ever migrate back to Facebook Login user tokens (prefix "EAA..."),
+// switch this back to graph.facebook.com.
+const GRAPH_API_VERSION = "v21.0";
+const BASE_URL = `https://graph.instagram.com/${GRAPH_API_VERSION}`;
 
 // Retry config
 const MAX_RETRIES = 3;

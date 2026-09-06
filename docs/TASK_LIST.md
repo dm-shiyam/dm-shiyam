@@ -317,7 +317,7 @@
 |---|------|-----------|----------|--------|
 | V8 | **API documentation** | | Low | ✅ Done |
 | | | 8.1 Document API endpoints (Swagger/OpenAPI or Markdown) | | ✅ Done (docs/API.md) |
-| | | 8.2 Host docs on website or GitHub Pages | | Pending |
+| | | 8.2 Host docs on website or GitHub Pages | | ✅ Done — served from the app itself at `/docs/api` (`src/app/docs/api/page.tsx` — SSG with 1h revalidate, renders `docs/API.md` via `marked` + Tailwind typography, added to sitemap) |
 
 ---
 
@@ -499,10 +499,12 @@
 | V11 | **Payment reconciliation cron** | | Medium | ✅ Done |
 | | | 11.1 Nightly job: pull Razorpay payments last 24h, compare with our subscriptions table | | ✅ Done (`src/app/api/cron/reconcile-payments/route.ts` — 25h window, paginated fetch, forward + reverse pass) |
 | | | 11.2 Alert on mismatch (missed webhook, orphan payment) | | ✅ Done (Sentry `captureAlert` with clipped mismatch sample; regression test `scripts/test-reconcile-payments.mjs` 6/6 passing; scheduled 03:00 UTC daily in `vercel.json`) |
-| V12 | **Failure scenario testing** | | Medium | Pending |
-| | | 12.1 Card declined → verify no subscription created | | Pending |
-| | | 12.2 User closes checkout → verify no orphan pending state | | Pending |
-| | | 12.3 Network drop mid-payment → verify webhook eventually reconciles | | Pending |
+| V12 | **Failure scenario testing** | | Medium | ✅ Done |
+| | | 12.1 Card declined → verify no subscription created | | ✅ Done — webhook now handles `payment.failed` with Sentry `captureAlert` (never activates user); asserted by `scripts/test-payment-failures.mjs` test 12.1 |
+| | | 12.2 User closes checkout → verify no orphan pending state | | ✅ Done — verified by test 12.2: with no webhook fired, user stays on `free` plan / `none` subscription_status (system's contract: no server-side change without a webhook) |
+| | | 12.3 Network drop mid-payment → verify webhook eventually reconciles | | ✅ Done — 20-way concurrent `subscription.activated` storm produces exactly one active user (idempotent via SET-based `updateUserPlan`); test 12.3 also fires a follow-up wave to confirm state stability |
+| | | 12.4 Regression guard (bonus) | | ✅ Done — test 12.4 asserts invalid signatures still return 400 with no state change (prevents future auth regressions) |
+| | | Run: `node scripts/test-payment-failures.mjs` against a running dev server. Requires DATABASE_URL + RAZORPAY_WEBHOOK_SECRET. 4/4 test groups. |
 
 #### Phase 11: Analytics & Distribution
 

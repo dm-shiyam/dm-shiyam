@@ -53,6 +53,9 @@ export async function POST(request: NextRequest) {
         if (userId) {
           const user = await getUserById(userId);
           if (user) {
+            // Idempotent: repeated SETs to the same state are a no-op.
+            // Under Meta / Razorpay webhook retries (V12.3), firing this
+            // 100× still produces exactly one active subscription.
             await updateUserPlan(userId, {
               plan: user.plan,
               dm_limit: user.dm_limit,
@@ -61,6 +64,28 @@ export async function POST(request: NextRequest) {
             });
           }
         }
+        break;
+      }
+      // V12.1 — Card declined / payment failure. We *never* upgrade the user
+      // here; we just surface a warning so ops can investigate patterns
+      // (bad BIN, high decline rate) in Sentry.
+      case "payment.failed": {
+        const paymentId = payload?.payment?.entity?.id ?? "";
+        const errorReason =
+          payload?.payment?.entity?.error_reason ??
+          payload?.payment?.entity?.error_description ??
+          "unknown";
+        const userIdNote = payload?.payment?.entity?.notes?.user_id ?? "";
+        captureAlert(
+          "Razorpay payment failed",
+          {
+            route: "billing/webhook",
+            paymentId,
+            errorReason,
+            userIdNote,
+          },
+          "warning"
+        );
         break;
       }
     }

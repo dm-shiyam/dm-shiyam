@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import type { AdminStats, User } from "@/types";
 
-type Tab = "overview" | "users" | "errors" | "feedback";
+type Tab = "overview" | "users" | "errors" | "feedback" | "webhooks";
 
 type FeedbackRow = {
   id: string;
@@ -214,6 +214,7 @@ export default function AdminPage() {
             { id: "users" as Tab, label: `Users (${users.length})`, icon: Users },
             { id: "errors" as Tab, label: "Errors", icon: AlertTriangle },
             { id: "feedback" as Tab, label: "Feedback", icon: MessageSquare },
+            { id: "webhooks" as Tab, label: "Webhooks", icon: Activity },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -248,6 +249,7 @@ export default function AdminPage() {
         )}
         {activeTab === "errors" && stats && <ErrorsTab stats={stats} />}
         {activeTab === "feedback" && <FeedbackTab />}
+        {activeTab === "webhooks" && <WebhookHealthTab />}
       </main>
     </div>
   );
@@ -857,5 +859,271 @@ function FeedbackTab() {
         </table>
       </div>
     </div>
+  );
+}
+
+// ── Webhook Health Tab ──
+// Diagnoses "auto-DM stopped after Meta review" issues per-account:
+// token expiry, webhook field subscription status (live-fetched from Meta),
+// last DM sent time. One-click re-subscribe for any account.
+
+type WebhookHealthResponse = {
+  summary: { total: number; healthy: number; warning: number; critical: number };
+  global_webhook: {
+    last_received_at: string | null;
+    last_event_type: string | null;
+    total_received: number;
+  } | null;
+  accounts: Array<{
+    account_id: string;
+    user_id?: string;
+    instagram_username: string;
+    instagram_account_id: string;
+    is_active: boolean;
+    token: {
+      expires_at: string | null;
+      days_until_expiry: number | null;
+      status: "ok" | "expiring_soon" | "expired" | "unknown";
+    };
+    subscription: {
+      fields: string[];
+      ok: boolean;
+      missing: string[];
+      error?: string;
+    };
+    last_dm_sent_at: string | null;
+    overall: "healthy" | "warning" | "critical";
+  }>;
+};
+
+function WebhookHealthTab() {
+  const [data, setData] = useState<WebhookHealthResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [resubscribing, setResubscribing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/webhook-health");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setData(await res.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function resubscribe(accountId: string, username: string) {
+    if (!confirm(`Re-subscribe @${username} to webhook fields?`)) return;
+    setResubscribing(accountId);
+    try {
+      const res = await fetch("/api/admin/webhook-health", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ account_id: accountId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) {
+        alert(`✓ Re-subscribed @${username}`);
+        await load();
+      } else {
+        alert(`✗ Failed: ${body.error?.message ?? body.error ?? `HTTP ${res.status}`}`);
+      }
+    } catch (e) {
+      alert(`✗ ${e instanceof Error ? e.message : "Network error"}`);
+    } finally {
+      setResubscribing(null);
+    }
+  }
+
+  if (loading && !data) {
+    return <div className="text-sm text-gray-500 dark:text-gray-400">Loading webhook health…</div>;
+  }
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+        {error}
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const { summary, global_webhook, accounts } = data;
+  const globalMins = global_webhook?.last_received_at
+    ? Math.floor((Date.now() - new Date(global_webhook.last_received_at).getTime()) / 60000)
+    : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SummaryCard label="Total accounts" value={summary.total} color="text-gray-700 dark:text-gray-300" />
+        <SummaryCard label="Healthy" value={summary.healthy} color="text-emerald-600" />
+        <SummaryCard label="Warning" value={summary.warning} color="text-amber-600" />
+        <SummaryCard label="Critical" value={summary.critical} color="text-red-600" />
+      </div>
+
+      {/* Global webhook health */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Meta webhook endpoint</h3>
+          <button
+            onClick={load}
+            className="flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </button>
+        </div>
+        {global_webhook ? (
+          <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+            <div>
+              <div className="text-xs text-gray-500">Last event received</div>
+              <div className={`font-medium ${globalMins !== null && globalMins > 60 ? "text-amber-600" : "text-gray-900 dark:text-gray-100"}`}>
+                {globalMins === null ? "never" : globalMins < 1 ? "just now" : `${globalMins} min ago`}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Last event type</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">{global_webhook.last_event_type ?? "—"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Total events (all time)</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">{global_webhook.total_received.toLocaleString()}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+            No webhook events received yet. Check Meta App Dashboard → Webhooks → Instagram.
+          </div>
+        )}
+      </div>
+
+      {/* Per-account table */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <tr>
+              <th className="px-4 py-3">Account</th>
+              <th className="px-4 py-3">Token</th>
+              <th className="px-4 py-3">Subscription</th>
+              <th className="px-4 py-3">Last DM sent</th>
+              <th className="px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {accounts.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                  No connected Instagram accounts yet.
+                </td>
+              </tr>
+            )}
+            {accounts.map((a) => (
+              <tr key={a.account_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <StatusDot overall={a.overall} />
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">@{a.instagram_username}</div>
+                      <div className="text-xs text-gray-500">
+                        id: {a.instagram_account_id} {a.is_active ? "" : "• disabled"}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <TokenPill status={a.token.status} days={a.token.days_until_expiry} />
+                </td>
+                <td className="px-4 py-3">
+                  {a.subscription.error ? (
+                    <span className="text-xs text-red-600" title={a.subscription.error}>
+                      error: {a.subscription.error.slice(0, 40)}
+                    </span>
+                  ) : a.subscription.ok ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {a.subscription.fields.join(", ")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                      <XCircle className="h-3 w-3" />
+                      missing: {a.subscription.missing.join(", ") || "all fields"}
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                  {a.last_dm_sent_at ? new Date(a.last_dm_sent_at).toLocaleString() : "never"}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => resubscribe(a.account_id, a.instagram_username)}
+                    disabled={resubscribing === a.account_id}
+                    className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300"
+                  >
+                    {resubscribing === a.account_id ? "Re-subscribing…" : "Re-subscribe"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      <div className="text-xs uppercase text-gray-500">{label}</div>
+      <div className={`text-2xl font-semibold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function StatusDot({ overall }: { overall: "healthy" | "warning" | "critical" }) {
+  const cls =
+    overall === "healthy"
+      ? "bg-emerald-500"
+      : overall === "warning"
+        ? "bg-amber-500"
+        : "bg-red-500";
+  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${cls}`} title={overall} />;
+}
+
+function TokenPill({
+  status,
+  days,
+}: {
+  status: "ok" | "expiring_soon" | "expired" | "unknown";
+  days: number | null;
+}) {
+  const label =
+    status === "ok"
+      ? `${days}d left`
+      : status === "expiring_soon"
+        ? `${days}d left`
+        : status === "expired"
+          ? "expired"
+          : "unknown";
+  const cls =
+    status === "ok"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      : status === "expiring_soon"
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+        : status === "expired"
+          ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+          : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+      {label}
+    </span>
   );
 }

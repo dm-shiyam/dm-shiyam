@@ -43,6 +43,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "yearly",
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/docs/api`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
   ];
 
   const postEntries: MetadataRoute.Sitemap = getAllPostMeta().map((post) => ({

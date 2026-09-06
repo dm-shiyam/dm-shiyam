@@ -103,7 +103,7 @@ export async function sendPrivateReply(
   commentId: string,
   messageText: string,
   accessToken: string
-): Promise<{ success: boolean; error?: string; messageId?: string }> {
+): Promise<{ success: boolean; error?: string; messageId?: string; duplicate?: boolean }> {
   const url = `${BASE_URL}/me/messages`;
 
   const body = {
@@ -134,6 +134,25 @@ export async function sendPrivateReply(
 
       if (!res.ok || data.error) {
         lastError = data.error?.message ?? `HTTP ${res.status}`;
+
+        // Meta's private_reply is per-COMMENT globally. If another automation
+        // (or a prior run against the same account) already sent one, Meta
+        // rejects with subcode 2534014 / "already has a reply". Treat as a
+        // soft success — the recipient did get a DM, just from a different
+        // automation. Our local dedup normally catches this, but historical
+        // rows or dev/prod overlap can slip through.
+        const errCode = data.error?.code;
+        const errSubcode = data.error?.error_subcode;
+        const errMsg = String(data.error?.message ?? "");
+        if (
+          errSubcode === 2534014 ||
+          errCode === 2534014 ||
+          /already has a reply/i.test(errMsg)
+        ) {
+          console.log(`[sendPrivateReply] Comment ${commentId} already has a private_reply — treating as soft-duplicate`);
+          return { success: true, duplicate: true };
+        }
+
         console.error(`[sendPrivateReply] API error (attempt ${attempt + 1}):`, JSON.stringify(data.error ?? data));
 
         if (isRetryable(res.status) && attempt < MAX_RETRIES) continue;

@@ -5,16 +5,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { PLANS } from "@/lib/plans";
+import type { PlanConfig, PlanType } from "@/types";
+
+type PaidPlan = Exclude<PlanType, "free">;
 
 export default function PricingContent() {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
-    "monthly"
-  );
+  const [loadingPlan, setLoadingPlan] = useState<PaidPlan | null>(null);
 
-  const handleCheckout = (plan: "pro" | "business") => {
-    // Replace with your actual Razorpay key and plan details
-    const amount = plan === "pro" ? 9900 : 99900; // in paise (INR 99 or INR 999)
-    const planName = plan === "pro" ? "DM Shiyam Pro" : "DM Shiyam Business";
+  const handleCheckout = async (plan: PaidPlan) => {
+    const planConfig = PLANS[plan];
+    setLoadingPlan(plan);
 
     // GA4 conversion — V13.4 subscription_started (checkout intent).
     // Fired here (before Razorpay redirect) because the hosted checkout page
@@ -23,29 +24,38 @@ export default function PricingContent() {
     // via the Razorpay webhook (see `src/app/api/billing/webhook/route.ts`).
     trackEvent({
       name: "subscription_started",
-      params: { plan, amount, currency: "INR" },
+      params: {
+        plan,
+        amount: planConfig.price_monthly,
+        currency: "INR",
+      },
     });
 
-    // Create order on backend
-    fetch("/api/billing/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount,
-        plan,
-        planName,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.subscription_id) {
-          // Redirect to Razorpay or handle subscription
-          window.location.href = data.shortUrl || "/dashboard";
-        } else if (data.error) {
-          alert("Error: " + data.error);
-        }
-      })
-      .catch((err) => console.error("Checkout error:", err));
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+
+      if (res.status === 401) {
+        window.location.href = `/login?next=${encodeURIComponent("/pricing")}`;
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.subscription_id) {
+        window.location.href = data.shortUrl || "/dashboard";
+      } else if (data.error) {
+        alert(`Unable to start checkout: ${data.error}`);
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoadingPlan(null);
+    }
   };
 
   return (
@@ -86,124 +96,62 @@ export default function PricingContent() {
       </section>
 
       {/* Pricing Cards Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Free Tier */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Free
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Perfect for getting started
-              </p>
-            </div>
+          <PricingCard
+            plan={PLANS.free}
+            cta="Get Started Free"
+            ctaHref="/register"
+            variant="default"
+          />
 
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                $0
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                forever
-              </span>
-            </div>
+          {/* Starter Tier */}
+          <PricingCard
+            plan={PLANS.starter}
+            cta={loadingPlan === "starter" ? "Redirecting…" : "Choose Starter"}
+            onCtaClick={() => handleCheckout("starter")}
+            disabled={loadingPlan !== null}
+            variant="default"
+            tagline="For solo creators"
+          />
 
-            <button
-              disabled
-              className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
-            >
-              Current Plan
-            </button>
+          {/* Pro Tier — POPULAR */}
+          <PricingCard
+            plan={PLANS.pro}
+            cta={loadingPlan === "pro" ? "Redirecting…" : "Choose Pro"}
+            onCtaClick={() => handleCheckout("pro")}
+            disabled={loadingPlan !== null}
+            variant="popular"
+            tagline="AI-powered growth"
+          />
 
-            <div className="space-y-4">
-              <FeatureItem included>5 automations</FeatureItem>
-              <FeatureItem included>Basic analytics</FeatureItem>
-              <FeatureItem included>1 Instagram account</FeatureItem>
-              <FeatureItem included>Community support</FeatureItem>
-              <FeatureItem>Advanced features</FeatureItem>
-              <FeatureItem>Priority support</FeatureItem>
-            </div>
+          {/* Business Tier — contact sales until Razorpay plan created */}
+          <PricingCard
+            plan={PLANS.business}
+            cta="Contact Sales"
+            ctaHref="mailto:dmshiyamofficial@gmail.com?subject=Business%20Plan%20Enquiry"
+            variant="default"
+            tagline="Agencies & brands"
+          />
+        </div>
+
+        {/* Agency callout */}
+        <div className="mt-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50 dark:bg-gray-900">
+          <div>
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Need white-label & unlimited everything?
+            </h4>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+              Agency plan starts at {PLANS.agency.price_label}/month — includes dedicated account manager and white-label option.
+            </p>
           </div>
-
-          {/* Pro Tier */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-indigo-600 p-8 relative shadow-lg">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                POPULAR
-              </span>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Pro
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                For growing businesses
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                ₹99
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                /month
-              </span>
-            </div>
-
-            <button
-              onClick={() => handleCheckout("pro")}
-              className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-8"
-            >
-              Start Free Trial
-            </button>
-
-            <div className="space-y-4">
-              <FeatureItem included>50 automations</FeatureItem>
-              <FeatureItem included>Advanced analytics</FeatureItem>
-              <FeatureItem included>5 Instagram accounts</FeatureItem>
-              <FeatureItem included>Priority support</FeatureItem>
-              <FeatureItem included>Custom DM templates</FeatureItem>
-              <FeatureItem>API access</FeatureItem>
-            </div>
-          </div>
-
-          {/* Business Tier */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Business
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                For enterprises & agencies
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                ₹999
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                /month
-              </span>
-            </div>
-
-            <button
-              onClick={() => handleCheckout("business")}
-              className="w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-8"
-            >
-              Start Free Trial
-            </button>
-
-            <div className="space-y-4">
-              <FeatureItem included>Unlimited automations</FeatureItem>
-              <FeatureItem included>Full analytics & reporting</FeatureItem>
-              <FeatureItem included>Unlimited accounts</FeatureItem>
-              <FeatureItem included>Dedicated support</FeatureItem>
-              <FeatureItem included>Custom DM templates</FeatureItem>
-              <FeatureItem included>API access</FeatureItem>
-            </div>
-          </div>
+          <a
+            href="mailto:dmshiyamofficial@gmail.com?subject=Agency%20Plan%20Enquiry"
+            className="whitespace-nowrap px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Talk to Sales
+          </a>
         </div>
       </section>
 
@@ -228,6 +176,9 @@ export default function PricingContent() {
                 <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">
                   Free
                 </th>
+                <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">
+                  Starter
+                </th>
                 <th className="text-center py-4 px-4 font-semibold text-indigo-600 dark:text-indigo-400">
                   Pro
                 </th>
@@ -237,60 +188,16 @@ export default function PricingContent() {
               </tr>
             </thead>
             <tbody>
-              <ComparisonRow
-                feature="Automations"
-                free="5"
-                pro="50"
-                business="Unlimited"
-              />
-              <ComparisonRow
-                feature="Instagram Accounts"
-                free="1"
-                pro="5"
-                business="Unlimited"
-              />
-              <ComparisonRow
-                feature="Analytics"
-                free="Basic"
-                pro="Advanced"
-                business="Full + Reporting"
-              />
-              <ComparisonRow
-                feature="DM Templates"
-                free="Basic"
-                pro="Custom"
-                business="Custom + Library"
-              />
-              <ComparisonRow
-                feature="API Access"
-                free="❌"
-                pro="❌"
-                business="✅"
-              />
-              <ComparisonRow
-                feature="Webhook Support"
-                free="❌"
-                pro="❌"
-                business="✅"
-              />
-              <ComparisonRow
-                feature="Support"
-                free="Community"
-                pro="Priority Email"
-                business="Dedicated"
-              />
-              <ComparisonRow
-                feature="Monthly Reports"
-                free="❌"
-                pro="❌"
-                business="✅"
-              />
-              <ComparisonRow
-                feature="Custom Integrations"
-                free="❌"
-                pro="❌"
-                business="✅"
-              />
+              <ComparisonRow feature="DMs / month" free="500" starter="5,000" pro="25,000" business="100,000" />
+              <ComparisonRow feature="Automations" free="2" starter="10" pro="Unlimited" business="Unlimited" />
+              <ComparisonRow feature="Instagram Accounts" free="1" starter="1" pro="3" business="10" />
+              <ComparisonRow feature="Analytics Dashboard" free="❌" starter="✅" pro="✅ Full" business="✅ Full + Reports" />
+              <ComparisonRow feature="AI Smart Replies" free="❌" starter="❌" pro="✅" business="✅" />
+              <ComparisonRow feature="Custom DM Templates" free="Basic" starter="✅" pro="✅" business="✅ + Library" />
+              <ComparisonRow feature="API Access" free="❌" starter="❌" pro="❌" business="✅" />
+              <ComparisonRow feature="Webhook Support" free="❌" starter="❌" pro="❌" business="✅" />
+              <ComparisonRow feature="Support" free="Community" starter="Email" pro="Priority" business="Dedicated" />
+              <ComparisonRow feature="Custom Integrations" free="❌" starter="❌" pro="❌" business="✅" />
             </tbody>
           </table>
         </div>
@@ -437,11 +344,13 @@ function FeatureItem({
 function ComparisonRow({
   feature,
   free,
+  starter,
   pro,
   business,
 }: {
   feature: string;
   free: string;
+  starter: string;
   pro: string;
   business: string;
 }) {
@@ -453,6 +362,9 @@ function ComparisonRow({
       <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
         {free}
       </td>
+      <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
+        {starter}
+      </td>
       <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300 bg-indigo-50 dark:bg-indigo-900/20">
         {pro}
       </td>
@@ -460,6 +372,89 @@ function ComparisonRow({
         {business}
       </td>
     </tr>
+  );
+}
+
+function PricingCard({
+  plan,
+  cta,
+  onCtaClick,
+  ctaHref,
+  disabled,
+  variant,
+  tagline,
+}: {
+  plan: PlanConfig;
+  cta: string;
+  onCtaClick?: () => void;
+  ctaHref?: string;
+  disabled?: boolean;
+  variant: "default" | "popular";
+  tagline?: string;
+}) {
+  const isPopular = variant === "popular";
+  const cardClasses = isPopular
+    ? "bg-white dark:bg-gray-800 rounded-xl border-2 border-indigo-600 p-6 relative shadow-lg"
+    : "bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6";
+  const buttonClasses = isPopular
+    ? "w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-6 disabled:opacity-60 disabled:cursor-not-allowed"
+    : "w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:opacity-90 transition-opacity mb-6 disabled:opacity-60 disabled:cursor-not-allowed";
+
+  return (
+    <div className={cardClasses}>
+      {isPopular && (
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+          <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-xs font-semibold whitespace-nowrap">
+            MOST POPULAR
+          </span>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          {plan.name}
+        </h3>
+        {tagline && (
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+            {tagline}
+          </p>
+        )}
+      </div>
+
+      <div className="mb-6">
+        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+          {plan.price_label}
+        </span>
+        <span className="text-gray-600 dark:text-gray-400 ml-1 text-sm">
+          {plan.price_monthly === 0 ? "forever" : "/month"}
+        </span>
+      </div>
+
+      {ctaHref ? (
+        <a
+          href={ctaHref}
+          className={buttonClasses + " text-center inline-block"}
+        >
+          {cta}
+        </a>
+      ) : (
+        <button
+          onClick={onCtaClick}
+          disabled={disabled}
+          className={buttonClasses}
+        >
+          {cta}
+        </button>
+      )}
+
+      <div className="space-y-3">
+        {plan.features.map((feature: string) => (
+          <FeatureItem key={feature} included>
+            {feature}
+          </FeatureItem>
+        ))}
+      </div>
+    </div>
   );
 }
 

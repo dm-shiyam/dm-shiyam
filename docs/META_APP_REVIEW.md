@@ -1,13 +1,17 @@
-# Meta App Review — instagram_manage_messages
+# Meta App Review — instagram_business_manage_messages
 
 ## Permission Requested
-**instagram_manage_messages** (Advanced Access)
+**instagram_business_manage_messages** (Advanced Access) — Instagram API with Instagram Business Login (IBL, 2024+ flow)
+
+Also required (Standard Access, auto-granted with IBL app setup):
+- **instagram_business_basic** — read profile + media
+- **instagram_business_manage_comments** — read + reply to comments
 
 ---
 
 ## App Review Submission Description
 
-### How does your app use instagram_manage_messages?
+### How does your app use instagram_business_manage_messages?
 
 > DM Shiyam is an Instagram automation tool for businesses and creators. It enables automated, personalized direct message (DM) responses triggered by specific keywords in Instagram post comments.
 >
@@ -17,7 +21,7 @@
 > 3. The app automatically sends a personalized DM to the commenter with the relevant information (e.g., a product link, pricing details, or a welcome message).
 > 4. Optionally, the app also replies to the comment publicly.
 >
-> **Why we need instagram_manage_messages (Advanced Access):**
+> **Why we need instagram_business_manage_messages (Advanced Access):**
 > Our core feature requires sending the first DM to a user in response to their comment. With Standard Access, we can only message users who have already DM'd the business, which defeats the purpose of comment-triggered automations. Advanced Access allows us to initiate business-to-user conversations, which is essential for this use case.
 >
 > **User consent and anti-spam measures:**
@@ -73,5 +77,5 @@ Record a 30–60 second screen recording showing:
 - [ ] App icon uploaded
 - [ ] Business Verification completed (Settings → Basic → Business Verification)
 - [ ] Screencast recorded and uploaded
-- [ ] `instagram_manage_messages` requested under App Review → Permissions and Features
+- [ ] `instagram_business_manage_messages` requested under App Review → Permissions and Features (Instagram API with Instagram Business Login)
 - [ ] Test user (Venkat/Ankit) available to demo the flow

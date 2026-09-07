@@ -6,7 +6,7 @@ import PricingContent from "@/components/PricingContent";
 
 export const metadata: Metadata = generatePageMetadata(
   "Pricing - DM Shiyam",
-  "Simple, transparent pricing for Instagram automation. Free tier, Pro (₹99/month), Business (₹999/month), and Agency plans.",
+  "Simple, transparent pricing for Instagram automation. Free tier, Starter (₹149/mo), Pro (₹799/mo with AI), Business (₹2,499/mo) and Agency plans.",
   "/pricing",
   ["DM Shiyam pricing", "Instagram automation pricing", "affordable social media tools"]
 );

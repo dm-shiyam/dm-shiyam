@@ -5,30 +5,31 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: "Free",
     price_monthly: 0,
     price_label: "₹0",
-    dm_limit: 100,
+    dm_limit: 500,
     max_automations: 2,
     max_accounts: 1,
     ai_enabled: false,
     analytics: false,
     features: [
-      "100 DMs/month",
+      "500 DMs/month",
       "2 automations",
       "1 Instagram account",
       "Basic templates",
+      "Community support",
     ],
   },
   starter: {
     name: "Starter",
-    price_monthly: 49900, // ₹499 in paise
-    price_label: "₹499",
-    dm_limit: 1000,
-    max_automations: 5,
+    price_monthly: 14900, // ₹149 in paise
+    price_label: "₹149",
+    dm_limit: 5000,
+    max_automations: 10,
     max_accounts: 1,
     ai_enabled: false,
     analytics: true,
     features: [
-      "1,000 DMs/month",
-      "5 automations",
+      "5,000 DMs/month",
+      "10 automations",
       "1 Instagram account",
       "Analytics dashboard",
       "Email support",
@@ -36,15 +37,15 @@ export const PLANS: Record<PlanType, PlanConfig> = {
   },
   pro: {
     name: "Pro",
-    price_monthly: 199900, // ₹1,999 in paise
-    price_label: "₹1,999",
-    dm_limit: 5000,
+    price_monthly: 79900, // ₹799 in paise
+    price_label: "₹799",
+    dm_limit: 25000,
     max_automations: -1, // unlimited
     max_accounts: 3,
     ai_enabled: true,
     analytics: true,
     features: [
-      "5,000 DMs/month",
+      "25,000 DMs/month",
       "Unlimited automations",
       "3 Instagram accounts",
       "AI Smart Replies",
@@ -54,15 +55,15 @@ export const PLANS: Record<PlanType, PlanConfig> = {
   },
   business: {
     name: "Business",
-    price_monthly: 499900, // ₹4,999 in paise
-    price_label: "₹4,999",
-    dm_limit: 20000,
+    price_monthly: 249900, // ₹2,499 in paise
+    price_label: "₹2,499",
+    dm_limit: 100000,
     max_automations: -1,
     max_accounts: 10,
     ai_enabled: true,
     analytics: true,
     features: [
-      "20,000 DMs/month",
+      "100,000 DMs/month",
       "Unlimited automations",
       "10 Instagram accounts",
       "AI Smart Replies",
@@ -73,8 +74,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
   },
   agency: {
     name: "Agency",
-    price_monthly: 999900, // ₹9,999 in paise
-    price_label: "₹9,999",
+    price_monthly: 599900, // ₹5,999 in paise
+    price_label: "₹5,999",
     dm_limit: -1, // unlimited
     max_automations: -1,
     max_accounts: -1, // unlimited

@@ -1036,18 +1036,6 @@ export async function claimDmSend(
   //
   // Lock is transaction-scoped — released automatically on COMMIT/ROLLBACK.
   return withTransaction(async (client) => {
-    // ── Pre-check: Meta's private_reply is per-COMMENT globally. If ANY
-    //    automation has already claimed this comment, skip — otherwise Meta
-    //    returns "The comment you are trying to reply to, already has a reply"
-    //    and we log a phantom failure while another automation succeeded.
-    const globalDup = await client.query(
-      `SELECT 1 FROM sent_dms WHERE comment_id = $1 LIMIT 1`,
-      [commentId]
-    );
-    if ((globalDup.rowCount ?? 0) > 0) {
-      return { claimed: false, reason: "duplicate" };
-    }
-
     await client.query(
       `SELECT pg_advisory_xact_lock(
          hashtext('dm-claim:' || $1 || ':' || $2 || ':' || $3)::bigint
@@ -1074,8 +1062,8 @@ export async function claimDmSend(
     //   - duplicate:     Meta re-delivered same comment → skip DM AND reply
     //   - rate_limited:  fresh comment, cap reached → skip DM, still reply
     const dup = await client.query(
-      `SELECT 1 FROM sent_dms WHERE comment_id = $1 LIMIT 1`,
-      [commentId]
+      `SELECT 1 FROM sent_dms WHERE automation_id = $1 AND comment_id = $2 LIMIT 1`,
+      [automationId, commentId]
     );
     return {
       claimed: false,

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllAutomations, getAutomation, createAutomation, updateAutomation, deleteAutomation } from "@/lib/db";
+import {
+  getAllAutomations,
+  getAutomation,
+  createAutomation,
+  updateAutomation,
+  deleteAutomation,
+  markFirstAutomationCreated,
+} from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
@@ -38,6 +45,11 @@ export async function POST(request: NextRequest) {
       ai_system_prompt: body.ai_system_prompt,
       user_id: userId,
     });
+
+    // A9.1 — funnel milestone (write-once). Never block the response on this.
+    markFirstAutomationCreated(userId).catch((err) =>
+      console.error("[funnel] markFirstAutomationCreated failed:", err)
+    );
 
     return NextResponse.json(automation, { status: 201 });
   } catch (error) {

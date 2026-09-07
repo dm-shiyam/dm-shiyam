@@ -29,7 +29,7 @@ import {
   TrendingDown,
   UserPlus,
 } from "lucide-react";
-import type { AdminStats, User } from "@/types";
+import type { AdminStats, User, FunnelStats } from "@/types";
 
 type Tab = "overview" | "users" | "errors" | "feedback" | "webhooks";
 
@@ -361,6 +361,147 @@ function StatsGrid({ stats }: { stats: AdminStats }) {
   );
 }
 
+// ── A9.1 Onboarding Funnel Widget ──
+// Reads /api/admin/funnel (admin-only) and shows per-stage drop-off + median
+// time-to-activation. Cheap to render on Overview since it's a single row.
+function humanDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "—";
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.round(seconds / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.round(seconds / 3600);
+  if (h < 48) return `${h}h`;
+  return `${Math.round(seconds / 86400)}d`;
+}
+
+function FunnelWidget() {
+  const [funnel, setFunnel] = useState<FunnelStats | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/funnel");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as FunnelStats;
+        if (!cancelled) setFunnel(data);
+      } catch (e) {
+        if (!cancelled) setErr(e instanceof Error ? e.message : "load failed");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (err) {
+    return (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 p-4 lg:col-span-2 text-sm text-rose-700 dark:text-rose-300">
+        Failed to load funnel: {err}
+      </div>
+    );
+  }
+  if (!funnel) {
+    return (
+      <div className="rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900 p-6 lg:col-span-2">
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <RefreshCw className="h-4 w-4 animate-spin" /> Loading funnel…
+        </div>
+      </div>
+    );
+  }
+
+  const stages: Array<{
+    label: string;
+    count: number;
+    pct: number;
+    from?: string;
+    median?: number | null;
+  }> = [
+    {
+      label: "Signed up",
+      count: funnel.total_signups,
+      pct: 100,
+    },
+    {
+      label: "Connected IG",
+      count: funnel.reached_account_connected,
+      pct: funnel.pct_account_connected,
+      from: "signup",
+      median: funnel.median_seconds_signup_to_account,
+    },
+    {
+      label: "Created automation",
+      count: funnel.reached_automation_created,
+      pct: funnel.pct_automation_created,
+      from: "connect",
+      median: funnel.median_seconds_account_to_automation,
+    },
+    {
+      label: "First DM sent",
+      count: funnel.reached_first_dm_sent,
+      pct: funnel.pct_first_dm_sent,
+      from: "automation",
+      median: funnel.median_seconds_automation_to_first_dm,
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900 p-6 lg:col-span-2">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Onboarding Funnel
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Signup → account connected → automation created → first DM. Medians
+            below each arrow show typical time between stages.
+          </p>
+        </div>
+        {funnel.median_seconds_signup_to_first_dm != null && (
+          <div className="text-right">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Median signup → first DM
+            </p>
+            <p className="text-lg font-bold text-purple-600 dark:text-purple-400">
+              {humanDuration(funnel.median_seconds_signup_to_first_dm)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
+        {stages.map((s, idx) => (
+          <div key={s.label} className="flex items-stretch flex-1 min-w-[140px]">
+            <div className="flex-1 rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {s.label}
+              </p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">
+                {s.count.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {s.pct}% of signups
+              </p>
+              {idx > 0 && s.median != null && (
+                <p className="text-[10px] text-gray-400 mt-1">
+                  median from {s.from}: {humanDuration(s.median)}
+                </p>
+              )}
+            </div>
+            {idx < stages.length - 1 && (
+              <div className="flex items-center px-1 text-gray-300 dark:text-gray-600">
+                →
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Overview Tab ──
 
 function OverviewTab({ stats, users }: { stats: AdminStats; users: User[] }) {
@@ -426,6 +567,9 @@ function OverviewTab({ stats, users }: { stats: AdminStats; users: User[] }) {
           </button>
         </div>
       </div>
+
+      {/* A9.1 — Onboarding funnel (self-fetches from /api/admin/funnel) */}
+      <FunnelWidget />
 
       {/* Plan Distribution */}
       <div className="rounded-xl border border-gray-100 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">

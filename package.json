@@ -19,7 +19,8 @@
     "test:db": "node tests/test-db.js",
     "test:api": "node tests/test-api.js",
     "test:dedup": "node scripts/test-dedup-rate-limit.mjs",
-    "test": "node tests/test-logic.js && node tests/test-db.js && node tests/test-api.js"
+    "test:funnel": "node tests/test-funnel.js",
+    "test": "node tests/test-logic.js && node tests/test-db.js && node tests/test-api.js && node tests/test-funnel.js"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.73.0",

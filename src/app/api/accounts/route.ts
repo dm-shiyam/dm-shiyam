@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllAccounts, getAccount, createAccount, updateAccount, deleteAccount } from "@/lib/db";
+import {
+  getAllAccounts,
+  getAccount,
+  createAccount,
+  updateAccount,
+  deleteAccount,
+  markFirstAccountConnected,
+} from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
@@ -54,6 +61,11 @@ export async function POST(request: NextRequest) {
       page_id: body.page_id,
       user_id: userId,
     });
+
+    // A9.1 — funnel milestone (write-once). Same helper used by OAuth path.
+    markFirstAccountConnected(userId).catch((err) =>
+      console.error("[funnel] markFirstAccountConnected failed:", err)
+    );
 
     return NextResponse.json(
       { ...account, access_token: "••••" + account.access_token.slice(-8) },

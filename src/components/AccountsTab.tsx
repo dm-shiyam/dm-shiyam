@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { Account } from "@/types";
 import { trackEvent } from "@/lib/analytics";
+import InfoTip from "@/components/InfoTip";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   missing_params: "Instagram did not return an authorization code. Please try again.",
@@ -159,15 +160,33 @@ const handleDelete = async (id: string) => {
       </div>
 
       {accounts.length === 0 ? (
+        // A9.3 — Empty state calls out Business/Creator prerequisite up front.
+        // Support tickets show most first-time connection failures were users
+        // trying to connect a personal account.
         <div className="card py-16 text-center">
           <Instagram className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-700">
+          <h3 className="mb-2 flex items-center justify-center gap-1.5 text-lg font-semibold text-gray-700 dark:text-gray-200">
             No accounts connected
+            <InfoTip text="You'll be redirected to Meta's official OAuth screen. We only receive the permissions you grant — no password ever." />
           </h3>
-          <p className="mb-6 text-sm text-gray-500">
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
             Click below to sign in with Instagram. You&apos;ll be redirected to Meta&apos;s
             official OAuth screen to grant access.
           </p>
+          <div className="mb-6 mx-auto max-w-md rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2 text-left text-xs text-amber-800 dark:text-amber-300">
+            <strong>Before you connect:</strong> your Instagram account must be
+            a <em>Business</em> or <em>Creator</em> account linked to a
+            Facebook Page. Personal accounts can&apos;t receive DMs via API.
+            {" "}
+            <a
+              href="https://help.instagram.com/502981923235522"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-amber-900"
+            >
+              How to switch →
+            </a>
+          </div>
           <button onClick={startInstagramOAuth} className="btn-primary">
             <Instagram className="h-4 w-4" /> Connect Instagram
           </button>

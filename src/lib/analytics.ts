@@ -54,6 +54,18 @@ export type ConversionEvent =
         /** ISO 4217 currency code. Razorpay charges INR. */
         currency: "INR";
       };
+    }
+  | {
+      // A9.1 — Fires once per browser the first time the dashboard observes an
+      // activity_log entry with dm_sent=true. Guarded via localStorage so
+      // reloads/polling don't refire. Represents the terminal step of the
+      // activation funnel: signup → account_connected → automation_created →
+      // first_dm_sent.
+      name: "first_dm_sent";
+      params: {
+        /** Whether the DM was AI-generated (vs static template) */
+        ai_generated?: boolean;
+      };
     };
 
 type EventParams = Record<string, string | number | boolean | undefined>;

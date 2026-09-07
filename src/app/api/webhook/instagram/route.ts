@@ -11,6 +11,7 @@ import {
   releaseDmClaim,
   updateWebhookHealth,
   isAutomationActiveNow,
+  markFirstDmSent,
 } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
 import { emitNewActivity } from "@/lib/activity-events";
@@ -293,6 +294,14 @@ async function processWebhookAsync(body: WebhookPayload) {
           user_id: automation.user_id,
         });
         emitNewActivity(automation.user_id, activity);
+
+        // A9.1 — funnel milestone (write-once). Only fires on the actual first
+        // successful send, and only if we know the owning user. Fire-and-forget.
+        if (dmSent && automation.user_id) {
+          markFirstDmSent(automation.user_id).catch((err) =>
+            console.error("[funnel] markFirstDmSent failed:", err)
+          );
+        }
       }
     }
   }

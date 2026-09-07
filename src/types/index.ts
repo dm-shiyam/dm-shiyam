@@ -23,8 +23,29 @@ export interface User {
   reset_token_expires?: string;
   last_login_at?: string | null;
   email_verified_at?: string | null;
+  // A9.1: onboarding funnel milestones (set once, then immutable)
+  first_account_connected_at?: string | null;
+  first_automation_created_at?: string | null;
+  first_dm_sent_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ── A9.1: Onboarding funnel metrics (admin) ──
+export interface FunnelStats {
+  total_signups: number;
+  reached_account_connected: number;
+  reached_automation_created: number;
+  reached_first_dm_sent: number;
+  // Percent of signups that reached each stage (0-100, one decimal)
+  pct_account_connected: number;
+  pct_automation_created: number;
+  pct_first_dm_sent: number;
+  // Median elapsed seconds between consecutive milestones. null = no data.
+  median_seconds_signup_to_account: number | null;
+  median_seconds_account_to_automation: number | null;
+  median_seconds_automation_to_first_dm: number | null;
+  median_seconds_signup_to_first_dm: number | null;
 }
 
 export interface PlanConfig {

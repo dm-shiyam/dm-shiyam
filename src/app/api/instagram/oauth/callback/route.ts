@@ -12,6 +12,7 @@ import {
   createAccount,
   getAccountByInstagramId,
   updateAccount,
+  markFirstAccountConnected,
 } from "@/lib/db";
 import { subscribeAccountToWebhooks } from "@/lib/instagram-subscription";
 
@@ -181,6 +182,12 @@ export async function GET(req: NextRequest) {
         user_id: userId,
       });
     }
+    // A9.1 — funnel milestone (write-once). Runs on both create and update paths
+    // because a reconnect after disconnect still counts as "user reached the
+    // connected state" (the mark helper is a no-op if the col is already set).
+    markFirstAccountConnected(userId).catch((err) =>
+      console.error("[funnel] markFirstAccountConnected failed:", err)
+    );
   } catch (err) {
     console.error("[ig-oauth] persist failed:", err);
     const msg = err instanceof Error ? err.message : String(err);

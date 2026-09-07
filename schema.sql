@@ -177,6 +177,19 @@ ALTER TABLE users    ADD COLUMN IF NOT EXISTS email_verified_at   TIMESTAMPTZ;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_refreshed_at        TIMESTAMPTZ;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_token_warning_sent_at TIMESTAMPTZ;
 
+-- ── A9.1: Onboarding funnel milestones ──
+-- Records when each user first crossed each key activation step. Used by
+-- /api/admin/funnel to compute drop-off and median time-to-activation.
+-- Each column is set exactly once (the mark helpers guard with
+-- "WHERE col IS NULL"), so retries and concurrent webhooks are safe.
+--   users.created_at              → signup
+--   first_account_connected_at    → first successful IG OAuth persist
+--   first_automation_created_at   → first automation POST
+--   first_dm_sent_at              → first activity_log row with dm_sent = TRUE
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_account_connected_at  TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_automation_created_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS first_dm_sent_at            TIMESTAMPTZ;
+
 -- ── sent_dms dedup key migration (per-user → per-comment) + per-post rate limit ──
 -- Semantics:
 --   * Dedup:      (automation_id, comment_id)                → 1 DM per comment (retries deduped)

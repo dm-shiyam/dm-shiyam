@@ -8,6 +8,7 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import FeedbackButton from "@/components/FeedbackButton";
+import InfoTip from "@/components/InfoTip";
 import { toast } from "sonner";
 import {
   Send,
@@ -145,8 +146,15 @@ export default function DashboardContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem("dms_first_dm_feedback") === "1") return;
-    if (!activities.some((a) => a.dm_sent === true)) return;
+    const firstSent = activities.find((a) => a.dm_sent === true);
+    if (!firstSent) return;
     localStorage.setItem("dms_first_dm_feedback", "pending");
+    // A9.1 — GA4 funnel terminal event, guarded once-per-browser by the same
+    // localStorage flag as the feedback prompt so we never double-fire.
+    trackEvent({
+      name: "first_dm_sent",
+      params: { ai_generated: firstSent.ai_generated === true },
+    });
     showFirstDmFeedbackToast();
   }, [activities]);
 
@@ -269,6 +277,21 @@ export default function DashboardContent() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
+        {/* A9.3 — Getting Started checklist; auto-hides once user has activated */}
+        {stats && (
+          <GettingStartedChecklist
+            stats={stats}
+            accountCount={accounts.length}
+            automationCount={automations.length}
+            hasFirstDm={activities.some((a) => a.dm_sent === true)}
+            onGoToAccounts={() => setActiveTab("accounts")}
+            onGoToAutomations={() => {
+              setActiveTab("automations");
+              setShowCreateForm(true);
+            }}
+          />
+        )}
+
         {/* Stats Cards */}
         {stats && <StatsGrid stats={stats} />}
 
@@ -316,6 +339,7 @@ export default function DashboardContent() {
             editingId={editingId}
             setEditingId={setEditingId}
             onRefresh={fetchData}
+            onGoToAccounts={() => setActiveTab("accounts")}
           />
         )}
         {activeTab === "activity" && (
@@ -338,6 +362,147 @@ export default function DashboardContent() {
         />
       )}
       <FeedbackButton />
+    </div>
+  );
+}
+
+// ── A9.3 Getting Started Checklist ──
+// Shown above the stats grid until the user has completed all 3 activation
+// steps OR explicitly dismissed the card. Dismissal is persisted in
+// localStorage so it doesn't reappear on the next session.
+//
+// The three milestones mirror the funnel we instrument server-side in
+// users.first_account_connected_at / first_automation_created_at /
+// first_dm_sent_at (see schema.sql and getFunnelStats).
+
+function GettingStartedChecklist({
+  stats,
+  accountCount,
+  automationCount,
+  hasFirstDm,
+  onGoToAccounts,
+  onGoToAutomations,
+}: {
+  stats: DashboardStats;
+  accountCount: number;
+  automationCount: number;
+  hasFirstDm: boolean;
+  onGoToAccounts: () => void;
+  onGoToAutomations: () => void;
+}) {
+  // dmsSent covers reload cases where `activities` might not include the very
+  // first DM (kept to 30 rows) but the totals card still knows about it.
+  const dmsSent = stats.total_dms_sent > 0 || hasFirstDm;
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("dms_checklist_dismissed") === "1") {
+      setDismissed(true);
+    }
+  }, []);
+
+  const allDone = accountCount > 0 && automationCount > 0 && dmsSent;
+  if (allDone || dismissed) return null;
+
+  const items = [
+    {
+      done: accountCount > 0,
+      label: "Connect your Instagram account",
+      desc: "Requires a Business or Creator account linked to a Facebook Page.",
+      cta: "Connect account",
+      onClick: onGoToAccounts,
+    },
+    {
+      done: automationCount > 0,
+      label: "Create your first automation",
+      desc: "Pick a template like Lead Magnet or start from scratch.",
+      cta: "Create automation",
+      onClick: onGoToAutomations,
+      // Prerequisite: hide primary CTA if step 1 isn't done yet so users
+      // don't create a dangling automation that has no account to send from.
+      disabled: accountCount === 0,
+    },
+    {
+      done: dmsSent,
+      label: "See your first DM go out",
+      desc: "Comment a trigger keyword on one of your posts to test the flow.",
+      cta: "View activity",
+      onClick: onGoToAccounts, // no dedicated tab handoff; nudge is enough
+    },
+  ];
+
+  const completed = items.filter((i) => i.done).length;
+
+  return (
+    <div className="mb-6 rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 dark:border-purple-800/50 dark:from-purple-950/30 dark:to-pink-950/30 p-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            Get to your first DM ({completed}/{items.length})
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Most users finish this in under 2 minutes.
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.setItem("dms_checklist_dismissed", "1");
+            setDismissed(true);
+          }}
+          className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          title="Dismiss checklist"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {items.map((item, idx) => (
+          <li
+            key={idx}
+            className="flex items-start gap-3 rounded-lg bg-white/70 dark:bg-gray-900/40 p-3"
+          >
+            <div className="mt-0.5">
+              {item.done ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              ) : (
+                <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p
+                className={`text-sm font-medium ${
+                  item.done
+                    ? "text-gray-400 line-through"
+                    : "text-gray-900 dark:text-white"
+                }`}
+              >
+                {item.label}
+              </p>
+              {!item.done && (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {item.desc}
+                </p>
+              )}
+            </div>
+            {!item.done && (
+              <button
+                onClick={item.onClick}
+                disabled={item.disabled}
+                className="btn-primary !py-1.5 !px-3 !text-xs shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={
+                  item.disabled
+                    ? "Connect an Instagram account first"
+                    : undefined
+                }
+              >
+                {item.cta}
+                <ArrowLeft className="h-3 w-3 rotate-180" />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -489,6 +654,7 @@ function AutomationsTab({
   editingId,
   setEditingId,
   onRefresh,
+  onGoToAccounts,
 }: {
   automations: Automation[];
   accounts: Account[];
@@ -498,6 +664,7 @@ function AutomationsTab({
   editingId: string | null;
   setEditingId: (v: string | null) => void;
   onRefresh: () => void;
+  onGoToAccounts: () => void;
 }) {
   const [selectedTemplate, setSelectedTemplate] =
     useState<Partial<Automation> | null>(null);
@@ -576,17 +743,37 @@ function AutomationsTab({
           <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Loading...
         </div>
       ) : automations.length === 0 ? (
+        // A9.3 — Empty state adapts to whether the user has an IG account yet.
+        // Without an account, "Create Automation" would create a dangling rule
+        // that has nothing to send from, so we redirect to the Accounts tab.
         <div className="card py-16 text-center">
           <Zap className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-700">
+          <h3 className="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-200">
             No automations yet
           </h3>
-          <p className="mb-6 text-sm text-gray-500">
-            Create your first automation to start sending DMs automatically.
-          </p>
-          <button onClick={() => setShowCreateForm(true)} className="btn-primary">
-            <Plus className="h-4 w-4" /> Create Automation
-          </button>
+          {accounts.length === 0 ? (
+            <>
+              <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+                Connect an Instagram Business or Creator account first — then
+                you can create an automation that sends DMs from it.
+              </p>
+              <button onClick={onGoToAccounts} className="btn-primary">
+                <Instagram className="h-4 w-4" /> Connect Instagram
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+                Create your first automation to start sending DMs automatically.
+              </p>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="btn-primary"
+              >
+                <Plus className="h-4 w-4" /> Create Automation
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -878,15 +1065,22 @@ function AutomationForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
               Instagram Account
+              {/* A9.2 — Was a common confusion point: users would leave the
+                  default and wonder why DMs never sent. */}
+              <InfoTip text="Which of your connected Instagram accounts this automation will send DMs from. 'Default (env vars)' uses the server's fallback token and is only for local development." />
             </label>
             <select
               className="input-field"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
             >
-              <option value="">Default (env vars)</option>
+              <option value="">
+                {accounts.length === 0
+                  ? "— No accounts connected —"
+                  : "Default (env vars)"}
+              </option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   @{a.instagram_username}
@@ -897,11 +1091,12 @@ function AutomationForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
             Trigger Keywords{" "}
             <span className="text-xs text-gray-400">
               (comma-separated)
             </span>
+            <InfoTip text="Any comment containing at least one of these words (case-insensitive) will trigger the automation. Example: INFO, LINK, GUIDE" />
           </label>
           <input
             type="text"
@@ -917,11 +1112,12 @@ function AutomationForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className="mb-1 flex items-center gap-1.5 text-sm font-medium text-gray-700">
             DM Message{" "}
             <span className="text-xs text-gray-400">
               (use {"{username}"} for personalization)
             </span>
+            <InfoTip text="{username} is replaced with the commenter's IG handle. Keep it short and include your link/offer up front — long messages get clipped in the DM preview." />
           </label>
           <textarea
             className="textarea-field"

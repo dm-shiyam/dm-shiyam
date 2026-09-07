@@ -10,6 +10,7 @@ import type {
   AnalyticsData,
   User,
   AdminStats,
+  FunnelStats,
 } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -579,6 +580,38 @@ export async function touchUserLogin(userId: string): Promise<void> {
   await execute("UPDATE users SET last_login_at = NOW() WHERE id = $1", [userId]);
 }
 
+// ── A9.1: Funnel milestone marks (write-once, safe under concurrency) ─────
+// Each helper writes the timestamp iff the column is currently NULL, so retries
+// and concurrent webhooks never overwrite the true "first time" value.
+// All are fire-and-forget from their call sites; failure must not block the
+// user's action.
+export async function markFirstAccountConnected(userId: string): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE users SET first_account_connected_at = NOW()
+     WHERE id = $1 AND first_account_connected_at IS NULL`,
+    [userId]
+  );
+}
+
+export async function markFirstAutomationCreated(userId: string): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE users SET first_automation_created_at = NOW()
+     WHERE id = $1 AND first_automation_created_at IS NULL`,
+    [userId]
+  );
+}
+
+export async function markFirstDmSent(userId: string): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE users SET first_dm_sent_at = NOW()
+     WHERE id = $1 AND first_dm_sent_at IS NULL`,
+    [userId]
+  );
+}
+
 // Touch accounts.last_refreshed_at — called after successful IG token refresh
 export async function touchAccountRefresh(accountId: string): Promise<void> {
   await ensureInit();
@@ -742,9 +775,81 @@ export async function getAllUsers(): Promise<User[]> {
   await ensureInit();
   return query<User>(
     `SELECT id, email, name, provider, role, plan, subscription_status,
-            dm_limit, dms_used_this_month, created_at, updated_at
+            dm_limit, dms_used_this_month, created_at, updated_at,
+            first_account_connected_at, first_automation_created_at,
+            first_dm_sent_at
      FROM users ORDER BY created_at DESC`
   );
+}
+
+// ── A9.1: Funnel aggregate stats for /api/admin/funnel ─────────────────────
+// Uses Postgres percentile_cont for a proper median (not average — averages
+// are wrecked by the long tail of users who take days/weeks to activate).
+// All EPOCH extractions run only for users who reached the *next* stage, so
+// dropped-off users don't skew the median downward.
+export async function getFunnelStats(): Promise<FunnelStats> {
+  await ensureInit();
+  const row = await queryOne<{
+    total_signups: string;
+    reached_account_connected: string;
+    reached_automation_created: string;
+    reached_first_dm_sent: string;
+    median_seconds_signup_to_account: string | null;
+    median_seconds_account_to_automation: string | null;
+    median_seconds_automation_to_first_dm: string | null;
+    median_seconds_signup_to_first_dm: string | null;
+  }>(
+    `SELECT
+       COUNT(*)::int AS total_signups,
+       COUNT(*) FILTER (WHERE first_account_connected_at IS NOT NULL)::int
+         AS reached_account_connected,
+       COUNT(*) FILTER (WHERE first_automation_created_at IS NOT NULL)::int
+         AS reached_automation_created,
+       COUNT(*) FILTER (WHERE first_dm_sent_at IS NOT NULL)::int
+         AS reached_first_dm_sent,
+       percentile_cont(0.5) WITHIN GROUP (
+         ORDER BY EXTRACT(EPOCH FROM (first_account_connected_at - created_at))
+       ) FILTER (WHERE first_account_connected_at IS NOT NULL)
+         AS median_seconds_signup_to_account,
+       percentile_cont(0.5) WITHIN GROUP (
+         ORDER BY EXTRACT(EPOCH FROM (first_automation_created_at - first_account_connected_at))
+       ) FILTER (WHERE first_automation_created_at IS NOT NULL
+                   AND first_account_connected_at IS NOT NULL)
+         AS median_seconds_account_to_automation,
+       percentile_cont(0.5) WITHIN GROUP (
+         ORDER BY EXTRACT(EPOCH FROM (first_dm_sent_at - first_automation_created_at))
+       ) FILTER (WHERE first_dm_sent_at IS NOT NULL
+                   AND first_automation_created_at IS NOT NULL)
+         AS median_seconds_automation_to_first_dm,
+       percentile_cont(0.5) WITHIN GROUP (
+         ORDER BY EXTRACT(EPOCH FROM (first_dm_sent_at - created_at))
+       ) FILTER (WHERE first_dm_sent_at IS NOT NULL)
+         AS median_seconds_signup_to_first_dm
+     FROM users`
+  );
+
+  const signups = Number(row?.total_signups ?? 0);
+  const accs = Number(row?.reached_account_connected ?? 0);
+  const autos = Number(row?.reached_automation_created ?? 0);
+  const dms = Number(row?.reached_first_dm_sent ?? 0);
+  const pct = (n: number) =>
+    signups > 0 ? Math.round((n / signups) * 1000) / 10 : 0;
+  const num = (v: string | null | undefined) =>
+    v == null ? null : Math.round(Number(v));
+
+  return {
+    total_signups: signups,
+    reached_account_connected: accs,
+    reached_automation_created: autos,
+    reached_first_dm_sent: dms,
+    pct_account_connected: pct(accs),
+    pct_automation_created: pct(autos),
+    pct_first_dm_sent: pct(dms),
+    median_seconds_signup_to_account: num(row?.median_seconds_signup_to_account ?? null),
+    median_seconds_account_to_automation: num(row?.median_seconds_account_to_automation ?? null),
+    median_seconds_automation_to_first_dm: num(row?.median_seconds_automation_to_first_dm ?? null),
+    median_seconds_signup_to_first_dm: num(row?.median_seconds_signup_to_first_dm ?? null),
+  };
 }
 
 // V11: Return users whose local subscription row is marked "active". Used by

@@ -438,10 +438,10 @@
 | | | 8.1 Full flow test on Chrome, Safari, Firefox (desktop) | | Issues Found |
 | | | 8.2 Full flow test on mobile Chrome + mobile Safari | | Pending |
 | | | 8.3 Fix any layout/OAuth breakage found | | Pending |
-| A9 | **Onboarding funnel audit** | | High | Pending |
-| | | 9.1 Time signup → first connected account → first automation → first DM sent | | Pending |
-| | | 9.2 Identify drop-off points, add inline help / tooltips where users get stuck | | Pending |
-| | | 9.3 Add empty-state CTAs on Dashboard / Automations / Accounts when empty | | Pending |
+| A9 | **Onboarding funnel audit** | | High | ✅ Done |
+| | | 9.1 Time signup → first connected account → first automation → first DM sent | | ✅ Done — `users.first_{account_connected,automation_created,dm_sent}_at` write-once cols wired into OAuth callback / manual account POST / automations POST / webhook after `dm_sent=true`. GA4 `first_dm_sent` event + `/api/admin/funnel` endpoint + Onboarding Funnel widget on `/admin`. 18/18 tests pass in `tests/test-funnel.js`. |
+| | | 9.2 Identify drop-off points, add inline help / tooltips where users get stuck | | ✅ Done — new `<InfoTip />` (`src/components/InfoTip.tsx`) on Instagram Account select, Trigger Keywords, DM Message fields. Amber Business/Creator prerequisite callout on empty Accounts tab. |
+| | | 9.3 Add empty-state CTAs on Dashboard / Automations / Accounts when empty | | ✅ Done — `GettingStartedChecklist` above dashboard stats (auto-hides once all 3 milestones hit, dismissible). Automations empty state adapts to `accounts.length === 0` and routes to Connect Instagram instead of dangling Create Automation. |
 
 #### Phase 10: Launch Content
 

@@ -19,10 +19,19 @@ function ResetForm() {
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  // Two separate reveal flags so users can verify each field independently —
+  // most reset-flow failures come from browser autofill / typos in the
+  // Confirm field going unnoticed.
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+
+  // Live mismatch hint fires only once the user has typed something in both
+  // fields — avoids the "Passwords don't match" flash on initial render.
+  const mismatch =
+    password.length > 0 && confirm.length > 0 && password !== confirm;
 
   if (!token) {
     return (
@@ -96,6 +105,8 @@ function ResetForm() {
         const isConfirm = i === 1;
         const value = isConfirm ? confirm : password;
         const setter = isConfirm ? setConfirm : setPassword;
+        const reveal = isConfirm ? showConfirm : showPassword;
+        const setReveal = isConfirm ? setShowConfirm : setShowPassword;
 
         return (
           <div key={label}>
@@ -107,12 +118,15 @@ function ResetForm() {
               <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
 
               <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Min. 6 characters"
+                type={reveal ? "text" : "password"}
+                // Client rule matches the API (min 8 + letter + digit). Kept
+                // in sync manually — if you change one, change both.
+                placeholder="At least 8 chars, letters + numbers"
                 value={value}
                 onChange={(e) => setter(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
+                autoComplete="new-password"
                 className="w-full text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-purple-200"
                 style={{
                   border: "1.5px solid #9ca3af",
@@ -122,23 +136,28 @@ function ResetForm() {
                 }}
               />
 
-              {!isConfirm && (
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-700"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setReveal(!reveal)}
+                aria-label={reveal ? "Hide password" : "Show password"}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 transition-colors hover:text-gray-700"
+              >
+                {reveal ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </div>
         );
       })}
+
+      {mismatch && (
+        <p className="text-xs text-amber-600">
+          Passwords don&apos;t match yet.
+        </p>
+      )}
 
       {error && (
         <div

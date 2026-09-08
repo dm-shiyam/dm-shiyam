@@ -751,12 +751,16 @@ export async function clearResetToken(userId: string): Promise<void> {
   );
 }
 
+// Returns number of rows updated so callers can assert the write actually
+// landed. Previously void, which let /api/auth/reset-password return
+// {success: true} even if the UPDATE matched zero rows (e.g. user deleted
+// between token lookup and update).
 export async function updatePassword(
   userId: string,
   passwordHash: string
-): Promise<void> {
+): Promise<number> {
   await ensureInit();
-  await execute(
+  return execute(
     "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
     [passwordHash, userId]
   );

@@ -24,12 +24,14 @@ function LoginFormContent({ defaultSignup }: { defaultSignup?: boolean }) {
     if (msg) {
       setError(
         msg === "OAuthSignin"
-          ? "OAuth sign-in failed"
+          ? "Google sign-in failed. Please try again."
           : msg === "OAuthCallback"
-            ? "OAuth callback error"
-            : msg === "CredentialsSignin"
-              ? "Invalid credentials"
-              : "An error occurred"
+            ? "Something went wrong signing in with Google."
+            : msg === "OAuthAccountNotLinked"
+              ? "This email is already registered with a different sign-in method. Try email + password."
+              : msg === "CredentialsSignin"
+                ? "Invalid email or password"
+                : "Sign-in failed. Please try again."
       );
     }
   }, [searchParams]);
@@ -84,7 +86,16 @@ function LoginFormContent({ defaultSignup }: { defaultSignup?: boolean }) {
         if (result?.ok) {
           router.push("/dashboard");
         } else {
-          setError(result?.error || "Invalid email or password");
+          // NextAuth returns the string "CredentialsSignin" for any auth
+          // failure from the authorize() callback. Translate to something a
+          // real user can act on. Keep any *other* upstream error verbatim
+          // (e.g. rate-limit messages thrown from authorize()).
+          const raw = result?.error;
+          setError(
+            !raw || raw === "CredentialsSignin"
+              ? "Invalid email or password"
+              : raw
+          );
         }
       }
     } catch {

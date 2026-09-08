@@ -34,7 +34,21 @@ export async function POST(req: NextRequest) {
   }
 
   const hash = await bcrypt.hash(password, 12);
-  await updatePassword(user.id, hash);
+  const rowsUpdated = await updatePassword(user.id, hash);
+  if (rowsUpdated === 0) {
+    // Impossible in normal flow — we just fetched the user by token — but a
+    // race (row deleted between the two queries) would silently 200 without
+    // this guard, leaving the user with the old hash and no idea why login
+    // still fails.
+    console.error(
+      "[reset-password] UPDATE matched 0 rows for user:",
+      user.id
+    );
+    return NextResponse.json(
+      { error: "Could not update password. Please request a new reset link." },
+      { status: 500 }
+    );
+  }
   await clearResetToken(user.id);
 
   return NextResponse.json({ success: true });

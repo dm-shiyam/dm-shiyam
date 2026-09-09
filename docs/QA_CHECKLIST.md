@@ -131,9 +131,20 @@ Watch these specifically — they've historically broken per-engine:
 
 ## 5. Bug log
 
+### Pass on 2026-09-09 — desktop Chrome/Safari/Firefox + iPhone Safari + iPhone Chrome
+
 | # | Browser | Device | Flow | Bug | Severity | Fixed in |
 |---|---------|--------|------|-----|----------|----------|
-|   |         |        |      |     |          |          |
+| 1 | All | Mobile | Dashboard tabs | Tab labels chopped to first 4 chars ("Auto", "Acti"…). Ugly + unclear. | Medium | `44f964a` — full labels + horizontal scroll + 44px tap targets |
+| 2 | All | All | IG OAuth return | OAuth callback redirects to `/dashboard` but dashboard defaults to Automations tab; success/error toast lives in AccountsTab so it silently disappeared. | High | `44f964a` — auto-switch to Accounts tab on `ig_connected` / `ig_error` query param |
+| 3 | Chrome / Firefox | iPhone (iOS) | IG OAuth | iOS routes Instagram OAuth to native Instagram app via Universal Links; app-side flow reliably fails with "Something went wrong". Native Safari doesn't trigger the handoff. | High | `a0d61b5` — detect `CriOS/FxiOS/EdgiOS` UA + show amber warning banner above Connect Instagram: "On iPhone? Open this page in Safari." |
+| 4 | All | All | `/pricing` | Navbar showed Login/Sign Up even for logged-in users — looked like session expired. | Medium | `c95fbe8` — session-aware navbar with Dashboard link + email |
+| 5 | All | All | `/pricing` cards | Prices hard-coded and wrong (₹99 Pro, ₹999 Business). Free showed "$0" (wrong currency). Feature list said "5 automations" but PLANS says 2. | High | `c95fbe8` — render from `PLANS` constant so display can't drift |
+| 6 | All | All | Discovery | Free-tier users had no discoverable way to reach `/pricing` from the app. Landing navbar had no Pricing link either. | Medium | `c95fbe8` — Upgrade pill in dashboard header (when free plan) + Pricing link on landing navbar |
+| 7 | All | All | Auth error copy | Login form showed raw NextAuth string "CredentialsSignin" instead of user-readable "Invalid email or password". | Low | `efd1f90` (earlier session) |
+| 8 | All | All | `/login` | Google sign-in button entirely missing (was on old LoginForm.tsx but LoginFormComponent used by /login route lacked it). | High | `8d9eb6f` (earlier session) |
+
+Regression tests added in `tests/e2e/smoke.spec.ts` for items 4, 7, 8. Items 1-3 + 5-6 verified manually on the platforms listed.
 
 ---
 

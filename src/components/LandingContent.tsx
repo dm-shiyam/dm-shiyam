@@ -3,10 +3,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 export default function LandingContent() {
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [ctaDismissed, setCtaDismissed] = useState(false);
+
+  // A9.3 follow-up (2026-09-09): navbar was showing Login/Sign Up
+  // unconditionally even for authenticated users. Same fix as PricingContent
+  // — surface Dashboard link when logged in.
+  const { data: session, status } = useSession();
+  const isAuthed = status === "authenticated";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -36,19 +43,41 @@ export default function LandingContent() {
       <nav className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="text-2xl font-bold text-indigo-600">DM Shiyam</div>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <Link
-              href="/login"
+              href="/pricing"
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              Login
+              Pricing
             </Link>
-            <Link
-              href="/register"
-              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Start Free Trial
-            </Link>
+            {isAuthed ? (
+              <>
+                <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
+                  {session?.user?.email}
+                </span>
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Sign up free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>

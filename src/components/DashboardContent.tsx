@@ -236,11 +236,23 @@ export default function DashboardContent() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {userPlan !== "free" && (
+            {userPlan !== "free" ? (
               <span className="hidden sm:inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200">
                 <Crown className="h-3 w-3" />{" "}
                 {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
               </span>
+            ) : (
+              // A9.3 follow-up (2026-09-09) — logged-in users on the free plan
+              // had no discoverable way to reach /pricing. Explicit "Upgrade"
+              // pill in the header solves that without polluting every tab.
+              <Link
+                href="/pricing"
+                className="hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-opacity"
+                title="See plans"
+              >
+                <Crown className="h-3 w-3" />
+                Upgrade
+              </Link>
             )}
             {stats && stats.accounts_connected > 0 && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-blue-600">

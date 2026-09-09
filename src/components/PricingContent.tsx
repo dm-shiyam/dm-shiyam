@@ -5,7 +5,9 @@
 import Link from "next/link";
 import Script from "next/script";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { trackEvent } from "@/lib/analytics";
+import { PLANS } from "@/lib/plans";
 
 // Razorpay Checkout Modal — loaded via <Script> below. The global is only
 // present after the script tag has executed, hence the runtime check inside
@@ -38,7 +40,29 @@ export default function PricingContent() {
   );
   const [checkoutLoading, setCheckoutLoading] = useState<null | string>(null);
 
+  // Session context lets us:
+  //   1. Show "Dashboard" / user email in the navbar instead of Login/Sign Up
+  //      when the user is already authenticated (bug reported 2026-09-09).
+  //   2. Mark the Free tier as "Current plan" when the user is on it.
+  //   3. Route unauthenticated Subscribe clicks to /register?callbackUrl=/pricing
+  //      so users don't lose their intent to buy.
+  const { data: session, status } = useSession();
+  const isAuthed = status === "authenticated";
+  const currentPlan =
+    ((session?.user as Record<string, unknown> | undefined)?.plan as
+      | string
+      | undefined) ?? "free";
+
   const handleCheckout = async (plan: "pro" | "business") => {
+    // Guard: user must be signed in — the checkout API requires a session
+    // to attach the subscription to. If not, punt to /register carrying
+    // the plan intent in the callback URL so they resume here after auth.
+    if (!isAuthed) {
+      window.location.href = `/register?callbackUrl=${encodeURIComponent(
+        `/pricing?plan=${plan}`
+      )}`;
+      return;
+    }
     // Guard: Razorpay Checkout script must be loaded first.
     if (typeof window === "undefined" || !window.Razorpay) {
       alert(
@@ -141,25 +165,43 @@ export default function PricingContent() {
         strategy="afterInteractive"
       />
 
-      {/* Navbar */}
+      {/* Navbar (session-aware — 2026-09-09 fix). Was showing Login/Sign Up
+          unconditionally even for logged-in users, making the pricing page
+          look like the session had expired. */}
       <nav className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-indigo-600">
             DM Shiyam
           </Link>
-          <div className="flex gap-4">
-            <Link
-              href="/login"
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900"
-            >
-              Login
-            </Link>
-            <Link
-              href="/register"
-              className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              Sign Up
-            </Link>
+          <div className="flex items-center gap-4">
+            {isAuthed ? (
+              <>
+                <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
+                  {session?.user?.email}
+                </span>
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -180,6 +222,9 @@ export default function PricingContent() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Free Tier */}
+          {/* Free Tier — data pulled from PLANS.free (single source of truth,
+              2026-09-09 fix). Was hard-coded to "5 automations" but PLANS
+              says 2; was "$0" (wrong currency). */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8">
             <div className="mb-6">
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -192,27 +237,42 @@ export default function PricingContent() {
 
             <div className="mb-6">
               <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                $0
+                ₹0
               </span>
               <span className="text-gray-600 dark:text-gray-400 ml-2">
                 forever
               </span>
             </div>
 
-            <button
-              disabled
-              className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
-            >
-              Current Plan
-            </button>
+            {isAuthed && currentPlan === "free" ? (
+              <button
+                disabled
+                className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
+              >
+                Current Plan
+              </button>
+            ) : (
+              <Link
+                href={isAuthed ? "/dashboard" : "/register"}
+                className="block text-center w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                {isAuthed ? "Go to Dashboard" : "Sign up free"}
+              </Link>
+            )}
 
             <div className="space-y-4">
-              <FeatureItem included>5 automations</FeatureItem>
-              <FeatureItem included>Basic analytics</FeatureItem>
-              <FeatureItem included>1 Instagram account</FeatureItem>
+              <FeatureItem included>
+                {PLANS.free.dm_limit.toLocaleString()} DMs/month
+              </FeatureItem>
+              <FeatureItem included>
+                {PLANS.free.max_automations} automations
+              </FeatureItem>
+              <FeatureItem included>
+                {PLANS.free.max_accounts} Instagram account
+              </FeatureItem>
               <FeatureItem included>Community support</FeatureItem>
-              <FeatureItem>Advanced features</FeatureItem>
-              <FeatureItem>Priority support</FeatureItem>
+              <FeatureItem>Analytics dashboard</FeatureItem>
+              <FeatureItem>AI Smart Replies</FeatureItem>
             </div>
           </div>
 
@@ -235,7 +295,7 @@ export default function PricingContent() {
 
             <div className="mb-6">
               <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                ₹99
+                {PLANS.pro.price_label}
               </span>
               <span className="text-gray-600 dark:text-gray-400 ml-2">
                 /month
@@ -244,18 +304,27 @@ export default function PricingContent() {
 
             <button
               onClick={() => handleCheckout("pro")}
-              className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-8"
+              disabled={currentPlan === "pro"}
+              className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-8 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Start Free Trial
+              {currentPlan === "pro"
+                ? "Current Plan"
+                : isAuthed
+                  ? "Upgrade to Pro"
+                  : "Get Started with Pro"}
             </button>
 
             <div className="space-y-4">
-              <FeatureItem included>50 automations</FeatureItem>
-              <FeatureItem included>Advanced analytics</FeatureItem>
-              <FeatureItem included>5 Instagram accounts</FeatureItem>
+              <FeatureItem included>
+                {PLANS.pro.dm_limit.toLocaleString()} DMs/month
+              </FeatureItem>
+              <FeatureItem included>Unlimited automations</FeatureItem>
+              <FeatureItem included>
+                {PLANS.pro.max_accounts} Instagram accounts
+              </FeatureItem>
+              <FeatureItem included>AI Smart Replies</FeatureItem>
+              <FeatureItem included>Full analytics</FeatureItem>
               <FeatureItem included>Priority support</FeatureItem>
-              <FeatureItem included>Custom DM templates</FeatureItem>
-              <FeatureItem>API access</FeatureItem>
             </div>
           </div>
 
@@ -272,7 +341,7 @@ export default function PricingContent() {
 
             <div className="mb-6">
               <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                ₹999
+                {PLANS.business.price_label}
               </span>
               <span className="text-gray-600 dark:text-gray-400 ml-2">
                 /month
@@ -281,18 +350,27 @@ export default function PricingContent() {
 
             <button
               onClick={() => handleCheckout("business")}
-              className="w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-8"
+              disabled={currentPlan === "business"}
+              className="w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-8 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Start Free Trial
+              {currentPlan === "business"
+                ? "Current Plan"
+                : isAuthed
+                  ? "Upgrade to Business"
+                  : "Get Started with Business"}
             </button>
 
             <div className="space-y-4">
+              <FeatureItem included>
+                {PLANS.business.dm_limit.toLocaleString()} DMs/month
+              </FeatureItem>
               <FeatureItem included>Unlimited automations</FeatureItem>
-              <FeatureItem included>Full analytics & reporting</FeatureItem>
-              <FeatureItem included>Unlimited accounts</FeatureItem>
+              <FeatureItem included>
+                {PLANS.business.max_accounts} Instagram accounts
+              </FeatureItem>
+              <FeatureItem included>AI Smart Replies</FeatureItem>
+              <FeatureItem included>Full analytics + API access</FeatureItem>
               <FeatureItem included>Dedicated support</FeatureItem>
-              <FeatureItem included>Custom DM templates</FeatureItem>
-              <FeatureItem included>API access</FeatureItem>
             </div>
           </div>
         </div>

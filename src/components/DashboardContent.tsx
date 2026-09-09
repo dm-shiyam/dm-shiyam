@@ -201,6 +201,21 @@ export default function DashboardContent() {
     }
   }, [status, loading, automations, onboardingDismissed]);
 
+  // 2026-09-09 fix: OAuth callback always redirects to `/dashboard?...`,
+  // but the dashboard defaults to the Automations tab. The success/error
+  // toast that reads those query params lives in AccountsTab, so unless
+  // the user manually clicks over they'd never see the outcome (and the
+  // "already connected" error would silently disappear on mobile). Auto-
+  // switching to Accounts tab on any ig_* query param mounts the toast
+  // handler so the user sees what happened.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("ig_connected") || params.get("ig_error")) {
+      setActiveTab("accounts");
+    }
+  }, []);
+
   if (status === "loading") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -308,15 +323,13 @@ export default function DashboardContent() {
         {/* Stats Cards */}
         {stats && <StatsGrid stats={stats} />}
 
-        {/* Tabs */}
+        {/* Tabs — 2026-09-09 mobile redesign. Was chopping labels to their
+            first 4 chars ("Auto", "Acti", "Anal", ...) which looked ugly and
+            was unclear. Now: full labels always, horizontal scroll on
+            overflow, py-2.5 for iOS 44px tap-target compliance. */}
         <div
-          className="mb-6 rounded-xl bg-gray-100 dark:bg-gray-800 p-1 scrollbar-hide"
-          style={{
-            overflowX: "auto",
-            WebkitOverflowScrolling: "touch",
-            display: "flex",
-            flexWrap: "nowrap",
-          }}
+          className="mb-6 flex flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 scrollbar-hide dark:bg-gray-800"
+          style={{ WebkitOverflowScrolling: "touch" }}
         >
           {[
             { id: "automations" as Tab, label: "Automations", icon: Zap },
@@ -328,15 +341,14 @@ export default function DashboardContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all flex-shrink-0 ${
+              className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all ${
                 activeTab === tab.id
-                  ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
               <tab.icon className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.label.slice(0, 4)}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>

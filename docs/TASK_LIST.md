@@ -38,7 +38,7 @@
 | 7 | **Toast notifications** — Add success/error toasts when creating automations, connecting accounts, etc. | Low | Done |
 | 8 | **Automation templates** — Pre-built templates ("Lead Magnet", "Discount Code", "Link in Bio") for quick setup | Low | Done |
 | 9 | **Dark mode support** — Add theme toggle | Low | Done |
-| 10 | **Onboarding wizard** — First-time user setup flow guiding through connecting Instagram and creating first automation | Medium | Done |
+| 10 | **Onboarding wizard** — First-time user setup flow guiding through connecting Instagram and creating first automation | Medium | ✅ Done — OnboardingWizard modal + A9 Getting Started checklist (see A9 below). **Follow-up 2026-09-09 (commit `0f65f1c`)**: fixed "View activity" button in checklist item 3 that mistakenly routed to Accounts tab; now correctly opens Activity tab via new `onGoToActivity` prop. |
 
 ---
 
@@ -51,7 +51,7 @@
 | 1 | **Razorpay billing integration** — Checkout/verify/webhook routes exist but likely untested; complete and test payment flow | High | Done |
 | 2 | **Duplicate DM prevention** — If the same user comments the same keyword twice, don't send duplicate DMs; track sent DMs per user per automation | High | Done |
 | 3 | **OpenAI integration testing** — AI Smart Replies module exists (`openai.ts`) but needs testing and prompt tuning | Medium | Done |
-| 4 | **Multi-account token management** — AccountsTab lets users add accounts, but tokens need validation and refresh logic | Medium | Done |
+| 4 | **Multi-account token management** — AccountsTab lets users add accounts, but tokens need validation and refresh logic | Medium | ✅ Done — token storage + refresh logic completed initial pass. **Follow-up 2026-09-09 (commits `0f65f1c`, `6eeb484`)**: discovered the webhook was still using `INSTAGRAM_ACCESS_TOKEN` + `INSTAGRAM_ACCOUNT_ID` env vars for every connected account (single-tenant leftover), so DMs from a second connected account failed with Meta error *"The comment is invalid for a private reply"* because dm_shiyam's token was being used on vatsvelocity's comments. Fixed by hoisting an `entry.id` → account lookup at the top of `processWebhookAsync`, and: (1) using `account.access_token` for all `sendPrivateReply`/`sendDM`/`replyToComment` calls; (2) using `account.instagram_account_id` for the self-event loop guard; (3) new `getAutomationsForWebhookRouting(accountId, userId)` returns both account-bound AND user-owned-unassigned automations, so users who create a "general" automation (no account picked) still get it firing for all their accounts — while `user_id` filter keeps tenants isolated; (4) `activity_log.account_id` now records the ROUTED account, not `automation.account_id` (which is NULL for unassigned automations) — fixes attribution in Activity tab + admin funnel. Also added `humanizeMetaError()` in `src/lib/instagram.ts` so Activity tab shows actionable text for common Meta error strings (expired token → "Reconnect from Accounts", "invalid for private reply" → 3 real causes). Verified end-to-end with 2 IG accounts (dm_shiyam + vatsvelocity) on both Feed posts and Reels. |
 | 5 | **Export activity logs** — CSV/Excel download of activity data for reporting | Low | Done |
 | 6 | **Scheduled automations** — Enable/disable automations on a schedule (e.g., only active during business hours) | Low | Done |
 | 7 | **Production deployment** — Dockerize, set up Vercel/Railway deployment, environment config | High | Done |

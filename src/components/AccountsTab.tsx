@@ -40,10 +40,33 @@ const OAUTH_WARNING_MESSAGES: Record<string, string> = {
     "Account connected, but webhook subscription failed — comments won't trigger DMs. Try Reconnect to retry.",
 };
 
+// Detect iOS third-party browsers (Chrome / Firefox / Edge) where iOS
+// aggressively routes Instagram OAuth URLs to the native Instagram app via
+// Universal Links, and the app-side flow reliably fails with a generic
+// "Something went wrong" (confirmed 2026-09-09 on real device). Native
+// Safari doesn't trigger the handoff — OAuth stays in the browser and
+// works. Rather than fighting Meta's iOS behavior we surface a hint so
+// users know to switch to Safari before the failure happens.
+function isIosThirdPartyBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // iOS UAs contain "iPhone" or "iPad". CriOS = Chrome, FxiOS = Firefox,
+  // EdgiOS = Edge — all Safari WebKit under the hood but treated as
+  // third-party by iOS's Universal Link handoff.
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const isThirdParty = /(CriOS|FxiOS|EdgiOS|OPT)\//.test(ua);
+  return isIos && isThirdParty;
+}
+
 export default function AccountsTab() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showIosHint, setShowIosHint] = useState(false);
+
+  useEffect(() => {
+    setShowIosHint(isIosThirdPartyBrowser());
+  }, []);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -146,6 +169,21 @@ const handleDelete = async (id: string) => {
 
   return (
     <div>
+      {/* 2026-09-09 UX fix: iOS Chrome/Firefox/Edge cause the Instagram
+          OAuth flow to hand off to the native Instagram app via iOS
+          Universal Links, where it reliably fails with "Something went
+          wrong". Native Safari doesn't trigger the handoff. Warn before
+          the click so users don't hit the dead-end. */}
+      {showIosHint && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300">
+          <p className="font-semibold">On iPhone? Open this page in Safari before connecting Instagram.</p>
+          <p className="mt-1 text-xs">
+            Chrome and Firefox on iOS have a known issue with Meta&apos;s OAuth
+            handoff to the Instagram app. Native Safari works normally.
+          </p>
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">
           Connected Accounts ({accounts.length})

@@ -61,21 +61,68 @@ Record a 30–60 second screen recording showing:
 
 | Field | URL |
 |---|---|
-| Privacy Policy | https://unnerving-demote-briskness.ngrok-free.dev/privacy |
-| Terms of Service | https://unnerving-demote-briskness.ngrok-free.dev/terms |
-| App Website | https://unnerving-demote-briskness.ngrok-free.dev |
+| Privacy Policy | https://dm-shiyam.vercel.app/privacy |
+| Terms of Service | https://dm-shiyam.vercel.app/terms |
+| App Website | https://dm-shiyam.vercel.app |
 
-> **Note:** Before submitting, replace ngrok URLs with your production domain if deployed. Otherwise ngrok URLs work for review.
+> **Verified live** (HTTP 200 on both, checked Sep 9 2026). Update to `dmshiyam.com` URLs once PR12-PR14 (domain cutover) is complete — re-submit if the app is already in review at that point.
+
+---
+
+## PR8 — Data Handling Questionnaire (ready to paste)
+
+Meta's App Review → Data Handling step asks the questions below for each requested permission. Answers are sourced directly from `src/app/privacy/page.tsx` (the live Privacy Policy) — keep both in sync if either changes.
+
+### What data does your app collect via `instagram_business_manage_messages`?
+> We collect the Instagram-scoped user ID and username of the commenter (from the webhook `comment.from` field), the comment text that triggered the automation, and the timestamp of the interaction. We do not collect the commenter's email, phone number, or any other Instagram profile data beyond what Meta's webhook payload provides.
+
+### How is this data stored?
+> Data is stored in a PostgreSQL database (hosted on Neon), encrypted at rest and in transit (TLS/HTTPS). Access is restricted to authenticated application server processes only — no direct public access.
+
+### How is this data used?
+> Solely to: (1) match the Instagram-scoped user ID to a business's automation rules, (2) prevent duplicate DMs to the same commenter for the same automation, and (3) show the business owner an activity log of their automations in their own dashboard. Data is never used for advertising, profiling, or any purpose outside operating the requested automation.
+
+### Is data shared with any third party?
+> No. Data collected via this permission is not sold, rented, or shared with any third party. It is only accessible to: (a) the business owner who configured the automation, viewing their own activity log, and (b) our infrastructure providers (Neon for database hosting, Vercel for application hosting) strictly as data processors under standard hosting agreements — they do not access or use the data themselves.
+
+### How long is this data retained?
+> Activity logs (including the Instagram-scoped user ID and comment data captured via this permission) are automatically deleted after **90 days**. Users can request immediate deletion of all their data — including this permission's data — at any time.
+
+### How can a user request deletion of their data?
+> Any user (business owner or commenter) can email **dmshiyamofficial@gmail.com** to request full data deletion. Requests are processed within **30 days**, per our Privacy Policy (`https://dm-shiyam.vercel.app/privacy`, Section 4).
+
+### Data Protection / Security Contact
+> **Email:** dmshiyamofficial@gmail.com
+> **Response time:** Within 30 days for data requests; security incidents are triaged immediately upon report.
+
+---
+
+## PR11 — Test Instagram Account for Meta Reviewers
+
+Provide this test account so reviewers can exercise the full flow (comment → webhook → DM):
+
+| Field | Value |
+|---|---|
+| Test IG account username | `dm_shiyam` |
+| Test IG account type | Business |
+| Login method for reviewer | Ask reviewer to use their own IG test account to comment on a `dm_shiyam` post — do **not** share `dm_shiyam`'s password/login. Meta reviewers should observe behavior, not log into your business account. |
+| Demo automation keyword | `info` (see screencast instructions above) |
+| Where reviewer can see the live flow | Comment "info" on any public post at `instagram.com/dm_shiyam` → reviewer's own IG account receives the automated DM within seconds |
+
+> **Do not share the IG access token or account password in the App Review form.** Meta only needs to know *which public account* to test against and *what keyword* triggers the demo — not credentials. If Meta's form explicitly requires login credentials (rare, only for non-public flows), create a **separate throwaway test IG account** instead of using the real `dm_shiyam` production account.
 
 ---
 
 ## Checklist Before Submitting
 
-- [ ] Privacy Policy page is live and accessible
-- [ ] Terms of Service page is live and accessible
+- [x] Privacy Policy page is live and accessible (`/privacy` — verified HTTP 200)
+- [x] Terms of Service page is live and accessible (`/terms` — verified HTTP 200)
 - [ ] App description filled in Meta Dashboard → Settings → Basic
 - [ ] App icon uploaded
 - [ ] Business Verification completed (Settings → Basic → Business Verification)
-- [ ] Screencast recorded and uploaded
-- [ ] `instagram_business_manage_messages` requested under App Review → Permissions and Features (Instagram API with Instagram Business Login)
+- [ ] Screencast recorded and uploaded (PR7)
+- [x] Data Handling questionnaire answers drafted above (PR8) — paste into Meta's form
+- [ ] `instagram_manage_messages` requested for Advanced Access (PR9)
+- [ ] `instagram_business_manage_messages` requested for Advanced Access (PR10)
+- [x] Test account info drafted above (PR11) — paste into Meta's form
 - [ ] Test user (Venkat/Ankit) available to demo the flow

@@ -45,18 +45,60 @@ Vercel Dashboard → dm-shiyam project → Settings → Environment Variables:
 
 Trigger a Vercel deployment (push any commit). Source maps upload on build, so stack traces will show real code line numbers.
 
-## 5. Configure Alert Rules (5 min)
+## 5. Configure Alert Rules (PR18 — 5 min, 6 rules)
 
-In Sentry → Alerts → Create Alert:
+Sentry → Alerts → **Create Alert** → choose **Issues** → build each rule below exactly (Sentry UI: When / If / Then).
 
-### Critical Alerts (email immediately)
-- **Payment webhook failures** — filter: `tags[route]:billing/webhook` — fires on every occurrence
-- **Cron failures** — filter: `tags[route]:cron/*` — fires on every occurrence
-- **IG webhook signature failures** — filter: `tags[route]:webhook/instagram AND level:warning` — could indicate attack
+All rules assume the free tier's Issue Alert builder. Set **Environment: production** on every rule so local/preview noise doesn't page you.
 
-### Standard Alerts (daily digest)
-- **Any new error** — first occurrence of any issue → email
-- **Error spike** — 20+ errors in 15 min → email
+### Rule 1 — Payment webhook processing failure (immediate)
+- **When:** A new issue is created
+- **If:** `tags[route]` equals `billing/webhook`
+- **Then:** Send a notification to [Email — your address]
+- **Action interval:** Immediately (no throttle)
+
+### Rule 2 — Payment reconciliation mismatch (immediate)
+- **When:** A new issue is created
+- **If:** `tags[route]` equals `cron/reconcile-payments`
+- **Then:** Send notification immediately
+- *(Catches both the "Reconciliation cron ran without Razorpay keys" and "N mismatch(es)" alerts — both use this tag)*
+
+### Rule 3 — Any cron job failure (immediate)
+- **When:** A new issue is created
+- **If (ANY of):**
+  - `tags[route]` equals `cron/refresh-tokens`
+  - `tags[route]` equals `cron/reset-dm-usage`
+  - `tags[route]` equals `cron/send-onboarding-emails`
+- **Then:** Send notification immediately
+- *(3 separate `tags[route] equals` filter rows combined with "any" — Sentry's UI supports OR across filter rows)*
+
+### Rule 4 — IG webhook signature failures ≥5 in 10 min (attack pattern)
+- **When:** The issue is seen more than `5` times in `10 minutes`
+- **If:**
+  - `tags[route]` equals `webhook/instagram`
+  - `level` equals `warning`
+- **Then:** Send notification immediately
+- *(Matches `"IG webhook: invalid signature"` capture — repeated hits = brute-force/replay attempt)*
+
+### Rule 5 — Payment failures >10/hr (Razorpay `payment.failed` spike)
+- **When:** The issue is seen more than `10` times in `60 minutes`
+- **If:**
+  - `tags[route]` equals `billing/webhook`
+  - `level` equals `warning`
+- **Then:** Send notification immediately
+- *(Matches `"Razorpay payment failed"` capture — high failure rate = broken checkout, not just individual declined cards)*
+
+### Rule 6 — Catch-all: any new issue, any route (daily digest)
+- **When:** A new issue is created
+- **If:** *(no filter — matches everything)*
+- **Then:** Send notification, batched
+- **Action interval:** Digest every 24 hours (avoids alert fatigue for low-severity one-offs not covered above)
+
+### Optional — Rule 7: General error spike
+- **When:** Number of events in an issue is more than `20` in `15 minutes`
+- **If:** *(no filter)*
+- **Then:** Send notification immediately
+- *(Global safety net for anything unexpected outside the 6 monitored routes)*
 
 ## What's Captured
 
@@ -69,6 +111,7 @@ The following routes now report to Sentry:
 | `GET/POST /api/cron/refresh-tokens` | Missing creds, per-account failures, top-level exceptions |
 | `GET/POST /api/cron/reset-dm-usage` | DB reset failures |
 | `GET/POST /api/cron/send-onboarding-emails` | Per-user email failures, per-step failures |
+| `GET/POST /api/cron/reconcile-payments` | Missing Razorpay keys, payment/subscription mismatches, top-level exceptions |
 
 All server exceptions caught by Next.js's built-in error boundary → auto-forwarded via `onRequestError` hook in `instrumentation.ts`.
 

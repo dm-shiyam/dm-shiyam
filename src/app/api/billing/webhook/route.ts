@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserById, updateUserPlan } from "@/lib/db";
+import { PLANS } from "@/lib/plans";
+import type { PlanType } from "@/types";
 import crypto from "crypto";
 import { captureError, captureAlert } from "@/lib/monitoring";
 
@@ -50,15 +52,44 @@ export async function POST(request: NextRequest) {
       case "subscription.activated":
       case "subscription.charged": {
         const userId = payload?.subscription?.entity?.notes?.user_id;
+        // Bug fix 2026-09-09: previously we set `plan: user.plan`, which
+        // for a first-time subscriber is 'free' — so subscription_status
+        // flipped to 'active' but the plan never upgraded. Users were
+        // billed on Razorpay but the app kept them on the free tier.
+        // Now: read plan from the subscription's notes.plan (set at
+        // creation time in /api/billing/checkout) and look up the
+        // matching dm_limit from PLANS. Fall back to the existing user
+        // values only if notes.plan is missing / not a real plan.
+        const notesPlan = payload?.subscription?.entity?.notes?.plan as
+          | PlanType
+          | undefined;
         if (userId) {
           const user = await getUserById(userId);
           if (user) {
+            const planConfig =
+              notesPlan && PLANS[notesPlan] ? PLANS[notesPlan] : undefined;
+            if (!planConfig) {
+              captureAlert(
+                "Razorpay webhook: unknown plan in notes",
+                {
+                  route: "billing/webhook",
+                  userId,
+                  notesPlan: String(notesPlan ?? "MISSING"),
+                  event: event.event,
+                },
+                "warning"
+              );
+            }
+            const targetPlan = planConfig ? notesPlan! : user.plan;
+            const targetLimit = planConfig
+              ? planConfig.dm_limit
+              : user.dm_limit;
             // Idempotent: repeated SETs to the same state are a no-op.
             // Under Meta / Razorpay webhook retries (V12.3), firing this
             // 100× still produces exactly one active subscription.
             await updateUserPlan(userId, {
-              plan: user.plan,
-              dm_limit: user.dm_limit,
+              plan: targetPlan,
+              dm_limit: targetLimit,
               subscription_status: "active",
               razorpay_subscription_id: payload?.subscription?.entity?.id,
             });

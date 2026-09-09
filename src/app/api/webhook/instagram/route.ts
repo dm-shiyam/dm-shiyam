@@ -9,6 +9,7 @@ import {
 } from "@/lib/instagram";
 import {
   getActiveAutomations,
+  getAutomationsForWebhookRouting,
   getAccountByInstagramId,
   logActivity,
   getUserById,
@@ -186,12 +187,15 @@ async function processWebhookAsync(body: WebhookPayload) {
         `[webhook] ${field} from @${senderUsername} (${senderId}) → account @${account?.instagram_username ?? "env-fallback"}: "${commentText}"`
       );
 
-      // Only consider automations attached to this specific account. Legacy
-      // env-var fallback (account===undefined) fetches all active automations
-      // that aren't bound to any account (`account_id IS NULL` — same as old
-      // behavior for single-tenant deploys).
+      // Two-tier routing so users don't have to explicitly assign every
+      // automation to every account:
+      //   * If we routed to a connected account, fetch automations that are
+      //     EITHER bound to this account, OR unassigned but owned by the
+      //     same user (safe: no cross-tenant leakage).
+      //   * Env-var fallback (single-tenant legacy) → only unassigned
+      //     automations with no account_id set.
       const automations = account
-        ? await getActiveAutomations(account.id)
+        ? await getAutomationsForWebhookRouting(account.id, account.user_id)
         : (await getActiveAutomations()).filter((a) => !a.account_id);
 
       for (const automation of automations) {
@@ -327,6 +331,12 @@ async function processWebhookAsync(body: WebhookPayload) {
         }
 
         const activity = await logActivity({
+          // Record the ROUTED account (which IG account received the event),
+          // not automation.account_id — that's NULL for unassigned automations
+          // and made the admin funnel + Activity tab unable to attribute rows
+          // to accounts. Falls back to automation.account_id for legacy env
+          // fallback path where `account` isn't set.
+          account_id: account?.id ?? automation.account_id,
           automation_id: automation.id,
           automation_name: automation.name,
           instagram_user_id: senderId,

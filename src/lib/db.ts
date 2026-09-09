@@ -195,6 +195,35 @@ export async function getAutomation(
   );
 }
 
+// Multi-account routing (2026-09-09): return automations that should fire
+// for a specific incoming webhook. Includes:
+//   1. Automations explicitly bound to this account (`account_id = $1`)
+//   2. The owning user's "unassigned" automations (`user_id = $2 AND
+//      account_id IS NULL`) — user-created generic rules that should apply
+//      to any of their connected accounts.
+// Excludes automations belonging to OTHER users. Safe under multi-tenant.
+export async function getAutomationsForWebhookRouting(
+  accountId: string,
+  userId: string | null | undefined
+): Promise<Automation[]> {
+  await ensureInit();
+  if (!userId) {
+    // No owning user on the account row (legacy pre-user-scoping); fall
+    // back to strict per-account behavior only.
+    return query<Automation>(
+      "SELECT * FROM automations WHERE is_active = TRUE AND account_id = $1",
+      [accountId]
+    );
+  }
+  return query<Automation>(
+    `SELECT * FROM automations
+       WHERE is_active = TRUE
+         AND (account_id = $1
+              OR (account_id IS NULL AND user_id = $2))`,
+    [accountId, userId]
+  );
+}
+
 export async function getActiveAutomations(
   accountId?: string
 ): Promise<Automation[]> {

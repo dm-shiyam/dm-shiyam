@@ -135,10 +135,10 @@
 | # | Task | Priority |
 |---|------|----------|
 | PR7 | **Record 30-60 sec screencast** — dashboard → comment on IG post → DM received (following `docs/META_APP_REVIEW.md`) | 🔴 |
-| PR8 | **Fill Data Handling questionnaire** — data usage, retention, deletion. Use `docs/PRIVACY.md` as source | 🔴 |
+| PR8 | **Fill Data Handling questionnaire** — answers drafted in `docs/META_APP_REVIEW.md` §PR8, sourced from `src/app/privacy/page.tsx` | 🔴 Drafted — paste into Meta form |
 | PR9 | **Submit `instagram_manage_messages` for Advanced Access** | 🔴 |
 | PR10 | **Submit `instagram_business_manage_messages` for Advanced Access** | 🔴 |
-| PR11 | **Provide test Instagram account credentials to Meta reviewers** | 🔴 |
+| PR11 | **Provide test Instagram account info to Meta reviewers** — drafted in `docs/META_APP_REVIEW.md` §PR11 (public username + demo keyword, no credentials shared) | 🔴 Drafted — paste into Meta form |
 
 ## Domain & DNS
 
@@ -155,7 +155,7 @@
 | # | Task | Priority |
 |---|------|----------|
 | PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp | 🟡 |
-| PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr | 🟡 |
+| PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min) | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
 | PR19 | **Verify daily token refresh cron runs** — check Vercel Cron logs at 03:00 UTC daily for 3 days | 🟡 |
 | PR20 | **Enable Neon Postgres backups** — daily snapshot, verify restore drill once | 🟢 |
 | PR21 | **Rotate NextAuth secret quarterly reminder** — add calendar reminder for Dec 2026 | 🟢 |

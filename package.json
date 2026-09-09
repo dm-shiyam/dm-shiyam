@@ -20,6 +20,10 @@
     "test:api": "node tests/test-api.js",
     "test:dedup": "node scripts/test-dedup-rate-limit.mjs",
     "test:funnel": "node tests/test-funnel.js",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
     "test": "node tests/test-logic.js && node tests/test-db.js && node tests/test-api.js && node tests/test-funnel.js"
   },
   "dependencies": {
@@ -43,6 +47,7 @@
     "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/typography": "^0.5.20",
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.10.2",

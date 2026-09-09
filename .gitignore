@@ -11,3 +11,8 @@ out/
 # TypeScript build cache
 tsconfig.tsbuildinfo
 .DS_Store
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/

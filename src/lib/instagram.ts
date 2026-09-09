@@ -99,6 +99,38 @@ export async function sendDM(
 // itself is the messaging trigger.
 // Requires: instagram_manage_messages permission on the token.
 // ─────────────────────────────────────────────
+// Translate the most common cryptic Meta error strings into copy that a
+// non-technical user can actually act on. Preserves the original as a hint
+// in parentheses so debugging still works from just the activity_log row.
+//
+// Meta's real error messages we surface here come from:
+//   * `POST /me/messages` (private_replies) — errors starting with "(#100)"
+//   * `POST /{comment-id}/replies` — permission + validity errors
+//   * Any endpoint — token expiry / revocation.
+// Keep the mapping small and specific — a catch-all here would hide new
+// failure modes we want to notice.
+export function humanizeMetaError(raw: string | undefined): string | undefined {
+  if (!raw) return raw;
+  const s = raw.toLowerCase();
+
+  if (s.includes("comment is invalid for a private reply")) {
+    return "Meta rejected the private reply. Common causes: (1) comment is on a Story/Live/Ad — private_replies only works on Feed posts and eligible Reels; (2) commenter has blocked the account; (3) comment is >7 days old. (raw: " + raw + ")";
+  }
+  if (s.includes("access token") && (s.includes("expired") || s.includes("session"))) {
+    return "Access token expired or was revoked. Reconnect this Instagram account from the Accounts tab. (raw: " + raw + ")";
+  }
+  if (s.includes("user has not authorized application")) {
+    return "The Instagram user removed the app's permission. Reconnect via the Accounts tab. (raw: " + raw + ")";
+  }
+  if (s.includes("does not have permission")) {
+    return "Missing Instagram permission for this action. Verify instagram_manage_comments + instagram_manage_messages are approved (App Review). (raw: " + raw + ")";
+  }
+  if (s.includes("(#4)") || s.includes("rate limit") || s.includes("application request limit")) {
+    return "Instagram rate-limited this call. Automation will retry on the next matching comment. (raw: " + raw + ")";
+  }
+  return raw;
+}
+
 export async function sendPrivateReply(
   commentId: string,
   messageText: string,

@@ -289,6 +289,7 @@ export default function DashboardContent() {
               setActiveTab("automations");
               setShowCreateForm(true);
             }}
+            onGoToActivity={() => setActiveTab("activity")}
           />
         )}
 
@@ -382,6 +383,7 @@ function GettingStartedChecklist({
   hasFirstDm,
   onGoToAccounts,
   onGoToAutomations,
+  onGoToActivity,
 }: {
   stats: DashboardStats;
   accountCount: number;
@@ -389,6 +391,7 @@ function GettingStartedChecklist({
   hasFirstDm: boolean;
   onGoToAccounts: () => void;
   onGoToAutomations: () => void;
+  onGoToActivity: () => void;
 }) {
   // dmsSent covers reload cases where `activities` might not include the very
   // first DM (kept to 30 rows) but the totals card still knows about it.
@@ -428,7 +431,7 @@ function GettingStartedChecklist({
       label: "See your first DM go out",
       desc: "Comment a trigger keyword on one of your posts to test the flow.",
       cta: "View activity",
-      onClick: onGoToAccounts, // no dedicated tab handoff; nudge is enough
+      onClick: onGoToActivity,
     },
   ];
 

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { sendDM, sendPrivateReply, replyToComment, personalizeMessage } from "@/lib/instagram";
+import {
+  sendDM,
+  sendPrivateReply,
+  replyToComment,
+  personalizeMessage,
+  humanizeMetaError,
+} from "@/lib/instagram";
 import {
   getActiveAutomations,
+  getAccountByInstagramId,
   logActivity,
   getUserById,
   claimDmSlot,
@@ -114,6 +121,32 @@ export async function POST(req: NextRequest) {
 
 async function processWebhookAsync(body: WebhookPayload) {
   for (const entry of body.entry ?? []) {
+    // ── Multi-account routing (2026-09-09 fix) ────────────────────────────
+    // `entry.id` is the IG account ID that received the event. Look up the
+    // matching connected account so we can:
+    //   1. Send DMs / private replies / comment replies with THAT account's
+    //      access token — not the env-var fallback which is dm_shiyam's
+    //      legacy token. Meta rejects cross-account calls with
+    //      "The comment is invalid for a private reply".
+    //   2. Only fire automations bound to this account (so a keyword-match
+    //      on account A doesn't send a DM from account B).
+    //   3. Use this account's own IG ID for the self-event loop guard.
+    //
+    // If `entry.id` is missing OR no matching account row exists, fall back
+    // to the env-var single-tenant setup — same behavior as before this fix.
+    const targetIgId = entry.id;
+    const account = targetIgId
+      ? await getAccountByInstagramId(targetIgId)
+      : undefined;
+    const accountAccessToken = account?.access_token ?? ACCESS_TOKEN;
+    const ownIgAccountId = account?.instagram_account_id ?? IG_ACCOUNT_ID;
+
+    if (targetIgId && !account) {
+      console.warn(
+        `[webhook] entry.id=${targetIgId} has no matching connected account — falling back to env-var token. This will fail unless the event is for the env-var account.`
+      );
+    }
+
     for (const change of entry.changes ?? []) {
       const field = change.field;
       const isTriggerEvent =
@@ -139,17 +172,27 @@ async function processWebhookAsync(body: WebhookPayload) {
         continue;
       }
 
-      // ── Self-event guard: ignore comments/mentions authored by our own IG account ──
-      // Without this, the bot's own comment reply triggers a new "comments" webhook,
-      // whose text usually contains the trigger keyword — causing an infinite reply loop.
-      if (senderId === IG_ACCOUNT_ID) {
+      // ── Self-event guard: ignore comments/mentions authored by the account
+      // that owns this webhook. Without this, the bot's own comment reply
+      // triggers a new "comments" webhook whose text contains the trigger
+      // keyword — causing an infinite reply loop. Uses the per-account IG ID
+      // when we have one; falls back to env var for legacy setups.
+      if (senderId === ownIgAccountId) {
         console.log(`[webhook] Ignoring self-authored ${field} from own IG account (${senderId})`);
         continue;
       }
 
-      console.log(`[webhook] ${field} from @${senderUsername} (${senderId}): "${commentText}"`);
+      console.log(
+        `[webhook] ${field} from @${senderUsername} (${senderId}) → account @${account?.instagram_username ?? "env-fallback"}: "${commentText}"`
+      );
 
-      const automations = await getActiveAutomations();
+      // Only consider automations attached to this specific account. Legacy
+      // env-var fallback (account===undefined) fetches all active automations
+      // that aren't bound to any account (`account_id IS NULL` — same as old
+      // behavior for single-tenant deploys).
+      const automations = account
+        ? await getActiveAutomations(account.id)
+        : (await getActiveAutomations()).filter((a) => !a.account_id);
 
       for (const automation of automations) {
         if (!isAutomationActiveNow(automation)) {
@@ -230,10 +273,12 @@ async function processWebhookAsync(body: WebhookPayload) {
             // Prefer POST /{comment-id}/private_replies for comment-triggered DMs —
             // Meta's dedicated API for this flow; more reliable delivery than /me/messages
             // and not restricted by the 24-hour messaging window.
+            // Token + IG account ID come from the routed connected-account row
+            // (see multi-account routing hoist at the top of processWebhookAsync).
             const dmResult =
               field === "comments"
-                ? await sendPrivateReply(commentId, dmText, ACCESS_TOKEN)
-                : await sendDM(senderId, dmText, ACCESS_TOKEN, IG_ACCOUNT_ID);
+                ? await sendPrivateReply(commentId, dmText, accountAccessToken)
+                : await sendDM(senderId, dmText, accountAccessToken, ownIgAccountId);
 
             if (dmResult.success) {
               dmSent = true;
@@ -259,7 +304,7 @@ async function processWebhookAsync(body: WebhookPayload) {
                 }
               }
             } else {
-              errorMessage = dmResult.error;
+              errorMessage = humanizeMetaError(dmResult.error);
               console.error(`[webhook] DM failed for ${senderId}:`, dmResult.error);
               // DM failed — do NOT release claim. Assume persistent failure
               // (blocked recipient, invalid ID, etc). Retry would just fail again.
@@ -271,7 +316,7 @@ async function processWebhookAsync(body: WebhookPayload) {
           // Atomically claim the reply — prevents duplicate replies on Meta retries.
           // This is critical: without this check, one comment can receive 100+ replies.
           if (await claimReply(commentId, automation.id)) {
-            const replyResult = await replyToComment(commentId, automation.reply_comment, ACCESS_TOKEN);
+            const replyResult = await replyToComment(commentId, automation.reply_comment, accountAccessToken);
             commentReplied = replyResult.success;
             if (!replyResult.success) {
               console.error(`[webhook] Comment reply failed:`, replyResult.error);

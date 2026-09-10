@@ -1587,3 +1587,70 @@ export async function getDeletionRequest(
     [code]
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V6+V7 — Razorpay webhook idempotency + audit
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Atomically claim a Razorpay webhook event for processing.
+ *
+ * Returns `true` if this is the first time we've seen `eventId` (caller
+ * should proceed to process the event), or `false` if the event was already
+ * recorded on an earlier delivery (caller should short-circuit and return
+ * 200 immediately — Razorpay will otherwise keep retrying).
+ *
+ * The INSERT ... ON CONFLICT (event_id) DO NOTHING pattern is the standard
+ * Postgres idiom for a lock-free single-writer mutex against duplicate
+ * webhook deliveries.
+ */
+export async function tryRecordBillingEvent(params: {
+  eventId: string;
+  eventType: string;
+  subscriptionId?: string | null;
+  paymentId?: string | null;
+  userId?: string | null;
+  plan?: string | null;
+  signatureValid: boolean;
+  rawPayload: unknown;
+}): Promise<boolean> {
+  await ensureInit();
+  const result = await pool.query(
+    `INSERT INTO billing_events
+       (event_id, event_type, subscription_id, payment_id, user_id, plan,
+        signature_valid, raw_payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+     ON CONFLICT (event_id) DO NOTHING
+     RETURNING event_id`,
+    [
+      params.eventId,
+      params.eventType,
+      params.subscriptionId ?? null,
+      params.paymentId ?? null,
+      params.userId ?? null,
+      params.plan ?? null,
+      params.signatureValid,
+      JSON.stringify(params.rawPayload),
+    ]
+  );
+  return result.rowCount === 1;
+}
+
+/**
+ * Record the outcome of processing a billing event. Called after the
+ * webhook handler finishes (success or failure) so ops can query
+ * billing_events for at-a-glance reconciliation ("did event X actually
+ * upgrade the user?").
+ */
+export async function finalizeBillingEvent(
+  eventId: string,
+  processingResult: string
+): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE billing_events
+       SET processing_result = $2, processed_at = NOW()
+     WHERE event_id = $1`,
+    [eventId, processingResult]
+  );
+}

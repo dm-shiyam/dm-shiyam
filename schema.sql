@@ -152,6 +152,36 @@ CREATE TABLE IF NOT EXISTS sent_onboarding_emails (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- ── V6+V7: Razorpay webhook idempotency + audit trail ───────────────────────
+-- event_id is Razorpay's own event UUID and serves as the atomic mutex for
+-- dedup: INSERT ON CONFLICT (event_id) DO NOTHING lets the *first* webhook
+-- delivery win and every retry short-circuits before touching users.plan.
+--
+-- Storing raw_payload (JSONB) lets us:
+--   * Replay a missed event manually if the handler ever regresses
+--   * Reconcile Razorpay revenue against our own DB
+--   * Debug support tickets ("was I charged twice?") with source-of-truth data
+--
+-- processing_result records the outcome (plan_upgraded / plan_downgraded /
+-- noop / error:<msg>) for at-a-glance ops visibility in admin dashboards.
+CREATE TABLE IF NOT EXISTS billing_events (
+  event_id          TEXT        PRIMARY KEY,
+  event_type        TEXT        NOT NULL,
+  subscription_id   TEXT,
+  payment_id        TEXT,
+  user_id           TEXT,
+  plan              TEXT,
+  signature_valid   BOOLEAN     NOT NULL DEFAULT TRUE,
+  processing_result TEXT,
+  raw_payload       JSONB       NOT NULL,
+  received_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at      TIMESTAMPTZ,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_billing_events_received ON billing_events(received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_billing_events_user     ON billing_events(user_id, received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_billing_events_sub      ON billing_events(subscription_id);
+
 -- Seed the single webhook_health row (idempotent)
 INSERT INTO webhook_health (id, total_received)
 VALUES (1, 0)

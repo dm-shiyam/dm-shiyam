@@ -7,6 +7,7 @@ import { getUserByEmail } from "@/lib/db";
 import Razorpay from "razorpay";
 import { PLANS } from "@/lib/plans";
 import type { PlanType } from "@/types";
+import { rateLimit } from "@/lib/rate-limiter";
 
 function getRazorpay() {
   return new Razorpay({
@@ -27,6 +28,19 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // V8 — Rate limit per user: 5 subscription-create attempts per 5 minutes.
+    // Prevents rage-clicks generating orphan Razorpay subscriptions (each one
+    // costs a webhook cycle to auto-expire) and blocks trivial abuse by a
+    // compromised account.
+    const rl = rateLimit(`checkout:${session.user.email.toLowerCase()}`, 5, 5 * 60 * 1000);
+    if (!rl.allowed) {
+      const retryAfterSec = Math.ceil(rl.retryAfterMs / 1000);
+      return NextResponse.json(
+        { error: `Too many checkout attempts. Try again in ${retryAfterSec}s.` },
+        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+      );
     }
 
     const { plan } = await request.json();

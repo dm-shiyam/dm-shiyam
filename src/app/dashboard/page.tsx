@@ -832,6 +832,9 @@
 // }
 
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import DashboardContent from "@/components/DashboardContent";
 
 
@@ -841,6 +844,13 @@ export const metadata: Metadata = {
   robots: "noindex, nofollow",
 };
 
-export default function DashboardPage() {
+// V9 — Server-side session guard. Redirect anonymous visitors to /login
+// *before* any client JS ships, eliminating the flash-of-dashboard-chrome
+// that useSession() in DashboardContent used to allow.
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    redirect(`/login?next=${encodeURIComponent("/dashboard")}`);
+  }
   return <DashboardContent />;
 }

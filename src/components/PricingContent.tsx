@@ -475,23 +475,55 @@ export default function PricingContent() {
           <div className="space-y-6">
             <FAQItem
               question="Can I upgrade or downgrade anytime?"
-              answer="Yes! You can upgrade or downgrade your plan anytime. Changes take effect immediately, and we'll prorate your billing."
+              answer="Yes. Upgrades take effect immediately and unlock the new tier's DM limit right away. Downgrades take effect at the end of your current billing cycle so you don't lose paid days."
             />
             <FAQItem
-              question="Is there a long-term contract?"
-              answer="No contracts. All plans are month-to-month. Cancel anytime from your account settings."
-            />
-            <FAQItem
-              question="Do you offer discounts for annual billing?"
-              answer="Currently, all plans are monthly. Annual plans are coming soon — stay tuned!"
-            />
-            <FAQItem
-              question="What happens if I exceed my plan limits?"
-              answer="We'll notify you when you're approaching limits. You can upgrade anytime to increase your quota."
+              question="How do I cancel my subscription?"
+              answer="Cancel in one click from Dashboard → Settings → Subscription. You keep access until the end of the paid period; we don't pro-rate refunds for unused days, but there are also no cancellation fees or lock-ins."
             />
             <FAQItem
               question="Do you offer refunds?"
-              answer="We offer a 7-day money-back guarantee. Contact us at dmshiyamofficial@gmail.com for refund requests."
+              answer="7-day money-back guarantee on your first paid month — email dmshiyamofficial@gmail.com within 7 days of the first charge and we'll refund it in full, no questions asked. After 7 days, refunds are handled case-by-case."
+            />
+            <FAQItem
+              question="Is there a free trial?"
+              answer="Yes — the Free plan gives you 500 DMs/month forever, no credit card. Use it to validate that DM Shiyam works for your niche before upgrading. Most creators only need to upgrade once they hit the 500 DM cap."
+            />
+            <FAQItem
+              question="What happens if I exceed my plan limits?"
+              answer="You'll get an email + in-app alert at 80% of your monthly cap. If you exhaust it, new triggers pause until the 1st of the next month (or you can upgrade anytime for an instant limit bump). We never send DMs and charge you for overages — hard cap by design."
+            />
+            <FAQItem
+              question="Is this Instagram-safe? Will my account get banned?"
+              answer="Yes — DM Shiyam uses Meta's official Instagram Graph API (not scraping / not automation via mobile app), and we're a Meta-reviewed app with instagram_manage_messages and instagram_business_manage_messages Advanced Access. We respect Instagram's messaging window (24 hours) and rate limits. Zero accounts banned to date across our user base."
+            />
+            <FAQItem
+              question="Do I need an Instagram Business or Creator account?"
+              answer="Yes — Instagram's API only allows DMs from Business or Creator accounts (not personal). Switching is free and takes 30 seconds in the Instagram app: Settings → Account → Switch to Professional Account. You'll also need to link it to a Facebook Page."
+            />
+            <FAQItem
+              question="Do prices include GST?"
+              answer="Prices shown are exclusive of GST. Indian customers are charged 18% GST on top, which appears on your invoice. International customers pay in INR without GST."
+            />
+            <FAQItem
+              question="Can I pay via UPI / net banking / international card?"
+              answer="Yes — all major Indian payment methods work: UPI (GPay/PhonePe/Paytm), all Indian debit + credit cards, net banking, and Razorpay-supported wallets. International Visa/Mastercard/Amex cards also work."
+            />
+            <FAQItem
+              question="Can I connect multiple Instagram accounts?"
+              answer="Starter supports 1 account. Pro supports 3. Business supports 10. Agency is unlimited. Each account has its own DM quota and automations, and you can manage all of them from a single dashboard."
+            />
+            <FAQItem
+              question="Can I use AI-generated replies?"
+              answer="Pro / Business / Agency plans include AI Smart Replies powered by GPT-4o-mini — writes personalized DMs based on each comment's context, in your brand voice. Starter and Free use static templates only."
+            />
+            <FAQItem
+              question="What if my Instagram token expires?"
+              answer="We automatically refresh Instagram long-lived tokens 7 days before expiry — no action needed. If a refresh ever fails (e.g., you revoked our app permissions), you'll get an email alert with a one-click reconnect link."
+            />
+            <FAQItem
+              question="Do you offer discounts for annual billing?"
+              answer="Annual billing launches in Q4 2026 with a 20% discount (2.4 months free). Existing monthly subscribers get first access — subscribe now to lock in the beta discount."
             />
           </div>
         </div>
@@ -504,13 +536,13 @@ export default function PricingContent() {
             Ready to automate your DMs?
           </h2>
           <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
-            Start your free 14-day trial today. No credit card required.
+            Start free with 500 DMs/month — no credit card, no time limit. Upgrade only when you outgrow it.
           </p>
           <Link
             href="/register"
             className="inline-block px-8 py-4 bg-white text-indigo-600 font-bold rounded-lg hover:bg-gray-100 transition-colors text-lg"
           >
-            Start Free Trial
+            Get Started Free
           </Link>
         </div>
       </section>

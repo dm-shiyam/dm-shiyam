@@ -158,6 +158,16 @@ export default function DashboardContent() {
     showFirstDmFeedbackToast();
   }, [activities]);
 
+  // V4 — Dismiss the persistent first-DM feedback toast on unmount so it
+  // doesn't leak onto marketing routes (/, /pricing) where the shared
+  // <Toaster /> keeps rendering `duration: Infinity` toasts across
+  // client-side navigation.
+  useEffect(() => {
+    return () => {
+      toast.dismiss("first-dm-feedback");
+    };
+  }, []);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");

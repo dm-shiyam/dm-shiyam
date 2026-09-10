@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
           if (user) {
             await updateUserPlan(userId, {
               plan: "free",
-              dm_limit: 100,
+              dm_limit: PLANS.free.dm_limit,
               subscription_status: event.event === "subscription.cancelled" ? "cancelled" : "expired",
               razorpay_subscription_id: user.razorpay_subscription_id,
             });

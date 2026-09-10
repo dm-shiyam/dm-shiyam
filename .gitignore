@@ -1,16 +1,31 @@
 node_modules/
 .next/
-.env.local
-*.db
 out/
 
-# SQLite WAL files
+# Env files (all variants) — never commit secrets
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.production.local
+.env.preview.local
+
+# SQLite / dev DB
+*.db
 *.db-shm
 *.db-wal
 
 # TypeScript build cache
 tsconfig.tsbuildinfo
 .DS_Store
+
+# Vercel CLI local project metadata (contains org/project IDs)
+.vercel/
+
+# Editor
+.vscode/
+.idea/
+*.swp
 
 # Playwright
 /test-results/

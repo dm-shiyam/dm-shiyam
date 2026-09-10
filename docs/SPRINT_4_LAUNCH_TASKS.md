@@ -12,9 +12,9 @@
 
 | Owner | Tasks | Focus | Est. effort |
 |-------|-------|-------|-------------|
-| 👤 **Venkat** | 22 | Features, bug fixes, integrations, coordination, QA | ~8-10 hrs (Cascade will do most) |
+| 👤 **Venkat** | 28 | Features, bug fixes, integrations, coordination, QA, Razorpay LIVE (reassigned 09-10) | ~10-12 hrs (Cascade will do most) |
 | 👨‍🎨 **Ankit** | 22 | UI polish, new pages, responsive, accessibility | ~10-12 hrs |
-| 👩‍💻 **Priyanka** | 21 | Razorpay LIVE, Meta review, domain, infra, DB | ~6-8 hrs + external waits |
+| 👩‍💻 **Priyanka** | 15 | Meta review, domain, infra, DB | ~4-6 hrs + external waits |
 
 ---
 
@@ -61,6 +61,17 @@
 | V18 | **Write 3 SEO blog posts** — "How to auto-DM Instagram comments 2026", "10 Instagram automation ideas", "DM Shiyam vs WhoseDM vs ReplyKaro" | 🟢 |
 | V19 | **Draft Product Hunt launch page** — tagline, gallery images, first comment | 🟢 |
 | V20 | **Draft launch announcement** — LinkedIn + Twitter/X post (150-word + 280-char versions) | 🟡 |
+
+## Razorpay LIVE setup (reassigned from Priyanka, 2026-09-10 — you own the Razorpay account)
+
+| # | Task | Where | Priority |
+|---|------|-------|----------|
+| V23 | **Generate Razorpay LIVE API Keys** → share `KEY_ID` + `KEY_SECRET` with team via WhatsApp DM (never group) | Razorpay dashboard → Account & Settings → API Keys | 🔴 |
+| V24 | **Create `DM Shiyam Business` plan** in Razorpay LIVE — ₹2,499 monthly. Share `plan_XXX` | Razorpay | 🔴 |
+| V25 | **Create `DM Shiyam Agency` plan** in Razorpay LIVE — ₹5,999 monthly. Share `plan_XXX` | Razorpay | 🔴 |
+| V26 | **Add LIVE webhook** — URL `https://dm-shiyam.vercel.app/api/billing/webhook`, all 5 subscription events, share secret | Razorpay | 🔴 |
+| V27 | **Enable settlement account** — verify PAN, bank account, TDS — required for money to reach your bank | Razorpay | 🔴 |
+| V28 | **Enable subscriptions product** — some Razorpay accounts need explicit activation | Razorpay | 🔴 |
 
 ## Coordination (Venkat does — 5-10 min total)
 
@@ -117,18 +128,20 @@
 
 ---
 
-# 👩‍💻 PRIYANKA — Razorpay LIVE, Meta Review, Domain, Infra
+# 👩‍💻 PRIYANKA — Meta Review, Domain, Infra
 
-## Razorpay LIVE setup (highest priority)
+> **⚠️ Reassigned 2026-09-10:** PR1-PR6 (Razorpay LIVE setup) moved to **Venkat's** section — he owns the Razorpay account/integration (built the original checkout/webhook code, Sprint 1 #1). Priyanka confirmed this is not her task.
 
-| # | Task | Where | Priority |
-|---|------|-------|----------|
-| PR1 | **Generate Razorpay LIVE API Keys** → share `KEY_ID` + `KEY_SECRET` with Venkat via WhatsApp DM (never group) | Razorpay dashboard → Account & Settings → API Keys | 🔴 |
-| PR2 | **Create `DM Shiyam Business` plan** in Razorpay LIVE — ₹2,499 monthly. Share `plan_XXX` | Razorpay | 🔴 |
-| PR3 | **Create `DM Shiyam Agency` plan** in Razorpay LIVE — ₹5,999 monthly. Share `plan_XXX` | Razorpay | 🔴 |
-| PR4 | **Add LIVE webhook** — URL `https://dm-shiyam.vercel.app/api/billing/webhook`, all 5 subscription events, share secret | Razorpay | 🔴 |
-| PR5 | **Enable settlement account** — verify PAN, bank account, TDS — required for money to reach your bank | Razorpay | 🔴 |
-| PR6 | **Enable subscriptions product** — some Razorpay accounts need explicit activation | Razorpay | 🔴 |
+## ~~Razorpay LIVE setup~~ — see Venkat's section (reassigned)
+
+| # | Task | Where | Priority | Owner |
+|---|------|-------|----------|-------|
+| PR1 | Generate Razorpay LIVE API Keys → share `KEY_ID` + `KEY_SECRET` with team via WhatsApp DM (never group) | Razorpay dashboard → Account & Settings → API Keys | 🔴 | **→ Venkat** |
+| PR2 | Create `DM Shiyam Business` plan in Razorpay LIVE — ₹2,499 monthly. Share `plan_XXX` | Razorpay | 🔴 | **→ Venkat** |
+| PR3 | Create `DM Shiyam Agency` plan in Razorpay LIVE — ₹5,999 monthly. Share `plan_XXX` | Razorpay | 🔴 | **→ Venkat** |
+| PR4 | Add LIVE webhook — URL `https://dm-shiyam.vercel.app/api/billing/webhook`, all 5 subscription events, share secret | Razorpay | 🔴 | **→ Venkat** |
+| PR5 | Enable settlement account — verify PAN, bank account, TDS — required for money to reach your bank | Razorpay | 🔴 | **→ Venkat** |
+| PR6 | Enable subscriptions product — some Razorpay accounts need explicit activation | Razorpay | 🔴 | **→ Venkat** |
 
 ## Meta App Review
 
@@ -157,7 +170,7 @@
 | PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp | 🟡 |
 | PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min) | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
 | PR19 | **Verify daily token refresh cron runs** — ⚠️ task doc said 03:00 UTC but `vercel.json` schedules `refresh-tokens` at **06:00 UTC** daily (03:00 UTC is actually `reconcile-payments`). Verification steps below. | 🟡 Code verified correct — needs Priyanka to confirm via dashboard/Neon |
-| PR20 | **Enable Neon Postgres backups** — daily snapshot, verify restore drill once | 🟢 |
+| PR20 | **Enable Neon Postgres backups** — verification + restore drill steps below | 🟢 Steps ready — needs Priyanka to check dashboard + run drill |
 | PR21 | **Rotate NextAuth secret quarterly reminder** — ✅ reminder logged below; add to your own calendar too (GCal/Outlook) since this doc alone won't page you | 🟢 Logged |
 
 ### PR19 verification steps (2 min)
@@ -174,6 +187,27 @@ To confirm it's actually firing in prod:
    ORDER BY updated_at DESC;
    ```
    If `updated_at` for `dm_shiyam` moved forward at ~06:00 UTC and `token_expires_at` is now further out than before, the cron ran and refreshed successfully.
+
+### PR20 — Neon Postgres backup verification + restore drill
+
+**Good news:** Neon provides automatic **Point-in-Time Recovery (PITR)** on every plan — there's no "enable backups" toggle needed, it's on by default. What you actually need to do is *verify your retention window* and *prove a restore works*.
+
+**1. Check your retention window (2 min)**
+- Neon Console → your project → **Settings** → **Backup & restore** (or **Storage** tab, label varies by console version)
+- Note the retention period shown (Free tier is typically 24h; Launch/Scale plans extend to 7-30 days)
+- If it's too short for your comfort (e.g., only 24h and you want a week), that requires a plan upgrade — flag to Venkat if cost is a concern
+
+**2. Run a restore drill (5 min) — proves backups actually work**
+- Neon Console → **Branches** → **Create branch**
+- Parent: your production branch → **Restore to a point in time** → pick a timestamp from ~1 hour ago
+- Name it `restore-drill-test`
+- Once created, grab its connection string and run a quick query against it (e.g., `SELECT count(*) FROM users;`) to confirm data matches what you'd expect from an hour ago
+- **Delete the drill branch** after confirming (Neon charges for branch compute/storage if left running)
+
+**3. Log the result below once done:**
+| Drill date | Retention window confirmed | Restore successful? |
+|---|---|---|
+| _(pending)_ | _(pending)_ | _(pending)_ |
 
 ### PR21 — NEXTAUTH_SECRET rotation schedule (logged Sep 10, 2026)
 

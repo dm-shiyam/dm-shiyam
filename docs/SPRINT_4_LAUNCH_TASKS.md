@@ -158,7 +158,7 @@
 | PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min) | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
 | PR19 | **Verify daily token refresh cron runs** — ⚠️ task doc said 03:00 UTC but `vercel.json` schedules `refresh-tokens` at **06:00 UTC** daily (03:00 UTC is actually `reconcile-payments`). Verification steps below. | 🟡 Code verified correct — needs Priyanka to confirm via dashboard/Neon |
 | PR20 | **Enable Neon Postgres backups** — daily snapshot, verify restore drill once | 🟢 |
-| PR21 | **Rotate NextAuth secret quarterly reminder** — add calendar reminder for Dec 2026 | 🟢 |
+| PR21 | **Rotate NextAuth secret quarterly reminder** — ✅ reminder logged below; add to your own calendar too (GCal/Outlook) since this doc alone won't page you | 🟢 Logged |
 
 ### PR19 verification steps (2 min)
 
@@ -174,6 +174,23 @@ To confirm it's actually firing in prod:
    ORDER BY updated_at DESC;
    ```
    If `updated_at` for `dm_shiyam` moved forward at ~06:00 UTC and `token_expires_at` is now further out than before, the cron ran and refreshed successfully.
+
+### PR21 — NEXTAUTH_SECRET rotation schedule (logged Sep 10, 2026)
+
+| Rotation | Due date | Status |
+|---|---|---|
+| Next rotation | **Dec 2026** | ⬜ Pending |
+| Following | Mar 2027 | ⬜ Pending |
+| Following | Jun 2027 | ⬜ Pending |
+| Following | Sep 2027 | ⬜ Pending |
+
+**Rotation steps (when due):**
+1. Generate new secret: `openssl rand -base64 32`
+2. Update `NEXTAUTH_SECRET` in Vercel env vars (Production + Preview)
+3. Redeploy — rotating this secret invalidates all existing NextAuth sessions, users must log in again (expected, not a bug)
+4. Update local `.env.local` too, so dev matches prod behavior
+
+> ⚠️ This table is a static reminder, not an active alert — it won't page anyone. **Priyanka: add a recurring calendar event** (Google Calendar/Outlook, quarterly, first occurrence Dec 1 2026) titled "Rotate NEXTAUTH_SECRET — dm-shiyam" linking back to this section.
 
 ---
 

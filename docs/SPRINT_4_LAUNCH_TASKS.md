@@ -157,8 +157,8 @@
 
 | # | Task | Priority |
 |---|------|----------|
-| PR12 | **Buy `dmshiyam.com`** — GoDaddy/Namecheap, 1-yr registration | 🟡 |
-| PR13 | **Point DNS to Vercel** — add A/CNAME records, wait for propagation | 🟡 |
+| PR12 | ~~Buy `dmshiyam.com`~~ — ✅ Already done (verified 2026-09-10: domain resolves, currently parked at registrar redirecting to `/lander`) | ✅ Done |
+| PR13 | **Point DNS to Vercel** — domain is parked, not yet pointed at the app. Add A/CNAME records in registrar, wait for propagation | 🟡 |
 | PR14 | **Follow `docs/V9_DOMAIN_CUTOVER_RUNBOOK.md`** — update Meta app, Google OAuth, Razorpay webhook, env vars | 🟡 |
 | PR15 | **Get free SSL via Vercel** — auto-provisioned; verify HTTPS + HSTS | 🟡 |
 | PR16 | **Set up email on domain** — `hello@dmshiyam.com`, `support@dmshiyam.com` (Zoho free / Google Workspace) | 🟢 |

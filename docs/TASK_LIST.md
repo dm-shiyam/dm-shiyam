@@ -11,7 +11,7 @@
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 1 | **Long-lived token exchange** — Exchange short-lived (1hr) tokens for 60-day tokens + auto-refresh before expiry | High | Done |
-| 2 | **Migrate from SQLite to PostgreSQL** — SQLite doesn't support concurrent writes; move to Postgres for production | High | Pending (Ankit — Sprint 2) |
+| 2 | **Migrate from SQLite to PostgreSQL** — SQLite doesn't support concurrent writes; move to Postgres for production | High | ✅ Done — stale status; completed as Ankit's Sprint 2 **A0** (see below) |
 | 3 | **User-scoped data isolation** — Add `user_id` FK to `accounts`, `automations`, `activity_log`; filter all queries by user | High | Done |
 | 4 | **Rate limiting on webhook endpoint** — Prevent abuse on `POST /api/webhook/instagram` (no auth check currently) | Medium | Done |
 | 5 | **DM limit enforcement** — `dms_used_this_month` exists but is never checked before sending; enforce plan limits in `processCommentTrigger` | Medium | Done |
@@ -29,7 +29,7 @@
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 1 | **Fix hydration error properly** — `suppressHydrationWarning` is a band-aid; investigate root cause (browser extensions or layout mismatch) | Medium | Pending |
+| 1 | **Fix hydration error properly** — `suppressHydrationWarning` is a band-aid; investigate root cause (browser extensions or layout mismatch) | Medium | ✅ Done — stale status; completed as Sprint 2 **A1** (see below) |
 | 2 | **Signup page** — Build a dedicated `/register` page with proper validation and UX | High | Done |
 | 3 | **Password reset flow** — Forgot password functionality (`/forgot-password`, `/reset-password`) | High | ✅ Done — end-to-end validated on prod 2026-09-08. Includes: Resend enabled via `RESEND_API_KEY` + `FROM_EMAIL=onboarding@resend.dev` (sandbox — deliverable only to Resend account owner until `dmshiyam.com` is verified). UX hardening (commit `efd1f90`): reveal-eye toggle on both New + Confirm fields, live "Passwords don't match yet" hint, client `minLength` bumped to 8 to match server policy, `autoComplete="new-password"` to defeat browser autofill masking. Integrity: `updatePassword` returns rowCount; API returns 500 if UPDATE matches 0 rows instead of silent `{success:true}`. |
 | 4 | **Google OAuth setup** — GoogleProvider has empty `clientId/clientSecret`; either configure it or remove the button | Medium | ✅ Done — 2026-09-08. `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` set in Vercel; OAuth consent screen published (In production, not Testing) so any Gmail can sign in — no verification review needed (only non-sensitive scopes: `openid`, `email`, `profile`). Authorized redirect URI `https://dm-shiyam.vercel.app/api/auth/callback/google` added under Google Auth Platform → Clients. **Bug fix (commit `8d9eb6f`)**: `/login` was rendering `LoginFormComponent` (credentials-only) while `/register` used `LoginForm` (had Google button). Added the same Google button to `LoginFormComponent` so both pages now expose "Continue with Google". Also added friendly error copy for `CredentialsSignin` / `OAuthSignin` / `OAuthCallback` / `OAuthAccountNotLinked` (commit `efd1f90`) so login failures no longer surface raw NextAuth strings. Follow-up: two near-identical login form components (`LoginForm.tsx` + `LoginFormComponent.tsx`) — worth consolidating to prevent this class of bug. |
@@ -120,7 +120,7 @@
 | | | 7.2 Re-verify webhook subscription with Meta | | ✅ Done (implied by same evidence) |
 | P8 | **Set up cron job** | | Medium | 🔶 In Progress |
 | | | 8.1 Add `vercel.json` cron config OR set up external cron (cron-job.org) | | ✅ Done (vercel.json configured with 2 crons, endpoints verified locally) |
-| | | 8.2 Test monthly DM reset runs on schedule | | Pending (needs Vercel deployment) |
+| | | 8.2 Test monthly DM reset runs on schedule | | ⚠️ **Cannot verify remotely** (no prod DB access in this session) — Priyanka: run `SELECT id, dms_used_this_month, updated_at FROM users ORDER BY updated_at DESC LIMIT 5;` in Neon SQL Editor right after the 1st of a month at 00:00 UTC to confirm reset fired |
 
 #### Phase 6: Post-Launch
 
@@ -150,7 +150,7 @@
 | P12 | **Security follow-ups** | | Medium | Pending |
 | | | 12.1 Upgrade Next.js to 15+ and next-auth to v5 — fixes 4 high-severity npm audit vulns in `next`, `next-auth`, `postcss`, `uuid` (deferred, see note below) | | Pending — post-MVP |
 | | | 12.2 Add rate limiting to NextAuth Credentials login (10 tries per email per 15min) | | ✅ Done (`src/lib/auth.ts`) |
-| | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | Pending |
+| | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | ⚠️ **Real gap, not tracked in Sprint 4** — genuinely unaddressed security follow-up |
 | | | 12.4 CSRF audit — all 15 state-changing routes verified protected via SameSite cookie / HMAC signature / CRON_SECRET; explicit NextAuth cookie config + fail-closed IG webhook signature in prod | | ✅ Done |
 | | | 12.5 Idempotency fix — replaced check-then-write with atomic `INSERT ON CONFLICT` for DMs (`claimDmSend`) + added `sent_replies` table + `claimReply` for comment replies. Prevents duplicate DMs/replies under Meta webhook retries | | ✅ Done |
 | | | 12.6 Deep-scan race conditions — added `claimDmSlot` (atomic DM quota enforcement, prevents users exceeding paid plan under concurrent webhooks); wrapped `createUser` in try/catch for unique_violation (23505) so concurrent signup returns friendly error instead of PG crash | | ✅ Done |
@@ -249,7 +249,7 @@
 | A5 | **Pricing page** | | Medium | Done |
 | | | 5.1 Design pricing cards (Free / Pro / Business) | | Done |
 | | | 5.2 Feature comparison table | | Done |
-| | | 5.3 Connect to Razorpay checkout | | Pending - Venkat? |
+| | | 5.3 Connect to Razorpay checkout | | ✅ Done — stale status; Razorpay checkout was Venkat's Sprint 1 #1, further hardened in Sprint 3 V12 (failure-scenario testing, 4/4 passing) |
 | A6 | **SEO basics** | | Medium | Done |
 | | | 6.1 Add meta title, description, keywords to all pages | | Done |
 | | | 6.2 Add Open Graph / Twitter Card tags | | Done |
@@ -404,7 +404,7 @@
 | P20 | **Token lifecycle in production** | | High | 🔶 In Progress |
 | | | 20.1 Verify long-lived token exchange works on prod OAuth callback | | ✅ Done (dm_shiyam account connected via prod OAuth, `access_token` = 60d IBL, expires Nov 2 2026) |
 | | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | → Duplicate of Sprint 4 **PR19** — code verified correct by Cascade 2026-09-09 (schedule is 06:00 UTC, not 03:00 as originally assumed); dashboard confirmation still needed |
-| | | 20.3 Verify token-expiry warning email actually sends via Resend | | Pending — genuinely unverified, not covered elsewhere. `sendTokenExpiryWarning()` exists in `src/lib/email.ts` and is wired into the cron, but no one has confirmed a real email landed in an inbox |
+| | | 20.3 Verify token-expiry warning email actually sends via Resend | | ⚠️ **Cannot verify remotely** (no `RESEND_API_KEY` in this session's `.env.local`) — Priyanka: check Resend Dashboard → Logs, filter by `token-expiry` template/subject, confirm a delivery within the last 7 days matches an account whose token was near expiry |
 
 #### Phase 10: Observability & Alerting
 

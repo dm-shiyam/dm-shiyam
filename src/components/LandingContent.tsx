@@ -85,11 +85,24 @@ export default function LandingContent() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
         <div className="text-center">
+          {/* V16 — Landing hero rewrite. Direct-benefit headline that names the
+              outcome (comment → DM) and the timeline (30s). Old copy "Automate
+              Instagram DMs at Scale" tested weak on cold traffic — it named the
+              category but not the payoff. Subline explains the actual mechanic
+              in one sentence + ends with the price anchor (₹0). */}
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-            Automate Instagram DMs at Scale
+            Turn Instagram comments into DMs in{" "}
+            <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+              30 seconds
+            </span>
+            .
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Connect with your Instagram followers instantly. Send personalized DMs triggered by keywords, automate responses, and grow your business without the manual work.
+          <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Every comment on your posts triggers a personalized DM with your link,
+            guide, or discount code. Fully automated, Meta-approved,{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              ₹0 to start.
+            </span>
           </p>
           {/* CTAs + Meta Tech Provider badge (Task 10.2) */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-6">
@@ -97,7 +110,7 @@ export default function LandingContent() {
               href="/register"
               className="inline-flex items-center gap-2 px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-center shadow-sm"
             >
-              Start Free Trial
+              Get Started Free — 500 DMs/month
               <span aria-hidden="true">→</span>
             </Link>
 
@@ -159,11 +172,14 @@ export default function LandingContent() {
               </svg>
               No Credit Card
             </span>
+            {/* V17 fix — was '14-Day Free Trial'. The free plan is perpetual
+                (500 DMs/month forever, not a countdown), so the old copy was
+                actively misleading and generated support tickets on day 15. */}
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
               <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
               </svg>
-              14-Day Free Trial
+              Free forever — 500 DMs/mo
             </span>
           </div>
         </div>

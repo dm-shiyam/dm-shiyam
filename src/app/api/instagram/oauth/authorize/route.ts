@@ -39,10 +39,13 @@ export async function GET(req: NextRequest) {
 
   const appId = process.env.INSTAGRAM_APP_ID;
   if (!appId) {
-    return NextResponse.json(
-      { error: "INSTAGRAM_APP_ID is not configured" },
-      { status: 500 }
-    );
+    // V10 — Redirect to the pretty error page instead of dumping raw JSON.
+    // The user sees a friendly card explaining the app is misconfigured and a
+    // support link, rather than {"error":"..."} in a browser tab.
+    const errPage = new URL("/oauth/instagram/error", req.url);
+    errPage.searchParams.set("code", "misconfigured");
+    errPage.searchParams.set("desc", "INSTAGRAM_APP_ID is not configured");
+    return NextResponse.redirect(errPage, { status: 302 });
   }
 
   const state = signState(userId);

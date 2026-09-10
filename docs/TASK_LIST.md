@@ -115,9 +115,9 @@
 | | | 6.1 Create free Postgres on Neon/Supabase | | ✅ Done (Neon iad1 via Vercel Marketplace) |
 | | | 6.2 Run schema migrations on production DB | | ✅ Done (`scripts/run-schema.mjs`) |
 | | | 6.3 Verify all tables and indexes created | | ✅ Done (7 tables verified) |
-| P7 | **Update Meta webhook URL** | | High | Pending |
-| | | 7.1 Change webhook callback URL from ngrok to production domain | | Pending |
-| | | 7.2 Re-verify webhook subscription with Meta | | Pending |
+| P7 | **Update Meta webhook URL** | | High | ✅ Done (confirmed stale status, 2026-09-10) |
+| | | 7.1 Change webhook callback URL from ngrok to production domain | | ✅ Done — proven by Venkat #4 follow-up (2026-09-09): dm_shiyam + vatsvelocity webhooks verified end-to-end on prod, only possible if callback URL is already `dm-shiyam.vercel.app`, not ngrok |
+| | | 7.2 Re-verify webhook subscription with Meta | | ✅ Done (implied by same evidence) |
 | P8 | **Set up cron job** | | Medium | 🔶 In Progress |
 | | | 8.1 Add `vercel.json` cron config OR set up external cron (cron-job.org) | | ✅ Done (vercel.json configured with 2 crons, endpoints verified locally) |
 | | | 8.2 Test monthly DM reset runs on schedule | | Pending (needs Vercel deployment) |
@@ -395,7 +395,7 @@
 | | | 17.4 Test `instagram_business_manage_messages` — list conversations + send DM (within 24hr window) | | ✅ Done (conversations list PASSED; DM send skipped — needs recipient IGSID inside 24hr window) |
 | | | 17.5 Commit results as `scripts/test-ig-perms.sh` | | ✅ Done |
 | P18 | **Webhook end-to-end verification** | | High | 🔶 In Progress |
-| | | 18.1 Real comment from second IG account → verify webhook received → verify reply posted → verify DM sent | | Pending (needs live IG account) |
+| | | 18.1 Real comment from second IG account → verify webhook received → verify reply posted → verify DM sent | | ✅ Done — stale status; already verified with dm_shiyam + vatsvelocity per Venkat #4 follow-up (2026-09-09) |
 | | | 18.2 Verify Meta webhook signature validation is enforced in production | | ✅ Done (audit + `scripts/test-webhook-e2e.sh` proves fail-closed) |
 | | | 18.3 Test webhook idempotency — Meta retry same payload → single side effect | | ✅ Done (10-way parallel replay → exactly 1 DM + 1 reply in DB) |
 | P19 | **Rate limit + dedup regression run** | | High | ✅ Done (local) |
@@ -403,8 +403,8 @@
 | | | 19.2 Load test: 100 concurrent webhook posts → verify quota enforcement | | ✅ Done (Tests 13-14 cover 200-way concurrent storm — cap strictly enforced) |
 | P20 | **Token lifecycle in production** | | High | 🔶 In Progress |
 | | | 20.1 Verify long-lived token exchange works on prod OAuth callback | | ✅ Done (dm_shiyam account connected via prod OAuth, `access_token` = 60d IBL, expires Nov 2 2026) |
-| | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | Pending |
-| | | 20.3 Verify token-expiry warning email actually sends via Resend | | Pending |
+| | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | → Duplicate of Sprint 4 **PR19** — code verified correct by Cascade 2026-09-09 (schedule is 06:00 UTC, not 03:00 as originally assumed); dashboard confirmation still needed |
+| | | 20.3 Verify token-expiry warning email actually sends via Resend | | Pending — genuinely unverified, not covered elsewhere. `sendTokenExpiryWarning()` exists in `src/lib/email.ts` and is wired into the cron, but no one has confirmed a real email landed in an inbox |
 
 #### Phase 10: Observability & Alerting
 
@@ -416,10 +416,10 @@
 | P22 | **Error monitoring** | | Medium | 🔶 Code done, awaiting activation |
 | | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | ✅ Done (`@sentry/nextjs` + `src/lib/monitoring.ts`) |
 | | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | ✅ Done (`captureError`/`captureAlert` wired in all 5 critical routes; see `docs/SENTRY_SETUP.md`) |
-| | | 22.3 Sign up at sentry.io (free tier) and create `dm-shiyam` project | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md steps 1-2) |
+| | | 22.3 Sign up at sentry.io (free tier) and create `dm-shiyam` project | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md steps 1-2; prerequisite for Sprint 4 **PR18**) |
 | | | 22.4 Copy DSN + add 5 env vars to Vercel (SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN) | | Pending (Priyanka — 5 min) |
 | | | 22.5 Redeploy Vercel + trigger test error via `/api/health?force_error=1` to confirm Sentry receives it | | Pending (Priyanka — after 22.4) |
-| | | 22.6 Configure alert rules in Sentry (payment failures, cron failures, IG webhook sig failures) | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md step 5) |
+| | | 22.6 Configure alert rules in Sentry (payment failures, cron failures, IG webhook sig failures) | | = Sprint 4 **PR18** — 7 exact rule configs already drafted by Cascade 2026-09-09 in `docs/SENTRY_SETUP.md` §5, ready to paste once 22.3-22.5 are done |
 | P23 | **Admin dashboard MRR/metrics** | | Medium | ✅ Done |
 | | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | ✅ Done (`RevenueGrid` widget with MRR/ARR/ARPU/churn/trialing on `/admin`) |
 | | | 23.2 Add "Meta API errors last 24h" widget | | ✅ Done (traffic-light widget in Overview tab: green<10, amber 10-49, red≥50) |

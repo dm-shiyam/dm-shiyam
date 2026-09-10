@@ -156,9 +156,24 @@
 |---|------|----------|
 | PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp | 🟡 |
 | PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min) | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
-| PR19 | **Verify daily token refresh cron runs** — check Vercel Cron logs at 03:00 UTC daily for 3 days | 🟡 |
+| PR19 | **Verify daily token refresh cron runs** — ⚠️ task doc said 03:00 UTC but `vercel.json` schedules `refresh-tokens` at **06:00 UTC** daily (03:00 UTC is actually `reconcile-payments`). Verification steps below. | 🟡 Code verified correct — needs Priyanka to confirm via dashboard/Neon |
 | PR20 | **Enable Neon Postgres backups** — daily snapshot, verify restore drill once | 🟢 |
 | PR21 | **Rotate NextAuth secret quarterly reminder** — add calendar reminder for Dec 2026 | 🟢 |
+
+### PR19 verification steps (2 min)
+
+Code logic reviewed (`src/app/api/cron/refresh-tokens/route.ts`) — correct: pulls accounts expiring within 7 days, refreshes via `refreshLongLivedToken`, updates `access_token`/`token_expires_at`, sends throttled warning email on failure, reports to Sentry via `captureAlert`. **Actual schedule per `vercel.json`: `0 6 * * *` = 06:00 UTC daily** (not 03:00 — that slot belongs to `reconcile-payments`).
+
+To confirm it's actually firing in prod:
+1. **Vercel dashboard** → dm-shiyam project → **Cron Jobs** tab → `refresh-tokens` row → check "Last Run" timestamp is within the last 24h and status is 200.
+2. **Or** in Neon SQL Editor, run:
+   ```sql
+   SELECT instagram_username, token_expires_at, updated_at
+   FROM accounts
+   WHERE is_active = true
+   ORDER BY updated_at DESC;
+   ```
+   If `updated_at` for `dm_shiyam` moved forward at ~06:00 UTC and `token_expires_at` is now further out than before, the cron ran and refreshed successfully.
 
 ---
 

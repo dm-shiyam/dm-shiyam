@@ -72,6 +72,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Checkout error:", error);
-    return NextResponse.json({ error: "Failed to create subscription" }, { status: 500 });
+    // Surface the Razorpay error description to the client so support tickets
+    // and dev-console clicks show the real reason (e.g. "The ID provided is
+    // invalid or could not be found." when RAZORPAY_PLAN_* env vars point at
+    // a stale/wrong plan). We deliberately DON'T leak stack traces or key IDs.
+    const rzp = error as { error?: { description?: string; code?: string } };
+    const rzpDesc = rzp?.error?.description;
+    const rzpCode = rzp?.error?.code;
+    const fallback =
+      error instanceof Error ? error.message : "Failed to create subscription";
+    return NextResponse.json(
+      {
+        error: rzpDesc || fallback,
+        code: rzpCode || "checkout_failed",
+      },
+      { status: 500 }
+    );
   }
 }

@@ -835,6 +835,7 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getUserById } from "@/lib/db";
 import DashboardContent from "@/components/DashboardContent";
 
 
@@ -847,10 +848,26 @@ export const metadata: Metadata = {
 // V9 — Server-side session guard. Redirect anonymous visitors to /login
 // *before* any client JS ships, eliminating the flash-of-dashboard-chrome
 // that useSession() in DashboardContent used to allow.
+//
+// Hard-block email verification (2026-09-11): also redirect unverified users
+// (credentials-signup only; Google users are pre-verified at creation) to
+// /verify-email-pending so they can't touch product features until they
+// confirm their email address is real.
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  const userId = (session?.user as { id?: string } | undefined)?.id;
+
+  if (!session?.user?.email || !userId) {
     redirect(`/login?next=${encodeURIComponent("/dashboard")}`);
   }
+
+  const user = await getUserById(userId);
+  if (!user) {
+    redirect(`/login?next=${encodeURIComponent("/dashboard")}`);
+  }
+  if (!user.email_verified_at) {
+    redirect("/verify-email-pending");
+  }
+
   return <DashboardContent />;
 }

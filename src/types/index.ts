@@ -23,6 +23,8 @@ export interface User {
   reset_token_expires?: string;
   last_login_at?: string | null;
   email_verified_at?: string | null;
+  email_verification_token?: string | null;
+  email_verification_token_expires?: string | null;
   // A9.1: onboarding funnel milestones (set once, then immutable)
   first_account_connected_at?: string | null;
   first_automation_created_at?: string | null;

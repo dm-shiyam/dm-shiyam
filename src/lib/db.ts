@@ -653,12 +653,15 @@ export async function createUser(data: {
   password_hash?: string;
   provider: "credentials" | "google";
   provider_id?: string;
+  // Google already verifies email ownership via OAuth — pass true to skip
+  // our own verification flow for those signups.
+  email_verified?: boolean;
 }): Promise<User> {
   await ensureInit();
   const id = uuidv4();
   await execute(
-    `INSERT INTO users (id, email, name, password_hash, provider, provider_id)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO users (id, email, name, password_hash, provider, provider_id, email_verified_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       id,
       data.email,
@@ -666,9 +669,43 @@ export async function createUser(data: {
       data.password_hash ?? null,
       data.provider,
       data.provider_id ?? null,
+      data.email_verified ? new Date().toISOString() : null,
     ]
   );
   return (await getUserById(id))!;
+}
+
+// Email verification (hard-block flow) — credentials signups only.
+export async function setEmailVerificationToken(
+  userId: string,
+  token: string,
+  expiresAt: string
+): Promise<void> {
+  await ensureInit();
+  await execute(
+    "UPDATE users SET email_verification_token = $1, email_verification_token_expires = $2 WHERE id = $3",
+    [token, expiresAt, userId]
+  );
+}
+
+export async function getUserByVerificationToken(
+  token: string
+): Promise<User | undefined> {
+  await ensureInit();
+  return queryOne<User>(
+    "SELECT * FROM users WHERE email_verification_token = $1 AND email_verification_token_expires > NOW()",
+    [token]
+  );
+}
+
+export async function verifyUserEmail(userId: string): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE users
+     SET email_verified_at = NOW(), email_verification_token = NULL, email_verification_token_expires = NULL
+     WHERE id = $1`,
+    [userId]
+  );
 }
 
 export async function updateUserPlan(

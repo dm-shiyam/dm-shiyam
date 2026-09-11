@@ -134,6 +134,30 @@ function ctaButton(href: string, label: string, color = "#6366f1"): string {
   return `<a href="${href}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:${color};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${label}</a>`;
 }
 
+// Email verification (hard-block flow) — sent immediately on credentials signup.
+// Google signups skip this entirely since OAuth already proves ownership.
+export async function sendVerificationEmail({
+  to,
+  name,
+  token,
+}: {
+  to: string;
+  name: string;
+  token: string;
+}) {
+  const verifyUrl = `${APP_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  return sendEmail({
+    to,
+    subject: `Verify your email to activate ${APP_NAME}`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Verify your email, ${name || "there"}</h2>
+      <p>One last step before you can use ${APP_NAME} — confirm this is really your email address.</p>
+      ${ctaButton(verifyUrl, "Verify email →")}
+      <p style="color:#666;font-size:14px;">This link expires in 24 hours. If you didn't sign up for ${APP_NAME}, you can ignore this email.</p>
+    `,
+  });
+}
+
 // 13.1 Welcome (Day 0) — sent immediately on signup
 export async function sendWelcomeEmail({
   to,

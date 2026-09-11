@@ -2,9 +2,26 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin, claimOnboardingEmail } from "./db";
+import crypto from "crypto";
+import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin, claimOnboardingEmail, setEmailVerificationToken } from "./db";
 import { rateLimit } from "./rate-limiter";
-import { sendWelcomeEmail } from "./email";
+import { sendWelcomeEmail, sendVerificationEmail } from "./email";
+
+// Hard-block email verification — credentials signups only. Generates a
+// token, persists it, and emails the verify link. Fire-and-forget so a
+// slow/failed email send never blocks the signup response.
+function fireVerificationEmail(userId: string, email: string, name: string) {
+  (async () => {
+    try {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+      await setEmailVerificationToken(userId, token, expiresAt);
+      await sendVerificationEmail({ to: email, name, token });
+    } catch (err) {
+      console.error("[auth] verification email failed:", err);
+    }
+  })();
+}
 
 // A13.1 — fire-and-forget welcome. Atomic claim prevents dup sends on races.
 function fireWelcomeEmail(userId: string, email: string, name: string) {
@@ -56,8 +73,10 @@ export const authOptions: NextAuthOptions = {
               name,
               password_hash: hash,
               provider: "credentials",
+              email_verified: false,
             });
             fireWelcomeEmail(user.id, user.email, user.name);
+            fireVerificationEmail(user.id, user.email, user.name);
             return { id: user.id, email: user.email, name: user.name };
           } catch (err) {
             // Postgres unique_violation code — race condition: another concurrent
@@ -98,6 +117,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name || "User",
             provider: "google",
             provider_id: account.providerAccountId,
+            email_verified: true, // Google OAuth already proves ownership
           });
           fireWelcomeEmail(created.id, created.email, created.name);
         } catch (err) {

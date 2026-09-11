@@ -204,6 +204,8 @@ CREATE INDEX IF NOT EXISTS idx_accounts_user       ON accounts(user_id);
 -- ── P15: Audit columns (add before FKs/constraints so existing rows are OK) ──
 ALTER TABLE users    ADD COLUMN IF NOT EXISTS last_login_at       TIMESTAMPTZ;
 ALTER TABLE users    ADD COLUMN IF NOT EXISTS email_verified_at   TIMESTAMPTZ;
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS email_verification_token         TEXT;
+ALTER TABLE users    ADD COLUMN IF NOT EXISTS email_verification_token_expires TIMESTAMPTZ;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_refreshed_at        TIMESTAMPTZ;
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS last_token_warning_sent_at TIMESTAMPTZ;
 

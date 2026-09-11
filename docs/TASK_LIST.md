@@ -403,7 +403,7 @@
 | | | 19.2 Load test: 100 concurrent webhook posts → verify quota enforcement | | ✅ Done (Tests 13-14 cover 200-way concurrent storm — cap strictly enforced) |
 | P20 | **Token lifecycle in production** | | High | 🔶 In Progress |
 | | | 20.1 Verify long-lived token exchange works on prod OAuth callback | | ✅ Done (dm_shiyam account connected via prod OAuth, `access_token` = 60d IBL, expires Nov 2 2026) |
-| | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | → Duplicate of Sprint 4 **PR19** — code verified correct by Cascade 2026-09-09 (schedule is 06:00 UTC, not 03:00 as originally assumed); dashboard confirmation still needed |
+| | | 20.2 Verify refresh-tokens cron runs on schedule (check Vercel cron logs) | | → Duplicate of Sprint 4 **PR19** — code verified correct by Cascade 2026-09-09 (schedule is 06:00 UTC, not 03:00 as originally assumed); dashboard confirmation **→ Venkat** (reassigned 2026-09-11) |
 | | | 20.3 Verify token-expiry warning email actually sends via Resend | | ⚠️ **Cannot verify remotely** (no `RESEND_API_KEY` in this session's `.env.local`) — Priyanka: check Resend Dashboard → Logs, filter by `token-expiry` template/subject, confirm a delivery within the last 7 days matches an account whose token was near expiry |
 
 #### Phase 10: Observability & Alerting

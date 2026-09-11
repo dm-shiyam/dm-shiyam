@@ -20,7 +20,7 @@
 //   }
 // }
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db-client";
 
 export const dynamic = "force-dynamic";
@@ -174,7 +174,15 @@ function checkEnv(): DependencyCheck {
   return { status: "ok" };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Sentry post-deploy verification: hitting /api/health?sentry_test=1 throws
+  // an intentional error so we can confirm the DSN + instrumentation.ts hook
+  // are working end-to-end. Remove this branch once PR18 alert rules are set
+  // up and Sentry is confirmed live.
+  if (req.nextUrl.searchParams.get("sentry_test") === "1") {
+    throw new Error("Sentry test error from /api/health — safe to ignore");
+  }
+
   // Run all checks in parallel — they're independent
   const [database, meta_api, razorpay] = await Promise.all([
     checkDatabase(),

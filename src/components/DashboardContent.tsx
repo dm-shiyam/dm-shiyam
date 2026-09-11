@@ -380,7 +380,7 @@ export default function DashboardContent() {
         {activeTab === "activity" && (
           <ActivityTab activities={activities} loading={loading} />
         )}
-        {activeTab === "analytics" && <AnalyticsTab />}
+        {activeTab === "analytics" && <AnalyticsTab userPlan={userPlan} />}
         {activeTab === "accounts" && <AccountsTab />}
         {activeTab === "setup" && <SetupGuide />}
       </main>

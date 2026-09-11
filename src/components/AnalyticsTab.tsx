@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   BarChart,
   Bar,
@@ -16,24 +17,95 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { RefreshCw, TrendingUp, Clock, Target, PieChart as PieIcon } from "lucide-react";
+import {
+  RefreshCw,
+  TrendingUp,
+  Clock,
+  Target,
+  PieChart as PieIcon,
+  BarChart3,
+  Lock,
+  Download,
+} from "lucide-react";
 import type { AnalyticsData } from "@/types";
+import { PLANS } from "@/lib/plans";
 
 const COLORS = ["#ec4899", "#8b5cf6", "#6366f1", "#3b82f6", "#14b8a6", "#f59e0b", "#ef4444", "#10b981"];
 
-export default function AnalyticsTab() {
+// Plans that unlock the analytics dashboard. Free users see an upgrade CTA
+// instead. Kept as an explicit set (rather than reading PLANS[plan].analytics)
+// so it survives the plans.ts flag being defaulted for a new tier by mistake.
+const ANALYTICS_ENABLED_PLANS = new Set(["starter", "pro", "business", "agency"]);
+
+// Plans that get CSV export (the "Full + Reporting" tier in the pricing page).
+// The endpoint /api/analytics/export gates this server-side too — the client
+// check is just for UX (hide the button rather than let users click and 403).
+const EXPORT_ENABLED_PLANS = new Set(["business", "agency"]);
+
+export default function AnalyticsTab({ userPlan = "free" }: { userPlan?: string }) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Skip the API call entirely for free users — they see the upgrade
+    // paywall below, so pulling analytics data is wasted network + DB load.
+    if (!ANALYTICS_ENABLED_PLANS.has(userPlan)) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetch(`/api/analytics?days=${days}`)
       .then((r) => r.json())
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, userPlan]);
+
+  // ── Free-tier paywall — matches the Starter+ gating shown in /pricing.
+  // Deliberately hard-blocks (rather than a nag banner) so the "Analytics"
+  // feature bullet on paid plans is a real reason to upgrade. Server-side
+  // /api/analytics still needs to enforce this too — client hiding is UX,
+  // not security. See src/app/api/analytics/route.ts for the auth check.
+  if (!ANALYTICS_ENABLED_PLANS.has(userPlan)) {
+    const starterFeatures = PLANS.starter?.features?.slice(0, 4) ?? [];
+    return (
+      <div className="card p-8 sm:p-12 text-center">
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-5">
+          <BarChart3 className="w-8 h-8 text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+          Analytics is a Starter+ feature
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+          Track DMs sent, top-triggered keywords, delivery success rate, and
+          activity by hour. Upgrade to Starter ({PLANS.starter.price_label}/mo)
+          to unlock the full analytics dashboard.
+        </p>
+        {starterFeatures.length > 0 && (
+          <ul className="max-w-sm mx-auto text-left space-y-1.5 mb-8 text-sm text-gray-700 dark:text-gray-300">
+            {starterFeatures.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <span className="text-emerald-500 mt-0.5">✓</span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:opacity-90 transition"
+          >
+            See plans
+          </Link>
+          <span className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <Lock className="w-3 h-3" /> No credit card to start
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -72,21 +144,34 @@ const perAccount = data?.per_account ?? [];
 
   return (
     <div className="space-y-6">
-      {/* Time Range Selector */}
-      <div className="flex items-center justify-between">
+      {/* Time Range Selector + Export */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 className="text-lg font-semibold">Analytics</h2>
-        <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
-          {[7, 14, 30, 90].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                days === d ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-1">
+            {[7, 14, 30, 90].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                  days === d ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+          {EXPORT_ENABLED_PLANS.has(userPlan) && (
+            <a
+              href={`/api/analytics/export?days=${days}&format=csv`}
+              download
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+              title="Download analytics data as CSV (Business+ feature)"
             >
-              {d}d
-            </button>
-          ))}
+              <Download className="w-3.5 h-3.5" />
+              Export CSV
+            </a>
+          )}
         </div>
       </div>
 

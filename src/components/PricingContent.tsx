@@ -290,7 +290,9 @@ export default function PricingContent() {
             ]}
           />
 
-          {/* Business Tier */}
+          {/* Business Tier — 2026-09-11: "API access" moved to Coming Q1 2027
+              in the comparison table (not shipped yet). Card now leads with
+              CSV export, which IS live via /api/analytics/export. */}
           <PricingCard
             plan="business"
             tagline="For teams & bigger brands"
@@ -304,30 +306,38 @@ export default function PricingContent() {
               "Unlimited automations",
               `${PLANS.business.max_accounts} Instagram accounts`,
               "AI Smart Replies",
-              "Full analytics + API access",
+              "Full analytics + CSV export",
               "Dedicated support",
             ]}
           />
         </div>
 
-        {/* Agency band — full-width enterprise strip. Agencies typically want
-            to negotiate seat counts, white-label branding, and payment terms
-            over email, so the primary CTA is "Talk to sales". A secondary
-            "Subscribe now" link routes through the same Razorpay flow for
-            buyers who want to self-serve without a call. */}
+        {/* Agency band — enterprise strip. 2026-09-11: intentionally
+            "Talk to sales" only (no self-serve Razorpay button). The Agency
+            headline feature — white-label branding, custom domain, per-tenant
+            SMTP — is on the Q1 2027 roadmap, not shipped yet. Selling Agency
+            self-serve today would set the wrong expectation. Sales conversations
+            let us scope the deal and give a real ETA on white-label. Once
+            white-label ships we'll re-enable the "or subscribe now" button. */}
         <div className="mt-8 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-950 dark:to-gray-900 border border-gray-700 p-8 sm:p-10">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <h3 className="text-2xl font-bold text-white">Agency</h3>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                   ENTERPRISE
                 </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                  EARLY ACCESS
+                </span>
               </div>
               <p className="text-gray-300 mb-4">
-                Unlimited DMs, unlimited accounts, white-label branding, and a
-                dedicated account manager. Ideal for agencies managing 10+ client
-                Instagram handles.
+                Everything in Business, plus unlimited DMs, unlimited Instagram
+                accounts, a dedicated account manager, and{" "}
+                <span className="text-white font-semibold">
+                  early access to white-label branding
+                </span>{" "}
+                (Q1 2027). Ideal for agencies managing 10+ client handles.
               </p>
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-200">
                 <span className="inline-flex items-center gap-1.5">
@@ -337,42 +347,37 @@ export default function PricingContent() {
                   <span className="text-emerald-400">✓</span> Unlimited accounts
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span> White-label
+                  <span className="text-emerald-400">✓</span> CSV export
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <span className="text-emerald-400">✓</span> Dedicated manager
                 </span>
+                <span className="inline-flex items-center gap-1.5 text-amber-300">
+                  <span>◔</span> White-label · Q1 2027
+                </span>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row lg:flex-col items-stretch gap-3 min-w-fit">
+            <div className="flex flex-col items-stretch gap-3 min-w-fit lg:min-w-[220px]">
               <div className="text-center lg:text-right">
                 <div className="text-3xl font-bold text-white">
-                  {PLANS.agency.price_label}
+                  From {PLANS.agency.price_label}
                   <span className="text-base font-normal text-gray-400 ml-1">
                     /month
                   </span>
                 </div>
                 <div className="text-xs text-gray-400 mt-0.5">
-                  or custom pricing on annual
+                  Custom pricing on annual & bulk
                 </div>
               </div>
               <a
-                href="mailto:dmshiyamofficial@gmail.com?subject=Agency%20plan%20enquiry&body=Hi%20DM%20Shiyam%20team%2C%0A%0AI%27m%20interested%20in%20the%20Agency%20plan.%20A%20few%20details%20about%20us%3A%0A%0AAgency%20name%3A%0A%23%20of%20client%20IG%20accounts%3A%0AExpected%20monthly%20DM%20volume%3A%0AWebsite%3A%0A%0AThanks!"
+                href="mailto:dmshiyamofficial@gmail.com?subject=Agency%20plan%20enquiry&body=Hi%20DM%20Shiyam%20team%2C%0A%0AI%27m%20interested%20in%20the%20Agency%20plan.%20A%20few%20details%20about%20us%3A%0A%0AAgency%20name%3A%0A%23%20of%20client%20IG%20accounts%3A%0AExpected%20monthly%20DM%20volume%3A%0AWebsite%3A%0AInterested%20in%20white-label%20early%20access%3F%20(Y%2FN)%3A%0A%0AThanks!"
                 className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition"
               >
                 Talk to sales
               </a>
-              <button
-                onClick={() => handleCheckout("agency")}
-                disabled={currentPlan === "agency" || checkoutLoading === "agency"}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-gray-600 text-gray-200 font-medium hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {currentPlan === "agency"
-                  ? "Current Plan"
-                  : checkoutLoading === "agency"
-                    ? "Loading…"
-                    : "or subscribe now"}
-              </button>
+              <span className="text-xs text-gray-500 text-center">
+                We reply within 24 hours
+              </span>
             </div>
           </div>
         </div>
@@ -446,13 +451,33 @@ export default function PricingContent() {
                 business="✅"
                 agency="✅"
               />
+              {/* Comparison rows below are the SHIP-STATE truth as of the
+                  2026-09-11 audit. Anything marked ✅ is live in production
+                  today; "Coming …" rows are known-planned features that were
+                  previously oversold as ✅ and are now honestly labelled. */}
               <ComparisonRow
-                feature="Analytics"
+                feature="Analytics dashboard"
                 free="❌"
-                starter="Basic"
-                pro="Advanced"
-                business="Full + Reporting"
-                agency="Full + Reporting"
+                starter="✅"
+                pro="✅"
+                business="✅"
+                agency="✅"
+              />
+              <ComparisonRow
+                feature="CSV data export"
+                free="❌"
+                starter="❌"
+                pro="❌"
+                business="✅"
+                agency="✅"
+              />
+              <ComparisonRow
+                feature="Monthly PDF reports"
+                free="❌"
+                starter="❌"
+                pro="❌"
+                business="Coming Q1 2027"
+                agency="Coming Q1 2027"
               />
               <ComparisonRow
                 feature="DM Templates"
@@ -467,24 +492,24 @@ export default function PricingContent() {
                 free="❌"
                 starter="❌"
                 pro="❌"
-                business="✅"
-                agency="✅"
+                business="Coming Q1 2027"
+                agency="Coming Q1 2027"
               />
               <ComparisonRow
                 feature="Webhook Support"
                 free="❌"
                 starter="❌"
                 pro="❌"
-                business="✅"
-                agency="✅"
+                business="Coming Q1 2027"
+                agency="Coming Q1 2027"
               />
               <ComparisonRow
-                feature="White-label"
+                feature="White-label branding"
                 free="❌"
                 starter="❌"
                 pro="❌"
                 business="❌"
-                agency="✅"
+                agency="Coming Q1 2027"
               />
               <ComparisonRow
                 feature="Support"
@@ -495,20 +520,12 @@ export default function PricingContent() {
                 agency="Dedicated Manager"
               />
               <ComparisonRow
-                feature="Monthly Reports"
-                free="❌"
-                starter="❌"
-                pro="❌"
-                business="✅"
-                agency="✅"
-              />
-              <ComparisonRow
                 feature="Custom Integrations"
                 free="❌"
                 starter="❌"
                 pro="❌"
-                business="✅"
-                agency="✅"
+                business="On request"
+                agency="On request"
               />
             </tbody>
           </table>

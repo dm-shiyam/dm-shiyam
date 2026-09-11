@@ -162,7 +162,7 @@ Any Instagram Business/Creator account can now connect — no more test-user res
 | # | Task | Priority |
 |---|------|----------|
 | PR12 | ~~Buy `dmshiyam.com`~~ — ✅ Already done (verified 2026-09-10: domain resolves, currently parked at registrar redirecting to `/lander`) | ✅ Done |
-| PR13 | **Point DNS to Vercel** — domain is parked, not yet pointed at the app. Add A/CNAME records in registrar, wait for propagation | 🟡 |
+| PR13 | **Point DNS to Vercel** — domain is parked, not yet pointed at the app. Add A/CNAME records in registrar, wait for propagation. *See "What is DNS cutover?" below.* | 🟡 |
 | PR14 | **Follow `docs/V9_DOMAIN_CUTOVER_RUNBOOK.md`** — update Meta app, Google OAuth, Razorpay webhook, env vars | 🟡 |
 | PR15 | **Get free SSL via Vercel** — auto-provisioned; verify HTTPS + HSTS | 🟡 |
 | PR16 | **Set up email on domain** — `hello@dmshiyam.com`, `support@dmshiyam.com` (Zoho free / Google Workspace) | 🟢 |
@@ -171,11 +171,76 @@ Any Instagram Business/Creator account can now connect — no more test-user res
 
 | # | Task | Priority |
 |---|------|----------|
-| PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp | 🟡 |
-| PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min) | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
+| PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp. *See "What is UptimeRobot?" below.* | 🟡 |
+| PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min). *See "What is Sentry PR18?" below.* | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
 | PR19 | **Verify daily token refresh cron runs** — ⚠️ task doc said 03:00 UTC but `vercel.json` schedules `refresh-tokens` at **06:00 UTC** daily (03:00 UTC is actually `reconcile-payments`). Verification steps below. | 🟡 Code verified correct — needs Priyanka to confirm via dashboard/Neon |
 | PR20 | **Enable Neon Postgres backups** — verification + restore drill steps below | 🟢 Steps ready — needs Priyanka to check dashboard + run drill |
 | PR21 | **Rotate NextAuth secret quarterly reminder** — ✅ reminder logged below; add to your own calendar too (GCal/Outlook) since this doc alone won't page you | 🟢 Logged |
+
+---
+
+### 🧾 Launch item explainers (added 2026-09-11)
+
+Quick reference for anyone new to the project. Explains **what** each launch item is and **why** it matters — see the corresponding PR# task row above for the concrete "do this" step.
+
+#### What is DNS cutover? (PR13)
+
+Right now the app lives at `https://dm-shiyam.vercel.app` (Vercel's default). You own `dmshiyam.com` but it's parked at the registrar — not yet pointing at the app.
+
+**DNS cutover** = telling the internet "when someone types `dmshiyam.com`, send them to the Vercel app." Done by adding two DNS records in your registrar's dashboard (an `A` record + a `CNAME` record — Vercel gives you the exact values).
+
+**Why it matters for paying customers:**
+- Nobody trusts `xyz.vercel.app` for a ₹149 payment — feels like a demo.
+- Meta App Review / Google OAuth / Razorpay all look more legitimate on a real domain.
+- Better SEO, professional look, custom email addresses.
+
+**Time:** 5 min in registrar → up to 1 hour for DNS to propagate globally → Vercel auto-provisions the free SSL cert.
+
+**Launch trade-off:** Soft-blocking, not hard-blocking. You *can* launch on the vercel.app URL and cutover after the first few paying users.
+
+#### What is UptimeRobot? (PR17)
+
+A **free external service** that pings a URL every 5 minutes from multiple locations around the world. If the URL doesn't respond (or returns an error), it sends you an alert (email / WhatsApp / SMS / Slack / phone call).
+
+**Why we need it:** We built `/api/health` to check DB + Meta API + Razorpay + env vars all at once. But **we won't know if the site goes down unless someone tells us** — either an angry customer or, worse, we notice days later that no one has signed up because signup was broken.
+
+UptimeRobot solves that: you get a WhatsApp message within 5-10 minutes of any outage, so you can fix it before customers churn.
+
+**Concrete failures it catches:**
+- Vercel deploy accidentally breaks the app (500s)
+- Neon Postgres outage (DB check in `/api/health` fails)
+- Razorpay credentials get rotated/revoked (Razorpay check fails)
+- Someone accidentally deletes an env var
+
+**Cost:** Free tier = 50 monitors, 5-min interval, unlimited alerts. We only need 1 monitor.
+
+**Time:** ~3 min for Priyanka (sign up + verify email + add phone) + Cascade can add the monitor programmatically via UptimeRobot's REST API once given an API key.
+
+**Alternatives considered:** BetterStack (nicer UI, free tier includes 10 monitors + status page), Pingdom (paid only). UptimeRobot is the pragmatic choice for a bootstrapped launch.
+
+#### What is Sentry PR18? (PR18)
+
+Sentry itself is **already live** and receiving events (verified 2026-09-11 — see `docs/SENTRY_SETUP.md` § Troubleshooting). What's missing = **alert rules**.
+
+Right now Sentry receives events but doesn't email/message you when critical things happen. Without these rules, you'd have to log into Sentry manually every day to check for new issues.
+
+The 7 rule configs are pre-drafted in `docs/SENTRY_SETUP.md` §5 — you paste each into Sentry's UI (Sentry → Alerts → Create Alert → Issues). Summary:
+
+| # | Rule | Triggers when |
+|---|---|---|
+| 1 | Payment webhook failure | Any Razorpay webhook error → **email immediately** |
+| 2 | Payment reconciliation mismatch | Nightly cron finds paid user w/o active subscription (or vice-versa) → **email immediately** |
+| 3 | Any cron job failure | Token refresh, DM reset, or onboarding email cron errors → **email immediately** |
+| 4 | Instagram webhook attack pattern | 5+ signature failures in 10 min = someone probing → **email immediately** |
+| 5 | Payment failure spike | 10+ failed payments in 1 hour = checkout is broken → **email immediately** |
+| 6 | Catch-all digest | Any other new issue → **daily email digest** (no alert fatigue) |
+| 7 | (Optional) Error spike | 20+ events in 15 min in any single issue → **email immediately** |
+
+**Time:** ~5 min total (about 30-45 seconds per rule — same form, different filter values).
+
+**Launch trade-off:** Soft-blocking. Same as UptimeRobot — you *can* launch without these, but you'd be blind to production failures until a customer complains.
+
+---
 
 ### PR19 verification steps (2 min)
 

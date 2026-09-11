@@ -71,8 +71,13 @@ export default function PricingContent() {
       return;
     }
 
-    const amount = plan === "pro" ? 9900 : 99900; // paise; display copy only
-    const planName = plan === "pro" ? "DM Shiyam Pro" : "DM Shiyam Business";
+    // V-fix — was hardcoded to ₹99/₹999 (paise) while PLANS.pro=₹799 and
+    // PLANS.business=₹2,499. Razorpay charges the correct amount server-side
+    // from plan_id, but the Checkout MODAL displayed ₹99 / ₹999 to the user,
+    // and the GA4 subscription_started event reported fake revenue 10x low.
+    // Pull from PLANS so the modal price, GA event, and actual charge agree.
+    const amount = PLANS[plan].price_monthly;
+    const planName = `DM Shiyam ${PLANS[plan].name}`;
 
     // GA4 conversion — V13.4 subscription_started (checkout intent).
     // Fired at click time. The actual "paid" event is tracked server-side

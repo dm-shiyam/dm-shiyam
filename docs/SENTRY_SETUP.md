@@ -33,7 +33,7 @@ Vercel Dashboard → dm-shiyam project → Settings → Environment Variables:
 
 | Name | Value | Environments |
 |---|---|---|
-| `SENTRY_DSN` | `https://abc...@sentry.io/7654321` | Production, Preview |
+| `SENTRY_DSN` | `https://abc...@sentry.io/7654321` | Production, Preview |  https://d4da3323695a08aab2e8c93898a3841e@o4512067297214464.ingest.us.sentry.io/4512067310059520 
 | `NEXT_PUBLIC_SENTRY_DSN` | same as above | Production, Preview |
 | `SENTRY_ORG` | your org slug | Production, Preview |
 | `SENTRY_PROJECT` | `dm-shiyam` | Production, Preview |
@@ -150,3 +150,29 @@ Free tier is fine for launch phase (up to ~100 signups). Upgrade when you hit ~5
 ## Rollback
 
 To completely disable Sentry: unset `SENTRY_DSN` in Vercel → redeploy. Everything falls back to console logs.
+
+---
+
+## CSP (Content-Security-Policy)
+
+**Current mode:** `Content-Security-Policy-Report-Only` — browsers report violations but block nothing. See `next.config.js` (`CSP_DIRECTIVES`).
+
+### Where reports go
+- Browser → `POST /api/csp-report` → `captureAlert("CSP violation", ...)` → Sentry (message level: warning) + Vercel logs (`console.warn "[csp-report]"`).
+- Throttled to 1 report per unique `directive::blocked_uri` per minute per serverless instance so a runaway page can't flood the free tier.
+
+### Weekly review workflow
+1. Sentry → Issues → filter by message `"CSP violation"`.
+2. For each unique `blocked_uri`:
+   - **Legit third-party we forgot?** → add domain to the correct directive in `next.config.js` `CSP_DIRECTIVES`, commit, redeploy.
+   - **Suspicious / unknown?** → leave it. It'll get blocked once we flip to enforce.
+   - **Noise (browser extensions, `chrome-extension://…`)** → ignore. These come from user extensions, not our code.
+
+### Flipping to enforce
+When the report stream has been clean for ~1 week:
+1. Vercel env → add `CSP_ENFORCE=1` (Production only).
+2. Redeploy. Header key flips from `Content-Security-Policy-Report-Only` → `Content-Security-Policy`.
+3. From this point onward, any new violation actually blocks the resource and still reports to Sentry.
+
+### Rollback (if enforce breaks something)
+Remove `CSP_ENFORCE` from Vercel env → redeploy. Back to report-only within one deploy cycle.

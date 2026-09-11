@@ -150,7 +150,7 @@
 | P12 | **Security follow-ups** | | Medium | Pending |
 | | | 12.1 Upgrade Next.js to 15+ and next-auth to v5 — fixes 4 high-severity npm audit vulns in `next`, `next-auth`, `postcss`, `uuid` (deferred, see note below) | | Pending — post-MVP |
 | | | 12.2 Add rate limiting to NextAuth Credentials login (10 tries per email per 15min) | | ✅ Done (`src/lib/auth.ts`) |
-| | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | ⚠️ **Real gap, not tracked in Sprint 4** — genuinely unaddressed security follow-up |
+| | | 12.3 Add Content-Security-Policy header (needs review for GA/Razorpay/Instagram embeds) | | ✅ Done — shipped as `Content-Security-Policy-Report-Only` in `next.config.js`; violations forwarded via `/api/csp-report` → Sentry. Flip `CSP_ENFORCE=1` after ~1 week of clean reports. |
 | | | 12.4 CSRF audit — all 15 state-changing routes verified protected via SameSite cookie / HMAC signature / CRON_SECRET; explicit NextAuth cookie config + fail-closed IG webhook signature in prod | | ✅ Done |
 | | | 12.5 Idempotency fix — replaced check-then-write with atomic `INSERT ON CONFLICT` for DMs (`claimDmSend`) + added `sent_replies` table + `claimReply` for comment replies. Prevents duplicate DMs/replies under Meta webhook retries | | ✅ Done |
 | | | 12.6 Deep-scan race conditions — added `claimDmSlot` (atomic DM quota enforcement, prevents users exceeding paid plan under concurrent webhooks); wrapped `createUser` in try/catch for unique_violation (23505) so concurrent signup returns friendly error instead of PG crash | | ✅ Done |

@@ -145,13 +145,17 @@
 
 ## Meta App Review
 
+**✅ APPROVED (2026-09-11)** — all 3 permissions have Advanced Access:
+`instagram_business_basic`, `instagram_business_manage_comments`, `instagram_business_manage_messages`.
+Any Instagram Business/Creator account can now connect — no more test-user restriction.
+
 | # | Task | Priority |
 |---|------|----------|
-| PR7 | **Record 30-60 sec screencast** — dashboard → comment on IG post → DM received (following `docs/META_APP_REVIEW.md`) | 🔴 |
-| PR8 | **Fill Data Handling questionnaire** — answers drafted in `docs/META_APP_REVIEW.md` §PR8, sourced from `src/app/privacy/page.tsx` | 🔴 Drafted — paste into Meta form |
-| PR9 | **Submit `instagram_manage_messages` for Advanced Access** | 🔴 |
-| PR10 | **Submit `instagram_business_manage_messages` for Advanced Access** | 🔴 |
-| PR11 | **Provide test Instagram account info to Meta reviewers** — drafted in `docs/META_APP_REVIEW.md` §PR11 (public username + demo keyword, no credentials shared) | 🔴 Drafted — paste into Meta form |
+| PR7 | Record 30-60 sec screencast — dashboard → comment on IG post → DM received | ✅ Done (submission accepted) |
+| PR8 | Fill Data Handling questionnaire | ✅ Done |
+| PR9 | Submit `instagram_manage_messages` for Advanced Access | ✅ Approved |
+| PR10 | Submit `instagram_business_manage_messages` for Advanced Access | ✅ Approved |
+| PR11 | Provide test Instagram account info to Meta reviewers | ✅ Done |
 
 ## Domain & DNS
 
@@ -241,8 +245,7 @@ To confirm it's actually firing in prod:
 > 4. Add LIVE webhook: URL `https://dm-shiyam.vercel.app/api/billing/webhook`, all 5 subscription events, pick strong secret and share.
 > 5. Verify settlement account is enabled (PAN + bank verified) so money reaches us.
 >
-> **Meta App Review:**
-> 6. Record 30-sec screencast per `docs/META_APP_REVIEW.md`, submit `instagram_manage_messages` + `instagram_business_manage_messages` for Advanced Access.
+> **Meta App Review:** ✅ Approved 2026-09-11 — all 3 permissions in Advanced Access, no further action needed.
 >
 > **Domain:**
 > 7. Buy `dmshiyam.com` when you can, follow `docs/V9_DOMAIN_CUTOVER_RUNBOOK.md`.
@@ -290,7 +293,7 @@ V16 · V17 · V18 · V19 · V20
 - ✅ Signup → Login → Dashboard → Connect IG → Automation → DM sent — full flow works
 - ✅ Landing → Pricing → Checkout → Payment → Success — full flow works, DB plan updated
 - ✅ Razorpay LIVE keys working, at least 1 real ₹149 test payment completed
-- ✅ Meta App Review submitted (approval can happen post-launch)
+- ✅ Meta App Review **approved** (all 3 permissions in Advanced Access — done 2026-09-11)
 - ✅ Custom domain live at `dmshiyam.com`
 - ✅ Sentry, GA4, uptime monitoring all firing
 - ✅ Refund policy, T&C, Privacy pages published

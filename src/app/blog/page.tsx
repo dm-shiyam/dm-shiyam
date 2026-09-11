@@ -33,7 +33,7 @@ export default function BlogIndexPage() {
               href="/register"
               className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Start Free Trial
+              Start free — 500 DMs/mo
             </Link>
           </div>
         </div>

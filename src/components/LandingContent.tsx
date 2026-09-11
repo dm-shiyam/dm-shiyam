@@ -407,7 +407,7 @@ export default function LandingContent() {
           {[
             {
               q: "How much does DM Shiyam cost?",
-              a: "We offer a 14-day free trial with no credit card required. Paid plans start affordably and scale with your usage — see the pricing page for current tiers. All plans include unlimited automations; you only pay based on the volume of DMs sent.",
+              a: "Free forever with 500 DMs/month — no credit card, no time limit. Paid plans start at ₹149/mo (Starter, 5,000 DMs) and scale to Pro (₹799/mo, 25,000 DMs + AI Smart Replies), Business (₹2,499/mo, 100,000 DMs + CSV export), and Agency (custom). See the pricing page for the full breakdown.",
             },
             {
               q: "Can I cancel anytime?",
@@ -451,13 +451,13 @@ export default function LandingContent() {
             Ready to Automate Your DMs?
           </h2>
           <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
-            Start your 14-day free trial today. No credit card required. Cancel anytime.
+            Start free with 500 DMs/month. No credit card, no time limit. Upgrade only when you outgrow it.
           </p>
           <Link
             href="/register"
             className="inline-block px-8 py-4 bg-white text-indigo-600 font-bold rounded-lg hover:bg-gray-100 transition-colors text-lg"
           >
-            Start Free Trial
+            Get Started Free
           </Link>
         </div>
       </section>
@@ -537,21 +537,21 @@ export default function LandingContent() {
         <div
           className="fixed bottom-0 left-0 right-0 z-50 bg-indigo-600 text-white shadow-lg border-t border-indigo-700 animate-in slide-in-from-bottom"
           role="region"
-          aria-label="Start free trial"
+          aria-label="Start free — 500 DMs per month"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
             <p className="text-sm sm:text-base font-medium">
               <span className="hidden sm:inline">
                 Ready to automate your Instagram DMs?{" "}
               </span>
-              14-day free trial. No credit card required.
+              Free forever — 500 DMs/mo. No credit card.
             </p>
             <div className="flex items-center gap-2">
               <Link
                 href="/register"
                 className="px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors text-sm whitespace-nowrap"
               >
-                Start Free Trial
+                Get Started Free
               </Link>
               <button
                 type="button"

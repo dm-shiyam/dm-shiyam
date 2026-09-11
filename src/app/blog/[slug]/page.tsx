@@ -72,7 +72,7 @@ export default async function BlogPostPage({ params }: Props) {
               href="/register"
               className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Start Free Trial
+              Start free — 500 DMs/mo
             </Link>
           </div>
         </div>
@@ -122,13 +122,13 @@ export default async function BlogPostPage({ params }: Props) {
             Ready to automate your Instagram DMs?
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Start free for 14 days. No credit card required.
+            Start free with 500 DMs/month. No credit card, no time limit.
           </p>
           <Link
             href="/register"
             className="inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
           >
-            Start Free Trial →
+            Get Started Free →
           </Link>
         </div>
       </article>

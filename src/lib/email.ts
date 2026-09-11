@@ -144,10 +144,10 @@ export async function sendWelcomeEmail({
 }) {
   return sendEmail({
     to,
-    subject: `Welcome to ${APP_NAME} 👋 — your 14-day trial has started`,
+    subject: `Welcome to ${APP_NAME} 👋 — your free plan is live`,
     html: `
       <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Welcome, ${name || "there"}!</h2>
-      <p>You just started your <strong>14-day free trial</strong> of ${APP_NAME}. No credit card, no strings.</p>
+      <p>Your <strong>free plan is live</strong> — 500 DMs/month, forever, no credit card. Upgrade only when you outgrow it.</p>
       <p>Here's what most creators do in the first 10 minutes:</p>
       <ol style="padding-left:20px;line-height:1.7;">
         <li><strong>Connect Instagram</strong> — 30-second Meta-approved OAuth.</li>
@@ -175,7 +175,7 @@ export async function sendConnectIgNudge({
     html: `
       <h2 style="color:#111;font-size:20px;margin:0 0 12px;">One step to activate ${APP_NAME}</h2>
       <p>Hi ${name || "there"},</p>
-      <p>Noticed you haven't connected your Instagram account yet. Without it, your automations can't run — and your 14-day trial is ticking.</p>
+      <p>Noticed you haven't connected your Instagram account yet. Without it, your automations can't run — and you're leaving comments unanswered every hour you wait.</p>
       <p><strong>What connecting does:</strong></p>
       <ul style="padding-left:20px;line-height:1.7;">
         <li>Uses Meta's official Instagram Business Login (Tech Provider approved).</li>
@@ -232,7 +232,7 @@ export async function sendCaseStudyEmail({
     html: `
       <h2 style="color:#111;font-size:20px;margin:0 0 12px;">A quick real-world example</h2>
       <p>Hi ${name || "there"},</p>
-      <p>You're a week into your trial — perfect time to see what other creators are pulling off.</p>
+      <p>You've been on ${APP_NAME} for a week — perfect time to see what other creators are pulling off.</p>
       <p><strong>The comment-to-DM playbook (2 Reels, 1 week):</strong></p>
       <ul style="padding-left:20px;line-height:1.7;">
         <li>Reel 1 — CTA: <em>"Comment HOOKS for the swipe file."</em> Result: 312 comments, 287 DMs auto-sent, 118 replied.</li>
@@ -250,7 +250,9 @@ export async function sendCaseStudyEmail({
   });
 }
 
-// 13.5 Upgrade nudge (Day 12, near trial end)
+// 13.5 Upgrade nudge (Day 12) — the free plan never expires (2026-09-11);
+// this email is a value pitch for upgrading, not a scarcity/trial-ending
+// nudge like it used to be.
 export async function sendUpgradeNudge({
   to,
   name,
@@ -260,20 +262,17 @@ export async function sendUpgradeNudge({
 }) {
   return sendEmail({
     to,
-    subject: `Your ${APP_NAME} trial ends in 2 days ⏰`,
+    subject: `Ready to scale past 500 DMs? 🚀`,
     html: `
-      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Keep your automations running</h2>
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Your free plan keeps running — but here's what unlocks on paid</h2>
       <p>Hi ${name || "there"},</p>
-      <p>Your 14-day free trial ends in <strong>2 days</strong>. When it does, your active automations will pause until you pick a plan.</p>
-      <p><strong>Why creators upgrade:</strong></p>
-      <ul style="padding-left:20px;line-height:1.7;">
-        <li>Unlimited automations, keyword-triggered DMs, follow-up sequences.</li>
-        <li>UPI &amp; card billing via Razorpay. GST-compliant invoices.</li>
-        <li>Priority support during Indian working hours.</li>
-        <li>Cancel anytime — no contracts.</li>
-      </ul>
-      ${ctaButton(`${APP_URL}/pricing`, "See plans & upgrade →")}
-      <p style="color:#666;font-size:14px;">Not ready? Reply to this email and tell us what's missing — we read every reply and often ship fixes the same week.</p>
+      <p>You've been on the free plan for a couple of weeks. It stays free forever — no expiry, no card charge. But if the 500 DMs/month cap is getting tight (or you want AI-generated replies), here's what upgrading gets you:</p>
+      <p><strong>Starter</strong> (₹149/mo) — 5,000 DMs, 10 automations, analytics dashboard, email support.</p>
+      <p><strong>Pro</strong> (₹799/mo) — 25,000 DMs, <strong>AI Smart Replies</strong> (GPT-4o writes personalized DMs from each comment's context), 3 Instagram accounts, priority support.</p>
+      <p><strong>Business</strong> (₹2,499/mo) — 100,000 DMs, 10 accounts, CSV export, dedicated support.</p>
+      <p>UPI &amp; card via Razorpay. GST-compliant invoices. Cancel anytime, no contracts.</p>
+      ${ctaButton(`${APP_URL}/pricing`, "See plans →")}
+      <p style="color:#666;font-size:14px;">Not ready or hit a snag? Reply to this email and tell us what's missing — we read every reply and often ship fixes the same week.</p>
     `,
   });
 }

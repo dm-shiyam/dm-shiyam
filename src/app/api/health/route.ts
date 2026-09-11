@@ -183,6 +183,33 @@ export async function GET(req: NextRequest) {
     throw new Error("Sentry test error from /api/health — safe to ignore");
   }
 
+  // Sentry diagnostic: reports whether the SDK is actually initialized in the
+  // deployed function. Returns booleans (never the DSN itself). Temporary —
+  // remove alongside the sentry_test branch once Sentry is confirmed live.
+  if (req.nextUrl.searchParams.get("sentry_diag") === "1") {
+    let sdk_initialized = false;
+    let sdk_load_error: string | null = null;
+    try {
+      const Sentry = await import("@sentry/nextjs");
+      sdk_initialized = Boolean(Sentry.getClient());
+    } catch (e) {
+      sdk_load_error = e instanceof Error ? e.message : String(e);
+    }
+    return NextResponse.json({
+      server_dsn_set: Boolean(process.env.SENTRY_DSN),
+      public_dsn_set: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
+      sentry_org_set: Boolean(process.env.SENTRY_ORG),
+      sentry_project_set: Boolean(process.env.SENTRY_PROJECT),
+      sentry_auth_token_set: Boolean(process.env.SENTRY_AUTH_TOKEN),
+      vercel_env: process.env.VERCEL_ENV || null,
+      node_env: process.env.NODE_ENV || null,
+      next_runtime: process.env.NEXT_RUNTIME || null,
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null,
+      sdk_initialized,
+      sdk_load_error,
+    });
+  }
+
   // Run all checks in parallel — they're independent
   const [database, meta_api, razorpay] = await Promise.all([
     checkDatabase(),

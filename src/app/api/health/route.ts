@@ -183,18 +183,45 @@ export async function GET(req: NextRequest) {
     throw new Error("Sentry test error from /api/health — safe to ignore");
   }
 
-  // Sentry diagnostic: reports whether the SDK is actually initialized in the
-  // deployed function. Returns booleans (never the DSN itself). Temporary —
-  // remove alongside the sentry_test branch once Sentry is confirmed live.
+  // Sentry diagnostic: exhaustively probes the SDK. Returns booleans + IDs but
+  // never the DSN value itself. Temporary — removed once Sentry is confirmed live.
   if (req.nextUrl.searchParams.get("sentry_diag") === "1") {
-    let sdk_initialized = false;
-    let sdk_load_error: string | null = null;
+    let sdk_initialized_before = false;
+    let sdk_initialized_after_manual = false;
+    let event_id: string | undefined;
+    let flush_ok: boolean | null = null;
+    let error: string | null = null;
+
     try {
       const Sentry = await import("@sentry/nextjs");
-      sdk_initialized = Boolean(Sentry.getClient());
+
+      // Was the SDK already initialized by instrumentation.ts?
+      sdk_initialized_before = Boolean(Sentry.getClient());
+
+      // If not, try to init manually right here. This proves whether
+      // the DSN and env are actually usable from within the request handler.
+      if (!sdk_initialized_before && process.env.SENTRY_DSN) {
+        Sentry.init({
+          dsn: process.env.SENTRY_DSN,
+          environment: process.env.VERCEL_ENV || process.env.NODE_ENV,
+          release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
+          enabled: true, // force on for the probe regardless of NODE_ENV
+        });
+        sdk_initialized_after_manual = Boolean(Sentry.getClient());
+      }
+
+      // Actively try to send a message. If Sentry accepts it, we get an ID.
+      event_id = Sentry.captureMessage(
+        `sentry_diag probe @ ${new Date().toISOString()}`,
+        "info"
+      );
+
+      // Flush to guarantee the event leaves before the serverless function exits.
+      flush_ok = await Sentry.flush(3000);
     } catch (e) {
-      sdk_load_error = e instanceof Error ? e.message : String(e);
+      error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     }
+
     return NextResponse.json({
       server_dsn_set: Boolean(process.env.SENTRY_DSN),
       public_dsn_set: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
@@ -205,8 +232,11 @@ export async function GET(req: NextRequest) {
       node_env: process.env.NODE_ENV || null,
       next_runtime: process.env.NEXT_RUNTIME || null,
       commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null,
-      sdk_initialized,
-      sdk_load_error,
+      sdk_initialized_before,
+      sdk_initialized_after_manual,
+      event_id: event_id || null,
+      flush_ok,
+      error,
     });
   }
 

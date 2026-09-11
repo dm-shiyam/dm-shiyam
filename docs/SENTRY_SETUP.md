@@ -151,6 +151,23 @@ Free tier is fine for launch phase (up to ~100 signups). Upgrade when you hit ~5
 
 To completely disable Sentry: unset `SENTRY_DSN` in Vercel → redeploy. Everything falls back to console logs.
 
+## Troubleshooting
+
+### `instrumentation.ts` register() not firing (Next 16 + Sentry v10)
+
+**Symptom:** All 5 `SENTRY_*` env vars are correctly set in Vercel and visible to the deployed function, but the SDK never phones home. `Sentry.getClient()` returns `undefined` from within request handlers on cold-started serverless instances.
+
+**Confirmed 2026-09-11** on:
+- `next@^16.2.10`
+- `@sentry/nextjs@^10.73.0`
+- Vercel Node runtime, `production` env
+
+**Workaround (already applied):** `src/lib/monitoring.ts::ensureSentry()` calls `Sentry.init()` lazily on the first `captureError()` / `captureAlert()` invocation. This is idempotent — a no-op if the hook did fire. All our production error paths (webhooks, crons, billing, CSP reports) route through `captureError` / `captureAlert`, so they're covered.
+
+**Not covered by the workaround:** raw `throw` statements inside route handlers that rely on Sentry's `onRequestError` export from `instrumentation.ts`. These would need the hook to actually fire. In practice we've moved every meaningful throw site to `try { … } catch (e) { captureError(e, …) }`, so this gap is theoretical.
+
+**Post-launch follow-up:** file an issue against `@sentry/nextjs` with a repro repo, or wait for Sentry's Next 16 support to stabilize (their Changelog is currently ahead of Next 16 in most areas but instrumentation registration is a known rough edge).
+
 ---
 
 ## CSP (Content-Security-Policy)

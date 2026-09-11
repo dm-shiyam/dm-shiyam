@@ -174,72 +174,7 @@ function checkEnv(): DependencyCheck {
   return { status: "ok" };
 }
 
-export async function GET(req: NextRequest) {
-  // Sentry post-deploy verification: hitting /api/health?sentry_test=1 throws
-  // an intentional error so we can confirm the DSN + instrumentation.ts hook
-  // are working end-to-end. Remove this branch once PR18 alert rules are set
-  // up and Sentry is confirmed live.
-  if (req.nextUrl.searchParams.get("sentry_test") === "1") {
-    throw new Error("Sentry test error from /api/health — safe to ignore");
-  }
-
-  // Sentry diagnostic: exhaustively probes the SDK. Returns booleans + IDs but
-  // never the DSN value itself. Temporary — removed once Sentry is confirmed live.
-  if (req.nextUrl.searchParams.get("sentry_diag") === "1") {
-    let sdk_initialized_before = false;
-    let sdk_initialized_after_manual = false;
-    let event_id: string | undefined;
-    let flush_ok: boolean | null = null;
-    let error: string | null = null;
-
-    try {
-      const Sentry = await import("@sentry/nextjs");
-
-      // Was the SDK already initialized by instrumentation.ts?
-      sdk_initialized_before = Boolean(Sentry.getClient());
-
-      // If not, try to init manually right here. This proves whether
-      // the DSN and env are actually usable from within the request handler.
-      if (!sdk_initialized_before && process.env.SENTRY_DSN) {
-        Sentry.init({
-          dsn: process.env.SENTRY_DSN,
-          environment: process.env.VERCEL_ENV || process.env.NODE_ENV,
-          release: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
-          enabled: true, // force on for the probe regardless of NODE_ENV
-        });
-        sdk_initialized_after_manual = Boolean(Sentry.getClient());
-      }
-
-      // Actively try to send a message. If Sentry accepts it, we get an ID.
-      event_id = Sentry.captureMessage(
-        `sentry_diag probe @ ${new Date().toISOString()}`,
-        "info"
-      );
-
-      // Flush to guarantee the event leaves before the serverless function exits.
-      flush_ok = await Sentry.flush(3000);
-    } catch (e) {
-      error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-    }
-
-    return NextResponse.json({
-      server_dsn_set: Boolean(process.env.SENTRY_DSN),
-      public_dsn_set: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
-      sentry_org_set: Boolean(process.env.SENTRY_ORG),
-      sentry_project_set: Boolean(process.env.SENTRY_PROJECT),
-      sentry_auth_token_set: Boolean(process.env.SENTRY_AUTH_TOKEN),
-      vercel_env: process.env.VERCEL_ENV || null,
-      node_env: process.env.NODE_ENV || null,
-      next_runtime: process.env.NEXT_RUNTIME || null,
-      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || null,
-      sdk_initialized_before,
-      sdk_initialized_after_manual,
-      event_id: event_id || null,
-      flush_ok,
-      error,
-    });
-  }
-
+export async function GET(_req: NextRequest) {
   // Run all checks in parallel — they're independent
   const [database, meta_api, razorpay] = await Promise.all([
     checkDatabase(),

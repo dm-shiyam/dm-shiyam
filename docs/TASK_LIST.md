@@ -413,12 +413,12 @@
 | P21 | **Health check endpoint** | | High | ✅ Done |
 | | | 21.1 Build `GET /api/health` — checks DB, Meta API reachability, Razorpay reachability | | ✅ Done (`src/app/api/health/route.ts`) |
 | | | 21.2 Return JSON with per-dependency status + latency | | ✅ Done (parallel checks + timeout + 503 on down) |
-| P22 | **Error monitoring** | | Medium | 🔶 Code done, awaiting activation |
+| P22 | **Error monitoring** | | Medium | ✅ Done — Sentry live (2026-09-11); PR18 alert rules still pending manual paste |
 | | | 22.1 Integrate Sentry (or minimal alternative) for uncaught exceptions in API routes | | ✅ Done (`@sentry/nextjs` + `src/lib/monitoring.ts`) |
 | | | 22.2 Add alerting for: webhook failures, cron failures, payment webhook failures | | ✅ Done (`captureError`/`captureAlert` wired in all 5 critical routes; see `docs/SENTRY_SETUP.md`) |
-| | | 22.3 Sign up at sentry.io (free tier) and create `dm-shiyam` project | | Pending (Priyanka — 5 min, follow docs/SENTRY_SETUP.md steps 1-2; prerequisite for Sprint 4 **PR18**) |
-| | | 22.4 Copy DSN + add 5 env vars to Vercel (SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN) | | Pending (Priyanka — 5 min) |
-| | | 22.5 Redeploy Vercel + trigger test error via `/api/health?force_error=1` to confirm Sentry receives it | | Pending (Priyanka — after 22.4) |
+| | | 22.3 Sign up at sentry.io (free tier) and create `dm-shiyam` project | | ✅ Done (2026-09-11) |
+| | | 22.4 Copy DSN + add 5 env vars to Vercel (SENTRY_DSN, NEXT_PUBLIC_SENTRY_DSN, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN) | | ✅ Done (Venkat 2026-09-11) |
+| | | 22.5 Redeploy Vercel + trigger test event to confirm Sentry receives it | | ✅ Done — verified via `?sentry_diag=1` probe, `flush_ok=true`, event_id `911523813e81423790bd42452840b0a5`. Note: `instrumentation.ts` auto-hook silently no-ops under Next 16 + Sentry v10; worked around by lazy-init in `src/lib/monitoring.ts::ensureSentry()`. See `docs/SENTRY_SETUP.md` § Troubleshooting. |
 | | | 22.6 Configure alert rules in Sentry (payment failures, cron failures, IG webhook sig failures) | | = Sprint 4 **PR18** — 7 exact rule configs already drafted by Cascade 2026-09-09 in `docs/SENTRY_SETUP.md` §5, ready to paste once 22.3-22.5 are done |
 | P23 | **Admin dashboard MRR/metrics** | | Medium | ✅ Done |
 | | | 23.1 Add MRR, active subscribers, churn count to `/admin` | | ✅ Done (`RevenueGrid` widget with MRR/ARR/ARPU/churn/trialing on `/admin`) |

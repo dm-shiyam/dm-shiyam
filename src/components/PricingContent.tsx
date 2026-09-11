@@ -53,7 +53,9 @@ export default function PricingContent() {
       | string
       | undefined) ?? "free";
 
-  const handleCheckout = async (plan: "pro" | "business") => {
+  const handleCheckout = async (
+    plan: "starter" | "pro" | "business" | "agency"
+  ) => {
     // Guard: user must be signed in — the checkout API requires a session
     // to attach the subscription to. If not, punt to /register carrying
     // the plan intent in the callback URL so they resume here after auth.
@@ -223,159 +225,154 @@ export default function PricingContent() {
         </div>
       </section>
 
-      {/* Pricing Cards Section */}
+      {/* Pricing Cards Section — 4 self-serve tiers in a responsive grid.
+          Agency (unlimited) lives in its own band below because it's usually
+          a conversation (custom seat counts, white-label branding) rather
+          than a Razorpay click. */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Free Tier */}
-          {/* Free Tier — data pulled from PLANS.free (single source of truth,
-              2026-09-09 fix). Was hard-coded to "5 automations" but PLANS
-              says 2; was "$0" (wrong currency). */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Free
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Perfect for getting started
-              </p>
-            </div>
+          <PricingCard
+            plan="free"
+            tagline="Perfect for getting started"
+            priceSuffix="forever"
+            isAuthed={isAuthed}
+            currentPlan={currentPlan}
+            checkoutLoading={checkoutLoading}
+            onCheckout={handleCheckout}
+            features={[
+              `${PLANS.free.dm_limit.toLocaleString()} DMs/month`,
+              `${PLANS.free.max_automations} automations`,
+              `${PLANS.free.max_accounts} Instagram account`,
+              "Community support",
+            ]}
+            excludedFeatures={["Analytics dashboard", "AI Smart Replies"]}
+          />
 
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                ₹0
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                forever
-              </span>
-            </div>
+          {/* Starter Tier — new (2026-09-11). The bridge between free and pro
+              for solo creators who've validated the free tier and need more
+              DMs but don't yet need AI or multi-account. */}
+          <PricingCard
+            plan="starter"
+            tagline="For solo creators"
+            priceSuffix="/month"
+            isAuthed={isAuthed}
+            currentPlan={currentPlan}
+            checkoutLoading={checkoutLoading}
+            onCheckout={handleCheckout}
+            features={[
+              `${PLANS.starter.dm_limit.toLocaleString()} DMs/month`,
+              `${PLANS.starter.max_automations} automations`,
+              `${PLANS.starter.max_accounts} Instagram account`,
+              "Analytics dashboard",
+              "Email support",
+            ]}
+            excludedFeatures={["AI Smart Replies", "Multi-account"]}
+          />
 
-            {isAuthed && currentPlan === "free" ? (
-              <button
-                disabled
-                className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
-              >
-                Current Plan
-              </button>
-            ) : (
-              <Link
-                href={isAuthed ? "/dashboard" : "/register"}
-                className="block text-center w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                {isAuthed ? "Go to Dashboard" : "Sign up free"}
-              </Link>
-            )}
-
-            <div className="space-y-4">
-              <FeatureItem included>
-                {PLANS.free.dm_limit.toLocaleString()} DMs/month
-              </FeatureItem>
-              <FeatureItem included>
-                {PLANS.free.max_automations} automations
-              </FeatureItem>
-              <FeatureItem included>
-                {PLANS.free.max_accounts} Instagram account
-              </FeatureItem>
-              <FeatureItem included>Community support</FeatureItem>
-              <FeatureItem>Analytics dashboard</FeatureItem>
-              <FeatureItem>AI Smart Replies</FeatureItem>
-            </div>
-          </div>
-
-          {/* Pro Tier */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-indigo-600 p-8 relative shadow-lg">
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-              <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                POPULAR
-              </span>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Pro
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                For growing businesses
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                {PLANS.pro.price_label}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                /month
-              </span>
-            </div>
-
-            <button
-              onClick={() => handleCheckout("pro")}
-              disabled={currentPlan === "pro"}
-              className="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors mb-8 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {currentPlan === "pro"
-                ? "Current Plan"
-                : isAuthed
-                  ? "Upgrade to Pro"
-                  : "Get Started with Pro"}
-            </button>
-
-            <div className="space-y-4">
-              <FeatureItem included>
-                {PLANS.pro.dm_limit.toLocaleString()} DMs/month
-              </FeatureItem>
-              <FeatureItem included>Unlimited automations</FeatureItem>
-              <FeatureItem included>
-                {PLANS.pro.max_accounts} Instagram accounts
-              </FeatureItem>
-              <FeatureItem included>AI Smart Replies</FeatureItem>
-              <FeatureItem included>Full analytics</FeatureItem>
-              <FeatureItem included>Priority support</FeatureItem>
-            </div>
-          </div>
+          {/* Pro Tier — POPULAR (default recommendation) */}
+          <PricingCard
+            plan="pro"
+            tagline="For growing businesses"
+            priceSuffix="/month"
+            isAuthed={isAuthed}
+            currentPlan={currentPlan}
+            checkoutLoading={checkoutLoading}
+            onCheckout={handleCheckout}
+            popular
+            features={[
+              `${PLANS.pro.dm_limit.toLocaleString()} DMs/month`,
+              "Unlimited automations",
+              `${PLANS.pro.max_accounts} Instagram accounts`,
+              "AI Smart Replies",
+              "Full analytics",
+              "Priority support",
+            ]}
+          />
 
           {/* Business Tier */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8">
-            <div className="mb-6">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Business
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                For enterprises & agencies
+          <PricingCard
+            plan="business"
+            tagline="For teams & bigger brands"
+            priceSuffix="/month"
+            isAuthed={isAuthed}
+            currentPlan={currentPlan}
+            checkoutLoading={checkoutLoading}
+            onCheckout={handleCheckout}
+            features={[
+              `${PLANS.business.dm_limit.toLocaleString()} DMs/month`,
+              "Unlimited automations",
+              `${PLANS.business.max_accounts} Instagram accounts`,
+              "AI Smart Replies",
+              "Full analytics + API access",
+              "Dedicated support",
+            ]}
+          />
+        </div>
+
+        {/* Agency band — full-width enterprise strip. Agencies typically want
+            to negotiate seat counts, white-label branding, and payment terms
+            over email, so the primary CTA is "Talk to sales". A secondary
+            "Subscribe now" link routes through the same Razorpay flow for
+            buyers who want to self-serve without a call. */}
+        <div className="mt-8 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-950 dark:to-gray-900 border border-gray-700 p-8 sm:p-10">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-2xl font-bold text-white">Agency</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  ENTERPRISE
+                </span>
+              </div>
+              <p className="text-gray-300 mb-4">
+                Unlimited DMs, unlimited accounts, white-label branding, and a
+                dedicated account manager. Ideal for agencies managing 10+ client
+                Instagram handles.
               </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-200">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span> Unlimited DMs
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span> Unlimited accounts
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span> White-label
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="text-emerald-400">✓</span> Dedicated manager
+                </span>
+              </div>
             </div>
-
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                {PLANS.business.price_label}
-              </span>
-              <span className="text-gray-600 dark:text-gray-400 ml-2">
-                /month
-              </span>
-            </div>
-
-            <button
-              onClick={() => handleCheckout("business")}
-              disabled={currentPlan === "business"}
-              className="w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-lg hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-8 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {currentPlan === "business"
-                ? "Current Plan"
-                : isAuthed
-                  ? "Upgrade to Business"
-                  : "Get Started with Business"}
-            </button>
-
-            <div className="space-y-4">
-              <FeatureItem included>
-                {PLANS.business.dm_limit.toLocaleString()} DMs/month
-              </FeatureItem>
-              <FeatureItem included>Unlimited automations</FeatureItem>
-              <FeatureItem included>
-                {PLANS.business.max_accounts} Instagram accounts
-              </FeatureItem>
-              <FeatureItem included>AI Smart Replies</FeatureItem>
-              <FeatureItem included>Full analytics + API access</FeatureItem>
-              <FeatureItem included>Dedicated support</FeatureItem>
+            <div className="flex flex-col sm:flex-row lg:flex-col items-stretch gap-3 min-w-fit">
+              <div className="text-center lg:text-right">
+                <div className="text-3xl font-bold text-white">
+                  {PLANS.agency.price_label}
+                  <span className="text-base font-normal text-gray-400 ml-1">
+                    /month
+                  </span>
+                </div>
+                <div className="text-xs text-gray-400 mt-0.5">
+                  or custom pricing on annual
+                </div>
+              </div>
+              <a
+                href="mailto:dmshiyamofficial@gmail.com?subject=Agency%20plan%20enquiry&body=Hi%20DM%20Shiyam%20team%2C%0A%0AI%27m%20interested%20in%20the%20Agency%20plan.%20A%20few%20details%20about%20us%3A%0A%0AAgency%20name%3A%0A%23%20of%20client%20IG%20accounts%3A%0AExpected%20monthly%20DM%20volume%3A%0AWebsite%3A%0A%0AThanks!"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition"
+              >
+                Talk to sales
+              </a>
+              <button
+                onClick={() => handleCheckout("agency")}
+                disabled={currentPlan === "agency" || checkoutLoading === "agency"}
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-gray-600 text-gray-200 font-medium hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {currentPlan === "agency"
+                  ? "Current Plan"
+                  : checkoutLoading === "agency"
+                    ? "Loading…"
+                    : "or subscribe now"}
+              </button>
             </div>
           </div>
         </div>
@@ -402,68 +399,116 @@ export default function PricingContent() {
                 <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">
                   Free
                 </th>
+                <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">
+                  Starter
+                </th>
                 <th className="text-center py-4 px-4 font-semibold text-indigo-600 dark:text-indigo-400">
                   Pro
                 </th>
                 <th className="text-center py-4 px-4 font-semibold text-gray-900 dark:text-white">
                   Business
                 </th>
+                <th className="text-center py-4 px-4 font-semibold text-amber-600 dark:text-amber-400">
+                  Agency
+                </th>
               </tr>
             </thead>
             <tbody>
               <ComparisonRow
+                feature="DMs / month"
+                free="500"
+                starter="5,000"
+                pro="25,000"
+                business="100,000"
+                agency="Unlimited"
+              />
+              <ComparisonRow
                 feature="Automations"
-                free="5"
-                pro="50"
+                free="2"
+                starter="10"
+                pro="Unlimited"
                 business="Unlimited"
+                agency="Unlimited"
               />
               <ComparisonRow
                 feature="Instagram Accounts"
                 free="1"
-                pro="5"
-                business="Unlimited"
+                starter="1"
+                pro="3"
+                business="10"
+                agency="Unlimited"
+              />
+              <ComparisonRow
+                feature="AI Smart Replies"
+                free="❌"
+                starter="❌"
+                pro="✅"
+                business="✅"
+                agency="✅"
               />
               <ComparisonRow
                 feature="Analytics"
-                free="Basic"
+                free="❌"
+                starter="Basic"
                 pro="Advanced"
                 business="Full + Reporting"
+                agency="Full + Reporting"
               />
               <ComparisonRow
                 feature="DM Templates"
                 free="Basic"
+                starter="Basic"
                 pro="Custom"
                 business="Custom + Library"
+                agency="Custom + Library"
               />
               <ComparisonRow
                 feature="API Access"
                 free="❌"
+                starter="❌"
                 pro="❌"
                 business="✅"
+                agency="✅"
               />
               <ComparisonRow
                 feature="Webhook Support"
                 free="❌"
+                starter="❌"
                 pro="❌"
                 business="✅"
+                agency="✅"
+              />
+              <ComparisonRow
+                feature="White-label"
+                free="❌"
+                starter="❌"
+                pro="❌"
+                business="❌"
+                agency="✅"
               />
               <ComparisonRow
                 feature="Support"
                 free="Community"
+                starter="Email"
                 pro="Priority Email"
                 business="Dedicated"
+                agency="Dedicated Manager"
               />
               <ComparisonRow
                 feature="Monthly Reports"
                 free="❌"
+                starter="❌"
                 pro="❌"
                 business="✅"
+                agency="✅"
               />
               <ComparisonRow
                 feature="Custom Integrations"
                 free="❌"
+                starter="❌"
                 pro="❌"
                 business="✅"
+                agency="✅"
               />
             </tbody>
           </table>
@@ -643,13 +688,17 @@ function FeatureItem({
 function ComparisonRow({
   feature,
   free,
+  starter,
   pro,
   business,
+  agency,
 }: {
   feature: string;
   free: string;
+  starter: string;
   pro: string;
   business: string;
+  agency: string;
 }) {
   return (
     <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -659,13 +708,151 @@ function ComparisonRow({
       <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
         {free}
       </td>
+      <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
+        {starter}
+      </td>
       <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300 bg-indigo-50 dark:bg-indigo-900/20">
         {pro}
       </td>
       <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
         {business}
       </td>
+      <td className="py-4 px-4 text-center text-gray-700 dark:text-gray-300">
+        {agency}
+      </td>
     </tr>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// PricingCard — one reusable card for Free / Starter / Pro / Business.
+// Agency has its own bespoke enterprise band above so it's not represented
+// here. Extracted from the previous inline JSX so all four cards share
+// identical spacing, button states, and current-plan handling — earlier
+// each card was a hand-rolled div and drifted (Free was missing the
+// disabled state, Business had a different button color scheme, etc.).
+// ────────────────────────────────────────────────────────────────────────
+
+function PricingCard({
+  plan,
+  tagline,
+  priceSuffix,
+  features,
+  excludedFeatures = [],
+  isAuthed,
+  currentPlan,
+  checkoutLoading,
+  onCheckout,
+  popular,
+}: {
+  plan: "free" | "starter" | "pro" | "business";
+  tagline: string;
+  priceSuffix: string;
+  features: string[];
+  excludedFeatures?: string[];
+  isAuthed: boolean;
+  currentPlan: string;
+  checkoutLoading: string | null;
+  onCheckout: (p: "starter" | "pro" | "business" | "agency") => void;
+  popular?: boolean;
+}) {
+  const p = PLANS[plan];
+  const isCurrent = isAuthed && currentPlan === plan;
+  const isLoading = checkoutLoading === plan;
+  const isFree = plan === "free";
+
+  // Button visual style differs per tier so the buyer's eye lands on Pro.
+  // Pro = solid indigo (primary), Business = dark slate (secondary),
+  // Starter = outlined indigo (tertiary), Free = neutral (utility).
+  const buttonClass = popular
+    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+    : plan === "business"
+      ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
+      : plan === "starter"
+        ? "border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600";
+
+  const buttonLabel = isCurrent
+    ? "Current Plan"
+    : isLoading
+      ? "Loading…"
+      : isFree
+        ? isAuthed
+          ? "Go to Dashboard"
+          : "Sign up free"
+        : isAuthed
+          ? `Upgrade to ${p.name}`
+          : `Get Started with ${p.name}`;
+
+  return (
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-xl border-2 p-6 sm:p-8 relative flex flex-col ${
+        popular
+          ? "border-indigo-600 shadow-lg lg:scale-[1.02]"
+          : "border-gray-200 dark:border-gray-700"
+      }`}
+    >
+      {popular && (
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+          <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-semibold whitespace-nowrap">
+            POPULAR
+          </span>
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {p.name}
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">{tagline}</p>
+      </div>
+
+      <div className="mb-6">
+        <span className="text-4xl font-bold text-gray-900 dark:text-white">
+          {p.price_label}
+        </span>
+        <span className="text-gray-600 dark:text-gray-400 ml-2">
+          {priceSuffix}
+        </span>
+      </div>
+
+      {isFree ? (
+        isCurrent ? (
+          <button
+            disabled
+            className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
+          >
+            Current Plan
+          </button>
+        ) : (
+          <Link
+            href={isAuthed ? "/dashboard" : "/register"}
+            className={`block text-center w-full py-3 px-4 font-semibold rounded-lg mb-8 transition-colors ${buttonClass}`}
+          >
+            {buttonLabel}
+          </Link>
+        )
+      ) : (
+        <button
+          onClick={() => onCheckout(plan as "starter" | "pro" | "business")}
+          disabled={isCurrent || isLoading}
+          className={`w-full py-3 px-4 font-semibold rounded-lg mb-8 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${buttonClass}`}
+        >
+          {buttonLabel}
+        </button>
+      )}
+
+      <div className="space-y-3 flex-1">
+        {features.map((f) => (
+          <FeatureItem key={f} included>
+            {f}
+          </FeatureItem>
+        ))}
+        {excludedFeatures.map((f) => (
+          <FeatureItem key={f}>{f}</FeatureItem>
+        ))}
+      </div>
+    </div>
   );
 }
 

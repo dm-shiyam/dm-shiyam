@@ -72,13 +72,14 @@ All rules assume the free tier's Issue Alert builder. Set **Environment: product
 - **Then:** Send notification immediately
 - *(3 separate `tags[route] equals` filter rows combined with "any" — Sentry's UI supports OR across filter rows)*
 
-### Rule 4 — IG webhook signature failures ≥5 in 10 min (attack pattern)
-- **When:** The issue is seen more than `5` times in `10 minutes`
+### Rule 4 — IG webhook signature failures ≥5 in 15 min (attack pattern)
+- **When:** The issue is seen more than `5` times in `15 minutes`
 - **If:**
   - `tags[route]` equals `webhook/instagram`
   - `level` equals `warning`
 - **Then:** Send notification immediately
 - *(Matches `"IG webhook: invalid signature"` capture — repeated hits = brute-force/replay attempt)*
+- *(Note: Sentry API only accepts intervals `1m`, `5m`, `15m`, `1h`, `1d`, `1w`. Original draft said `10min` — bumped to `15m` during API-based setup on 2026-09-11.)*
 
 ### Rule 5 — Payment failures >10/hr (Razorpay `payment.failed` spike)
 - **When:** The issue is seen more than `10` times in `60 minutes`

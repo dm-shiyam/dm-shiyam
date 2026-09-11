@@ -171,7 +171,7 @@ Any Instagram Business/Creator account can now connect — no more test-user res
 
 | # | Task | Priority |
 |---|------|----------|
-| PR17 | **Set up UptimeRobot / BetterStack** — monitor `/api/health` every 5 min, alerts to WhatsApp. *See "What is UptimeRobot?" below.* | 🟡 |
+| PR17 | ~~**Set up UptimeRobot / BetterStack**~~ — ✅ Done 2026-09-11. Monitor `DM Shiyam - Health Check` (id `803970606`) pings `https://dm-shiyam.vercel.app/api/health` every 5 min, 30s timeout. Email alerts to `dmshiyam41@gmail.com`. Swap URL to `https://dmshiyam.com/api/health` post-DNS cutover. | ✅ Done |
 | PR18 | **Configure Sentry alert rules** — >5 webhook signature failures / 10 min, >10 payment.failed / hr — exact 7 rule configs drafted in `docs/SENTRY_SETUP.md` §5, ready to paste into Sentry UI (5 min). *See "What is Sentry PR18?" below.* | 🟡 Configs ready — needs Priyanka to paste into Sentry dashboard |
 | PR19 | **Verify daily token refresh cron runs** — ⚠️ task doc said 03:00 UTC but `vercel.json` schedules `refresh-tokens` at **06:00 UTC** daily (03:00 UTC is actually `reconcile-payments`). Verification steps below. | 🟡 Code verified correct — needs Priyanka to confirm via dashboard/Neon |
 | PR20 | **Enable Neon Postgres backups** — verification + restore drill steps below | 🟢 Steps ready — needs Priyanka to check dashboard + run drill |

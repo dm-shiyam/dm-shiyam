@@ -20,12 +20,45 @@ import type {
 
 let _initialized = false;
 
+// V29.3 — Prevent DDL deadlock across parallel serverless cold-starts.
+// The schema.sql file contains `CREATE TABLE IF NOT EXISTS` + several
+// `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. Each ALTER takes an
+// ACCESS EXCLUSIVE lock. If two workers cold-start at the same time
+// (which happens on every redeploy — Vercel spins up N replicas
+// concurrently), both call initTables in parallel and Postgres detects
+// a deadlock ("deadlock detected") because they're grabbing locks on
+// different tables in different orders.
+//
+// Fix: wrap the whole DDL block in a session-scoped advisory lock. Any
+// worker that tries to init while another is already running will wait
+// for the first one to finish, then find _initialized=false is stale
+// (its process-local flag is unaffected) but the DDL is a no-op because
+// IF NOT EXISTS is used everywhere. Fast path (already-initialized
+// process) still skips the lock roundtrip entirely.
+//
+// Magic number 0x_DB_1N1T_ = arbitrary int8 for pg_advisory_lock — must
+// be stable across deploys so the lock namespace is consistent.
+const INIT_LOCK_KEY = 0x1DB1_1DB1;
+
 export async function initTables(): Promise<void> {
   if (_initialized) return;
-  const schemaPath = path.join(process.cwd(), "schema.sql");
-  const ddl = readFileSync(schemaPath, "utf-8");
-  await pool.query(ddl);
-  _initialized = true;
+  const client = await pool.connect();
+  try {
+    // Session-scoped advisory lock (transaction-scoped would need a
+    // txn wrapper). Blocks until we get the lock, so parallel workers
+    // serialize onto the DDL rather than colliding.
+    await client.query("SELECT pg_advisory_lock($1)", [INIT_LOCK_KEY]);
+    try {
+      const schemaPath = path.join(process.cwd(), "schema.sql");
+      const ddl = readFileSync(schemaPath, "utf-8");
+      await client.query(ddl);
+      _initialized = true;
+    } finally {
+      await client.query("SELECT pg_advisory_unlock($1)", [INIT_LOCK_KEY]);
+    }
+  } finally {
+    client.release();
+  }
 }
 
 // Call from your Next.js app startup (e.g. instrumentation.ts or route handler)

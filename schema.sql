@@ -320,3 +320,75 @@ CREATE INDEX IF NOT EXISTS idx_sent_dms_by_comment     ON sent_dms(automation_id
 CREATE INDEX IF NOT EXISTS idx_sent_dms_rate_limit     ON sent_dms(automation_id, media_id, instagram_user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_ig_user        ON activity_log(instagram_user_id);
 CREATE INDEX IF NOT EXISTS idx_automations_is_active   ON automations(is_active) WHERE is_active = TRUE;
+
+-- ═════════════════════════════════════════════════════════════════════════════
+--  V29: Follow-to-Unlock ("follow-gate") — Sept 15, 2026
+-- ═════════════════════════════════════════════════════════════════════════════
+--
+-- User story:
+--   Fan comments "GUIDE" on a Reel. Instead of instantly DM-ing the lead
+--   magnet, we send a "Follow @creator first, then tap ↓" DM with a quick-
+--   reply button. When the fan taps, we send the real DM. If they don't tap
+--   within N seconds, a background cron sends it anyway (avoids hostile UX
+--   for fans who followed but didn't tap).
+--
+-- Why we don't verify actual follow status:
+--   Meta's Graph API doesn't expose per-user follow relationships (removed
+--   years ago to prevent aggressive gating). ManyChat / AutoResponder do the
+--   same trust-based flow. This is the industry-standard pattern.
+--
+-- ── (a) Per-automation config ─────────────────────────────────────────────
+--   follow_gate_enabled          — master switch
+--   follow_gate_message          — the gate DM text ({username} + {account}
+--                                  placeholders replaced at send time)
+--   follow_gate_timeout_seconds  — how long we wait for the button tap
+--                                  before the cron sends the real DM.
+--                                  MUST stay < 24h (Meta messaging window).
+--                                  Default 90s = generous but snappy.
+ALTER TABLE automations ADD COLUMN IF NOT EXISTS follow_gate_enabled         BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE automations ADD COLUMN IF NOT EXISTS follow_gate_message         TEXT;
+ALTER TABLE automations ADD COLUMN IF NOT EXISTS follow_gate_timeout_seconds INTEGER NOT NULL DEFAULT 90;
+
+-- ── (b) Pending gates queue ──────────────────────────────────────────────
+--   One row = one fan currently in the "gate DM sent, waiting for tap or
+--   timeout" state. Claimed atomically to avoid duplicate real-DM sends
+--   when the button tap AND the timeout cron race each other.
+--
+--   State machine:
+--     pending             → gate DM sent, waiting
+--     unlocked_by_button  → fan tapped "I followed ✅"; real DM sent
+--     unlocked_by_timeout → cron fired past timeout_at; real DM sent
+--     failed              → real DM attempt errored (Meta rejected, etc.)
+CREATE TABLE IF NOT EXISTS pending_follow_gates (
+  id                  TEXT        PRIMARY KEY,
+  automation_id       TEXT        NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+  account_id          TEXT        REFERENCES accounts(id) ON DELETE CASCADE,
+  sender_ig_id        TEXT        NOT NULL,        -- IGSID of the fan
+  sender_username     TEXT,                        -- for logs / admin
+  comment_id          TEXT,                        -- comment that triggered
+  comment_text        TEXT,
+  real_dm_text        TEXT        NOT NULL,        -- what to send on unlock
+  state               TEXT        NOT NULL DEFAULT 'pending'
+                                                   CHECK (state IN ('pending','unlocked_by_button','unlocked_by_timeout','failed')),
+  gate_sent_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  timeout_at          TIMESTAMPTZ NOT NULL,        -- gate_sent_at + timeout_seconds
+  unlocked_at         TIMESTAMPTZ,
+  error_message       TEXT
+);
+
+-- The cron scans by (state='pending' AND timeout_at <= NOW()) — index it.
+CREATE INDEX IF NOT EXISTS idx_follow_gates_dispatch
+  ON pending_follow_gates(state, timeout_at)
+  WHERE state = 'pending';
+
+-- Postback lookup is by id (from HMAC payload) — covered by PK.
+-- Duplicate-prevention lookup: same fan, same automation, still pending.
+CREATE INDEX IF NOT EXISTS idx_follow_gates_dedup
+  ON pending_follow_gates(automation_id, sender_ig_id, state);
+
+-- ── (c) sent_dms audit marker ────────────────────────────────────────────
+-- Lets analytics distinguish "instant DM" from "gate-unlocked DM" and
+-- separately count button-taps vs timeout-fallbacks. NULL = normal send.
+ALTER TABLE sent_dms
+  ADD COLUMN IF NOT EXISTS sent_via_follow_gate TEXT
+  CHECK (sent_via_follow_gate IS NULL OR sent_via_follow_gate IN ('gate_impression','button','timeout'));

@@ -98,6 +98,36 @@ export interface Automation {
   schedule_start_hour?: number; // UTC hour 0-23
   schedule_end_hour?: number; // UTC hour 0-23
   schedule_days?: string; // comma-separated day numbers "0,1,2,3,4,5,6" (0=Sun)
+
+  // ── V29: Follow-to-Unlock ──
+  // When enabled, comment-triggered DMs are gated: fan first receives a
+  // "follow @creator, then tap ↓" message with a quick-reply button. The
+  // real dm_message is only sent (a) when the fan taps the button, or
+  // (b) when the timeout cron runs past follow_gate_timeout_seconds.
+  // Meta doesn't expose follower relationships in the Graph API, so this
+  // is trust-based — same pattern as ManyChat / AutoResponder.
+  follow_gate_enabled?: boolean;
+  follow_gate_message?: string | null;      // supports {username} + {account}
+  follow_gate_timeout_seconds?: number;     // default 90, must stay < 86400
+}
+
+// ── V29: Pending Follow Gate ──
+// One row per fan currently in the "gate DM sent, waiting for tap or
+// timeout" state. Rows are terminal once state != 'pending'.
+export interface PendingFollowGate {
+  id: string;
+  automation_id: string;
+  account_id?: string | null;
+  sender_ig_id: string;
+  sender_username?: string | null;
+  comment_id?: string | null;
+  comment_text?: string | null;
+  real_dm_text: string;
+  state: "pending" | "unlocked_by_button" | "unlocked_by_timeout" | "failed";
+  gate_sent_at: string;
+  timeout_at: string;
+  unlocked_at?: string | null;
+  error_message?: string | null;
 }
 
 // ── Activity Log ──

@@ -34,6 +34,7 @@ import {
   Instagram,
   Sparkles,
   Users,
+  UserPlus,
   LogOut,
   Crown,
 } from "lucide-react";
@@ -1026,6 +1027,18 @@ function AutomationForm({
   const [aiSystemPrompt, setAiSystemPrompt] = useState(
     initial?.ai_system_prompt || ""
   );
+  // V29 — Follow-to-Unlock local state. Default message left blank so the
+  // webhook falls back to DEFAULT_GATE_MESSAGE from follow-gate.ts and we
+  // can evolve the default copy without touching every user's automation.
+  const [followGateEnabled, setFollowGateEnabled] = useState(
+    initial?.follow_gate_enabled || false
+  );
+  const [followGateMessage, setFollowGateMessage] = useState(
+    initial?.follow_gate_message || ""
+  );
+  const [followGateTimeout, setFollowGateTimeout] = useState<number>(
+    initial?.follow_gate_timeout_seconds ?? 90
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1051,6 +1064,17 @@ function AutomationForm({
         ai_enabled: aiEnabled,
         ai_system_prompt:
           aiEnabled ? aiSystemPrompt || undefined : undefined,
+        // V29 — always send follow_gate_enabled so toggling OFF actually
+        // persists. Only send message/timeout when the gate is enabled
+        // so a disabled gate doesn't stomp a saved custom message with
+        // whatever placeholder text is in the (hidden) input.
+        follow_gate_enabled: followGateEnabled,
+        follow_gate_message: followGateEnabled
+          ? (followGateMessage || undefined)
+          : undefined,
+        follow_gate_timeout_seconds: followGateEnabled
+          ? followGateTimeout
+          : undefined,
       };
       const res = await fetch("/api/automations", {
         method: initial ? "PUT" : "POST",
@@ -1233,6 +1257,103 @@ function AutomationForm({
                 Requires OPENAI_API_KEY in your .env.local. Uses
                 gpt-4o-mini (~$0.15 per 1M tokens).
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* V29 — Follow-to-Unlock toggle.
+            Visual language mirrors the AI Smart Replies box above so the
+            editor stays consistent (accent color swapped to emerald so users
+            can tell them apart at a glance). */}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100">
+                <UserPlus className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Follow-to-Unlock</p>
+                <p className="text-xs text-gray-500">
+                  Ask fans to follow first, then tap a button to unlock the DM
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFollowGateEnabled(!followGateEnabled)}
+              className="transition-colors"
+            >
+              {followGateEnabled ? (
+                <ToggleRight className="h-7 w-7 text-emerald-600" />
+              ) : (
+                <ToggleLeft className="h-7 w-7 text-gray-400" />
+              )}
+            </button>
+          </div>
+
+          {followGateEnabled && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-emerald-700">
+                  Gate message{" "}
+                  <span className="text-xs text-emerald-400">
+                    (optional — uses a smart default if blank)
+                  </span>
+                </label>
+                <textarea
+                  className="textarea-field !border-emerald-200 !bg-white focus:!border-emerald-400 focus:!ring-emerald-100"
+                  rows={3}
+                  placeholder={
+                    "Hey {username}! \ud83d\udc4b Follow {account} first, then tap the button below and I'll send you what you asked for \ud83d\udc47"
+                  }
+                  value={followGateMessage}
+                  onChange={(e) => setFollowGateMessage(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-emerald-500">
+                  Use <code>{"{username}"}</code> for the fan’s handle and{" "}
+                  <code>{"{account}"}</code> for your own. Button text is
+                  fixed to <strong>“I followed ✅”</strong> for this release.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-emerald-700">
+                  Timeout{" "}
+                  <span className="text-xs text-emerald-400">
+                    (seconds before we send the DM anyway)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  min={10}
+                  max={82800}
+                  step={10}
+                  className="input-field !border-emerald-200 !bg-white focus:!border-emerald-400 focus:!ring-emerald-100"
+                  value={followGateTimeout}
+                  onChange={(e) =>
+                    setFollowGateTimeout(
+                      Math.max(10, Math.min(82800, Number(e.target.value) || 90))
+                    )
+                  }
+                />
+                <p className="mt-1 text-xs text-emerald-500">
+                  Default 90s. Fans who don’t tap the button still receive
+                  the DM after this timeout (avoids losing the ones who
+                  followed but forgot to tap). Meta’s messaging window is
+                  24h; we cap at 23h for safety.
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-white/70 border border-emerald-100 p-3 text-xs text-gray-600">
+                <p className="font-medium text-gray-700 mb-1">
+                  ⚠️ Honest note
+                </p>
+                <p>
+                  Instagram’s API doesn’t expose who follows whom, so this
+                  is trust-based (same as ManyChat / AutoResponder). We
+                  can’t verify the follow — we just send the ask.
+                </p>
+              </div>
             </div>
           )}
         </div>

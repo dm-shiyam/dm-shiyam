@@ -11,6 +11,7 @@ import type {
   User,
   AdminStats,
   FunnelStats,
+  PendingFollowGate,
 } from "@/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -239,6 +240,21 @@ export async function getActiveAutomations(
   );
 }
 
+// Meta's messaging window is 24h from the fan's last interaction (comment).
+// If our cron fires past that, /me/messages returns error #10 and the fan
+// gets nothing. Cap at 23h to leave headroom for cron jitter + retry.
+const FOLLOW_GATE_TIMEOUT_MIN_SECONDS = 10;
+const FOLLOW_GATE_TIMEOUT_MAX_SECONDS = 23 * 60 * 60; // 23h
+
+function clampFollowGateTimeout(seconds: number | undefined): number {
+  const v = seconds ?? 90;
+  if (!Number.isFinite(v)) return 90;
+  return Math.min(
+    FOLLOW_GATE_TIMEOUT_MAX_SECONDS,
+    Math.max(FOLLOW_GATE_TIMEOUT_MIN_SECONDS, Math.floor(v))
+  );
+}
+
 export async function createAutomation(data: {
   name: string;
   trigger_keywords: string;
@@ -248,14 +264,18 @@ export async function createAutomation(data: {
   ai_enabled?: boolean;
   ai_system_prompt?: string;
   user_id?: string;
+  follow_gate_enabled?: boolean;
+  follow_gate_message?: string;
+  follow_gate_timeout_seconds?: number;
 }): Promise<Automation> {
   await ensureInit();
   const id = uuidv4();
   await execute(
     `INSERT INTO automations
        (id, account_id, name, trigger_keywords, dm_message, reply_comment,
-        ai_enabled, ai_system_prompt, user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        ai_enabled, ai_system_prompt, user_id,
+        follow_gate_enabled, follow_gate_message, follow_gate_timeout_seconds)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       id,
       data.account_id ?? null,
@@ -266,6 +286,9 @@ export async function createAutomation(data: {
       data.ai_enabled ?? false,
       data.ai_system_prompt ?? null,
       data.user_id ?? null,
+      data.follow_gate_enabled ?? false,
+      data.follow_gate_message ?? null,
+      clampFollowGateTimeout(data.follow_gate_timeout_seconds),
     ]
   );
   return (await getAutomation(id))!;
@@ -282,6 +305,9 @@ export async function updateAutomation(
     account_id: string;
     ai_enabled: boolean;
     ai_system_prompt: string;
+    follow_gate_enabled: boolean;
+    follow_gate_message: string;
+    follow_gate_timeout_seconds: number;
   }>
 ): Promise<Automation | undefined> {
   await ensureInit();
@@ -320,6 +346,18 @@ export async function updateAutomation(
   if (data.ai_system_prompt !== undefined) {
     fields.push(`ai_system_prompt = $${i++}`);
     values.push(data.ai_system_prompt);
+  }
+  if (data.follow_gate_enabled !== undefined) {
+    fields.push(`follow_gate_enabled = $${i++}`);
+    values.push(data.follow_gate_enabled);
+  }
+  if (data.follow_gate_message !== undefined) {
+    fields.push(`follow_gate_message = $${i++}`);
+    values.push(data.follow_gate_message);
+  }
+  if (data.follow_gate_timeout_seconds !== undefined) {
+    fields.push(`follow_gate_timeout_seconds = $${i++}`);
+    values.push(clampFollowGateTimeout(data.follow_gate_timeout_seconds));
   }
   if (fields.length === 0) return getAutomation(id);
 
@@ -1410,6 +1448,126 @@ export async function claimReply(
     [commentId, automationId]
   );
   return rowCount > 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  V29: Follow-to-Unlock (pending_follow_gates)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Insert a new pending follow-gate row. Called from the Instagram webhook
+ * after sending the gate DM (the "follow me first" message with quick-reply
+ * button) so the postback handler and timeout cron can later look it up.
+ *
+ * Returns the inserted row (id + timeout_at are the two fields callers need
+ * — id for the postback payload, timeout_at for the response log).
+ *
+ * The comment_id + automation_id combination is a soft dedupe key. If Meta
+ * re-delivers the SAME comment we'd hit the sent_dms unique constraint
+ * upstream (claimDmSend already blocks that path), so we don't need a
+ * unique constraint here. But we DO defend against a fan double-commenting
+ * on two different posts with the same keyword — that's legitimate, two
+ * separate gates. So no dedupe here — every call inserts.
+ */
+export async function insertPendingFollowGate(data: {
+  automation_id: string;
+  account_id?: string | null;
+  sender_ig_id: string;
+  sender_username?: string | null;
+  comment_id?: string | null;
+  comment_text?: string | null;
+  real_dm_text: string;
+  timeout_seconds: number;
+}): Promise<PendingFollowGate> {
+  await ensureInit();
+  const id = uuidv4();
+  const row = await queryOne<PendingFollowGate>(
+    `INSERT INTO pending_follow_gates
+       (id, automation_id, account_id, sender_ig_id, sender_username,
+        comment_id, comment_text, real_dm_text, timeout_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+             NOW() + ($9 || ' seconds')::INTERVAL)
+     RETURNING *`,
+    [
+      id,
+      data.automation_id,
+      data.account_id ?? null,
+      data.sender_ig_id,
+      data.sender_username ?? null,
+      data.comment_id ?? null,
+      data.comment_text ?? null,
+      data.real_dm_text,
+      data.timeout_seconds,
+    ]
+  );
+  if (!row) throw new Error("insertPendingFollowGate: RETURNING gave no row");
+  return row;
+}
+
+/**
+ * Atomically claim a pending gate row by id (from a postback payload) OR by
+ * timeout scan. Uses a conditional UPDATE ... RETURNING so that if the row
+ * has already been claimed by the racing path (button vs cron), we get
+ * back nothing and the caller MUST NOT send the real DM.
+ *
+ * This is the ONLY way to transition a row out of the 'pending' state.
+ * Without it, a fan tapping the button at the same tick the cron sweeps
+ * their row would receive the real DM twice.
+ */
+export async function claimPendingFollowGate(
+  id: string,
+  claimReason: "button" | "timeout"
+): Promise<PendingFollowGate | null> {
+  await ensureInit();
+  const newState =
+    claimReason === "button" ? "unlocked_by_button" : "unlocked_by_timeout";
+  const row = await queryOne<PendingFollowGate>(
+    `UPDATE pending_follow_gates
+     SET state = $2, unlocked_at = NOW()
+     WHERE id = $1 AND state = 'pending'
+     RETURNING *`,
+    [id, newState]
+  );
+  return row ?? null;
+}
+
+/**
+ * Return pending gates whose timeout_at has passed but haven't been unlocked
+ * yet. Called by the dispatch-follow-gates cron. Limits the batch to a
+ * reasonable size so a single cron invocation can't fan out to thousands of
+ * DMs and blow Meta's per-app rate limit (100 msgs/sec). Extra rows will be
+ * picked up on the next tick.
+ */
+export async function getExpiredPendingGates(
+  limit = 100
+): Promise<PendingFollowGate[]> {
+  await ensureInit();
+  return query<PendingFollowGate>(
+    `SELECT * FROM pending_follow_gates
+     WHERE state = 'pending' AND timeout_at <= NOW()
+     ORDER BY timeout_at ASC
+     LIMIT $1`,
+    [limit]
+  );
+}
+
+/**
+ * Mark a gate row as failed (real-DM send errored). Not an atomic claim —
+ * we expect the caller to have already succeeded in claimPendingFollowGate
+ * and are just recording the downstream failure. Overwrites state so the
+ * row isn't picked up by the timeout scan again.
+ */
+export async function markFollowGateFailed(
+  id: string,
+  errorMessage: string
+): Promise<void> {
+  await ensureInit();
+  await execute(
+    `UPDATE pending_follow_gates
+     SET state = 'failed', error_message = $2, unlocked_at = NOW()
+     WHERE id = $1`,
+    [id, errorMessage.slice(0, 500)]
+  );
 }
 
 // ═══════════════════════════════════════

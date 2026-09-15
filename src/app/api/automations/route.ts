@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
       account_id: body.account_id,
       ai_enabled: body.ai_enabled,
       ai_system_prompt: body.ai_system_prompt,
+      // V29: Follow-to-Unlock config. All 3 optional; DB layer clamps
+      // timeout to a safe range (10s–23h) so garbage from the client
+      // can't create an unusable gate.
+      follow_gate_enabled: body.follow_gate_enabled,
+      follow_gate_message: body.follow_gate_message,
+      follow_gate_timeout_seconds: body.follow_gate_timeout_seconds,
       user_id: userId,
     });
 
@@ -80,6 +86,12 @@ export async function PUT(request: NextRequest) {
       account_id: body.account_id,
       ai_enabled: body.ai_enabled,
       ai_system_prompt: body.ai_system_prompt,
+      // V29: same passthrough as POST — undefined fields are ignored by the
+      // partial-update helper so old clients don't accidentally reset the
+      // gate config to defaults on every edit.
+      follow_gate_enabled: body.follow_gate_enabled,
+      follow_gate_message: body.follow_gate_message,
+      follow_gate_timeout_seconds: body.follow_gate_timeout_seconds,
     });
 
     if (!automation) return NextResponse.json({ error: "Automation not found" }, { status: 404 });

@@ -89,6 +89,91 @@ export async function sendDM(
 }
 
 // ─────────────────────────────────────────────
+// V29 — Send a DM with a single quick-reply button (Follow-to-Unlock gate)
+//
+// Instagram Send API supports quick_replies of content_type 'text'. When the
+// fan taps the button, Meta re-delivers our webhook with a `postback` entry
+// containing the button's `payload` string. That's how the follow-gate
+// button-tap round-trip works.
+//
+// Meta caps the DM at 1000 chars and each quick_reply title at 20 chars;
+// we defensively trim to avoid a full API failure on a slightly-long user
+// custom message. Payload has no strict length cap in current docs but we
+// keep ours under 100 chars (see follow-gate.ts).
+//
+// This is a private_replies-eligible endpoint (POST /me/messages), so the
+// SAME 24-hour messaging window applies as with a regular DM. Because our
+// gate DM is itself the private reply to the comment, the fan is inside
+// the messaging window for the entire follow_gate_timeout_seconds cap
+// (which is why we cap that at 23h in db.ts).
+// ─────────────────────────────────────────────
+export async function sendDmWithQuickReply(
+  recipientId: string,
+  messageText: string,
+  button: { title: string; payload: string },
+  accessToken: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const url = `${BASE_URL}/me/messages`;
+
+  const body = {
+    recipient: { id: recipientId },
+    message: {
+      text: messageText.slice(0, 1000),
+      quick_replies: [
+        {
+          content_type: "text",
+          title: button.title.slice(0, 20),
+          payload: button.payload,
+        },
+      ],
+    },
+    messaging_type: "RESPONSE",
+  };
+
+  let lastError = "";
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.log(`[sendDmWithQuickReply] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
+        await sleep(delay);
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        lastError = data.error?.message ?? `HTTP ${res.status}`;
+        console.error(
+          `[sendDmWithQuickReply] API error (attempt ${attempt + 1}):`,
+          JSON.stringify(data.error ?? data)
+        );
+        if (isRetryable(res.status) && attempt < MAX_RETRIES) continue;
+        return { success: false, error: lastError };
+      }
+
+      return { success: true, messageId: data.message_id };
+    } catch (err: unknown) {
+      lastError = err instanceof Error ? err.message : String(err);
+      console.error(`[sendDmWithQuickReply] Fetch error (attempt ${attempt + 1}):`, lastError);
+      if (attempt < MAX_RETRIES) continue;
+      return { success: false, error: lastError };
+    }
+  }
+
+  return { success: false, error: lastError };
+}
+
+// ─────────────────────────────────────────────
 // Send a Private Reply (DM) in response to a comment
 //
 // Uses the current Instagram Messaging API:

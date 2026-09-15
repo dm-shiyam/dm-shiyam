@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import {
   sendDM,
+  sendDmWithQuickReply,
   sendPrivateReply,
   replyToComment,
   personalizeMessage,
@@ -20,7 +21,18 @@ import {
   updateWebhookHealth,
   isAutomationActiveNow,
   markFirstDmSent,
+  insertPendingFollowGate,
+  claimPendingFollowGate,
+  markFollowGateFailed,
+  getAutomation,
 } from "@/lib/db";
+import {
+  encodePostbackPayload,
+  decodePostbackPayload,
+  personalizeFollowGateMessage,
+  DEFAULT_GATE_MESSAGE,
+  GATE_BUTTON_TITLE,
+} from "@/lib/follow-gate";
 import { rateLimit } from "@/lib/rate-limiter";
 import { emitNewActivity } from "@/lib/activity-events";
 import { sendDmLimitWarning, sendDmLimitReached } from "@/lib/email";
@@ -146,6 +158,15 @@ async function processWebhookAsync(body: WebhookPayload) {
       console.warn(
         `[webhook] entry.id=${targetIgId} has no matching connected account — falling back to env-var token. This will fail unless the event is for the env-var account.`
       );
+    }
+
+    // ── V29: Handle messaging events (postback = quick-reply button tap) ──
+    // These arrive on a separate top-level array from `changes`. Delegated
+    // to handleMessagingEntry so the main comment-processing loop below
+    // stays readable. Runs BEFORE the comment loop so postback + comment
+    // in the same webhook batch (unusual but possible) unlock cleanly.
+    if (entry.messaging?.length) {
+      await handleMessagingEntry(entry.messaging, ownIgAccountId, accountAccessToken);
     }
 
     for (const change of entry.changes ?? []) {
@@ -274,6 +295,74 @@ async function processWebhookAsync(body: WebhookPayload) {
           }
 
           if (!planLimitBlocked) {
+            // ── V29: Follow-to-Unlock branch ─────────────────────────────
+            // If this automation has the follow gate enabled, DON'T send the
+            // real dm_message yet. Instead:
+            //   (1) queue a pending_follow_gates row with the REAL DM stored
+            //       so button-tap AND timeout cron can both retrieve it,
+            //   (2) send the "follow me first + tap ↓" DM with a quick-reply
+            //       button whose payload encodes the gate row's id (HMAC-
+            //       signed against forgery).
+            // We still count this as `dmSent = true` for the activity log +
+            // funnel milestone — we DID send a DM, just not the payload one.
+            // Analytics distinguishes via sent_dms.sent_via_follow_gate.
+            if (automation.follow_gate_enabled) {
+              const accountUsername =
+                account?.instagram_username ?? "us";
+              const gateTemplate =
+                automation.follow_gate_message ?? DEFAULT_GATE_MESSAGE;
+              const gateText = personalizeFollowGateMessage(
+                gateTemplate,
+                senderUsername,
+                accountUsername
+              );
+              const timeoutSeconds =
+                automation.follow_gate_timeout_seconds ?? 90;
+
+              // Insert BEFORE sending so the button-tap round-trip (which
+              // could be sub-second on IG) can never race the DB write.
+              let gateRow;
+              try {
+                gateRow = await insertPendingFollowGate({
+                  automation_id: automation.id,
+                  account_id: account?.id ?? automation.account_id,
+                  sender_ig_id: senderId,
+                  sender_username: senderUsername,
+                  comment_id: commentId,
+                  comment_text: commentText,
+                  real_dm_text: dmText,
+                  timeout_seconds: timeoutSeconds,
+                });
+              } catch (err) {
+                errorMessage = `Follow-gate insert failed: ${err instanceof Error ? err.message : String(err)}`;
+                console.error(`[webhook] ${errorMessage}`);
+              }
+
+              if (gateRow) {
+                const payload = encodePostbackPayload(gateRow.id);
+                const gateResult = await sendDmWithQuickReply(
+                  senderId,
+                  gateText,
+                  { title: GATE_BUTTON_TITLE, payload },
+                  accountAccessToken
+                );
+                if (gateResult.success) {
+                  dmSent = true;
+                  console.log(
+                    `[webhook] Follow-gate DM sent to ${senderId} (gate_id=${gateRow.id}, timeout=${timeoutSeconds}s)`
+                  );
+                } else {
+                  errorMessage = humanizeMetaError(gateResult.error);
+                  console.error(
+                    `[webhook] Follow-gate DM failed for ${senderId}:`,
+                    gateResult.error
+                  );
+                  // Send-side failure — mark the gate row failed so the
+                  // timeout cron doesn't retry it 90s later. Fire-and-forget.
+                  markFollowGateFailed(gateRow.id, gateResult.error ?? "send failed").catch(() => {});
+                }
+              }
+            } else {
             // Prefer POST /{comment-id}/private_replies for comment-triggered DMs —
             // Meta's dedicated API for this flow; more reliable delivery than /me/messages
             // and not restricted by the 24-hour messaging window.
@@ -313,6 +402,7 @@ async function processWebhookAsync(body: WebhookPayload) {
               // DM failed — do NOT release claim. Assume persistent failure
               // (blocked recipient, invalid ID, etc). Retry would just fail again.
             }
+            } // end else (non-follow-gate branch)
           }
         }
 
@@ -375,5 +465,112 @@ interface WebhookPayload {
         media?: { id?: string };
       };
     }>;
+    // V29: Meta delivers postback (quick-reply button taps) and regular DM
+    // texts under a separate `messaging` array on each entry (not `changes`).
+    // See https://developers.facebook.com/docs/messenger-platform/instagram/features/quick-replies
+    messaging?: Array<{
+      sender?: { id: string };
+      recipient?: { id: string };
+      timestamp?: number;
+      postback?: {
+        mid?: string;
+        title?: string;
+        payload?: string;
+      };
+      message?: {
+        mid?: string;
+        text?: string;
+        // A postback tap arrives EITHER as `postback` (recommended) OR as a
+        // `message.quick_reply.payload` on some IG surfaces. Handle both.
+        quick_reply?: { payload?: string };
+      };
+    }>;
   }>;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// V29 — Follow-gate postback handler
+// ─────────────────────────────────────────────────────────────────────────────
+// Called from processWebhookAsync for each entry that has a `messaging` array.
+// Looks for quick-reply postbacks with our FGATE:... payload prefix, atomically
+// claims the pending gate, and sends the real DM.
+//
+// Non-follow-gate messaging events (regular DMs from fans, message reads,
+// typing indicators) are ignored here — we intentionally don't build a
+// full conversational agent, this is a one-shot unlock.
+async function handleMessagingEntry(
+  messagingList: NonNullable<NonNullable<WebhookPayload["entry"]>[number]["messaging"]>,
+  ownIgAccountId: string,
+  fallbackAccessToken: string
+): Promise<void> {
+  for (const evt of messagingList) {
+    const senderId = evt.sender?.id;
+    if (!senderId) continue;
+
+    // Ignore echoes of messages WE sent (Meta bounces those back on some
+    // apps). Recipient of an inbound event is always the business account,
+    // sender is always the fan. If sender == our own IG ID, it's an echo.
+    if (senderId === ownIgAccountId) continue;
+
+    // Extract the postback payload — prefer explicit `postback.payload`, fall
+    // back to `message.quick_reply.payload` (some IG versions route it here).
+    const rawPayload = evt.postback?.payload ?? evt.message?.quick_reply?.payload;
+    if (!rawPayload) continue;
+
+    const decoded = decodePostbackPayload(rawPayload);
+    if (!decoded) {
+      // Either not our payload format or HMAC failed — silently ignore.
+      // We deliberately don't log noisy warnings here; ManyChat and other
+      // apps' users can be in the same DM thread and their postbacks would
+      // trigger this path too.
+      continue;
+    }
+
+    // Atomic claim — races the timeout cron. If cron already claimed this
+    // row (state='unlocked_by_timeout') we get null and MUST NOT resend.
+    const gate = await claimPendingFollowGate(decoded.gateId, "button");
+    if (!gate) {
+      console.log(
+        `[webhook] Postback for gate ${decoded.gateId} — already claimed (timeout ran first?) — skipping`
+      );
+      continue;
+    }
+
+    // Resolve the account's token — we stored account_id on the gate row;
+    // if for some reason it's null (legacy env-var fallback), use the
+    // env-var token. Same pattern as the comment path.
+    let accessToken = fallbackAccessToken;
+    if (gate.account_id) {
+      const acct = await import("@/lib/db").then((m) => m.getAccount(gate.account_id!));
+      if (acct?.access_token) accessToken = acct.access_token;
+    }
+
+    // Also fetch the automation for logging (name, user_id).
+    const automation = await getAutomation(gate.automation_id);
+
+    const dmResult = await sendDM(
+      gate.sender_ig_id,
+      gate.real_dm_text,
+      accessToken,
+      ownIgAccountId
+    );
+
+    if (dmResult.success) {
+      console.log(
+        `[webhook] Follow-gate UNLOCKED by button for gate ${gate.id} → real DM sent to ${gate.sender_ig_id}`
+      );
+      if (automation?.user_id) {
+        markFirstDmSent(automation.user_id).catch(() => {});
+      }
+    } else {
+      const errMsg = humanizeMetaError(dmResult.error) ?? "send failed";
+      console.error(
+        `[webhook] Follow-gate button unlock: real DM failed for gate ${gate.id}:`,
+        dmResult.error
+      );
+      // We already flipped state to unlocked_by_button; overwrite to
+      // 'failed' so ops can see it in the pending_follow_gates table.
+      markFollowGateFailed(gate.id, errMsg).catch(() => {});
+    }
+  }
 }

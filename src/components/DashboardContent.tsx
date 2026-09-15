@@ -1349,12 +1349,17 @@ function AutomationForm({
 
               <div className="rounded-lg bg-white/70 border border-emerald-100 p-3 text-xs text-gray-600">
                 <p className="font-medium text-gray-700 mb-1">
-                  ⚠️ Honest note
+                  ✅ How verification works
                 </p>
                 <p>
-                  Instagram’s API doesn’t expose who follows whom, so this
-                  is trust-based (same as ManyChat / AutoResponder). We
-                  can’t verify the follow — we just send the ask.
+                  We query Meta’s Instagram Messaging API to check{" "}
+                  <code>is_user_follow_business</code> before sending the
+                  real DM (same technique as ManyChat). Fans who already
+                  follow you <strong>skip the gate entirely</strong> and
+                  get the DM instantly. Fans who tap “I followed” without
+                  actually following get a friendly nudge instead of the
+                  payload. If Meta’s API is unreachable for a specific
+                  fan, we fall back to trust rather than block them out.
                 </p>
               </div>
             </div>

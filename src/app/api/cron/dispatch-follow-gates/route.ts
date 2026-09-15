@@ -36,7 +36,7 @@ import {
   getAutomation,
   markFirstDmSent,
 } from "@/lib/db";
-import { sendDM, humanizeMetaError } from "@/lib/instagram";
+import { sendDM, humanizeMetaError, checkIsFollower } from "@/lib/instagram";
 import { captureError, captureAlert } from "@/lib/monitoring";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
@@ -57,6 +57,7 @@ async function handler(req: NextRequest) {
     let dispatched = 0;
     let failed = 0;
     let skipped = 0;
+    let rejected = 0;
     const results: Array<{ gate_id: string; result: string; error?: string }> = [];
 
     for (const gate of expired) {
@@ -79,6 +80,28 @@ async function handler(req: NextRequest) {
         const acct = await getAccount(claimed.account_id);
         if (acct?.access_token) accessToken = acct.access_token;
         if (acct?.instagram_account_id) ownIgId = acct.instagram_account_id;
+      }
+
+      // V29.1 — Verify follow before dispatching the fallback DM.
+      // The fan didn't tap the button; the timeout hit. Ask Meta: did they
+      // actually follow? If verified false → mark rejected, don't send.
+      // If unknown (null) → send anyway (honor the timeout promise; better
+      // to send to one non-follower than to block a real one on a Meta
+      // permission blip).
+      const followCheck = await checkIsFollower(claimed.sender_ig_id, accessToken);
+      if (followCheck.isFollower === false) {
+        rejected++;
+        results.push({
+          gate_id: gate.id,
+          result: "rejected_not_following",
+        });
+        // Overwrite state from 'unlocked_by_timeout' to 'failed' with a
+        // descriptive reason. The row is already terminal so no race concern.
+        markFollowGateFailed(gate.id, "timeout_but_not_following").catch(() => {});
+        console.log(
+          `[cron:dispatch-follow-gates] REJECTED gate ${gate.id}: timeout hit but is_user_follow_business=false`
+        );
+        continue;
       }
 
       const dmResult = await sendDM(
@@ -132,6 +155,7 @@ async function handler(req: NextRequest) {
       dispatched_at: new Date().toISOString(),
       total_expired: expired.length,
       dispatched,
+      rejected,
       failed,
       skipped,
       results,

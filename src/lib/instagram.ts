@@ -107,6 +107,65 @@ export async function sendDM(
 // the messaging window for the entire follow_gate_timeout_seconds cap
 // (which is why we cap that at 23h in db.ts).
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// V29.1 — Check whether a fan is following the business account.
+//
+// Uses the Instagram Messaging Platform's User Profile API:
+//   GET /{IGSID}?fields=is_user_follow_business
+//
+// This is the SAME endpoint ManyChat uses for follow-gating. It requires:
+//   - instagram_manage_messages permission (we already have it)
+//   - The fan must have an open messaging window (a fresh comment opens it
+//     for 24h; a DM does too). Since we call this either right after a
+//     comment webhook OR on a postback tap, we're always inside the window.
+//
+// Returns:
+//   { isFollower: true }   — verified follower
+//   { isFollower: false }  — verified NON-follower
+//   { isFollower: null }   — Meta wouldn't tell us (permission scope,
+//                            rate-limit, endpoint temporarily unavailable
+//                            for this user). Callers should fall back to
+//                            trust-based behavior in the `null` case rather
+//                            than blocking every user because one API call
+//                            hiccuped.
+//
+// Rate limit: Meta caps this at ~200/hr per app user. At scale we'd need a
+// short-lived cache keyed by IGSID; for MVP the per-fan volume is well
+// under this.
+// ─────────────────────────────────────────────
+export async function checkIsFollower(
+  igsid: string,
+  accessToken: string
+): Promise<{ isFollower: boolean | null; error?: string }> {
+  const url = `${BASE_URL}/${igsid}?fields=is_user_follow_business`;
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      const msg = data.error?.message ?? `HTTP ${res.status}`;
+      // Common failure: (#100) — Object with ID does not exist or lacks
+      // permission. This happens when the user hasn't opted in to being
+      // messaged by our app, or when the messaging window has closed.
+      // We deliberately don't log noisily — trust fallback handles it.
+      console.warn(`[checkIsFollower] Meta rejected for ${igsid}:`, msg);
+      return { isFollower: null, error: msg };
+    }
+    // Field is a boolean when Meta returns it. Some accounts (rare) omit
+    // it entirely — treat missing as `null` (unknown), NOT as `false`,
+    // so we don't gate real followers out.
+    if (typeof data.is_user_follow_business !== "boolean") {
+      return { isFollower: null, error: "field_missing" };
+    }
+    return { isFollower: data.is_user_follow_business };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[checkIsFollower] Network error for ${igsid}:`, msg);
+    return { isFollower: null, error: msg };
+  }
+}
+
 export async function sendDmWithQuickReply(
   recipientId: string,
   messageText: string,

@@ -1570,6 +1570,29 @@ export async function markFollowGateFailed(
   );
 }
 
+/**
+ * V29.1 — Atomically transition state='pending' → 'failed' with a
+ * descriptive reason. Used by the postback handler and the timeout cron
+ * when the follow-check API says the fan is NOT following. The atomic
+ * WHERE state='pending' guard prevents a button-tap and a cron sweep
+ * from double-rejecting (or worse, one rejecting after the other
+ * accepted). Returns the row on success, null if already terminal.
+ */
+export async function rejectPendingFollowGate(
+  id: string,
+  reason: string
+): Promise<PendingFollowGate | null> {
+  await ensureInit();
+  const row = await queryOne<PendingFollowGate>(
+    `UPDATE pending_follow_gates
+     SET state = 'failed', unlocked_at = NOW(), error_message = $2
+     WHERE id = $1 AND state = 'pending'
+     RETURNING *`,
+    [id, reason.slice(0, 500)]
+  );
+  return row ?? null;
+}
+
 // ═══════════════════════════════════════
 // ── Webhook Health ──
 // ═══════════════════════════════════════

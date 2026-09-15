@@ -7,6 +7,7 @@ import {
   replyToComment,
   personalizeMessage,
   humanizeMetaError,
+  checkIsFollower,
 } from "@/lib/instagram";
 import {
   getActiveAutomations,
@@ -24,6 +25,7 @@ import {
   insertPendingFollowGate,
   claimPendingFollowGate,
   markFollowGateFailed,
+  rejectPendingFollowGate,
   getAutomation,
 } from "@/lib/db";
 import {
@@ -307,6 +309,37 @@ async function processWebhookAsync(body: WebhookPayload) {
             // funnel milestone — we DID send a DM, just not the payload one.
             // Analytics distinguishes via sent_dms.sent_via_follow_gate.
             if (automation.follow_gate_enabled) {
+              // V29.1 — Fast-follower bypass. Query Meta first to see if
+              // this fan is already following the business account. If so,
+              // skip the gate entirely and DM the real payload immediately
+              // — much better UX for existing followers (no annoying
+              // "please follow" prompt when they already do).
+              //
+              // If Meta returns null (permission scope, rate-limit, etc)
+              // we FALL THROUGH to the gate rather than blocking — better
+              // to over-ask than to leak the payload to a non-follower.
+              const followCheck = await checkIsFollower(senderId, accountAccessToken);
+              if (followCheck.isFollower === true) {
+                console.log(
+                  `[webhook] Fast-path: ${senderId} already follows — bypassing gate for automation "${automation.name}"`
+                );
+                const bypassResult = await sendPrivateReply(
+                  commentId,
+                  dmText,
+                  accountAccessToken
+                );
+                if (bypassResult.success) {
+                  dmSent = true;
+                } else {
+                  errorMessage = humanizeMetaError(bypassResult.error);
+                  console.error(
+                    `[webhook] Bypass DM failed for existing follower ${senderId}:`,
+                    bypassResult.error
+                  );
+                }
+                // Skip the gate insert + gate-DM path entirely.
+                // Fall through to the activity log below.
+              } else {
               const accountUsername =
                 account?.instagram_username ?? "us";
               const gateTemplate =
@@ -362,6 +395,7 @@ async function processWebhookAsync(body: WebhookPayload) {
                   markFollowGateFailed(gateRow.id, gateResult.error ?? "send failed").catch(() => {});
                 }
               }
+              } // end else (not-following → gate path)
             } else {
             // Prefer POST /{comment-id}/private_replies for comment-triggered DMs —
             // Meta's dedicated API for this flow; more reliable delivery than /me/messages
@@ -545,6 +579,35 @@ async function handleMessagingEntry(
       if (acct?.access_token) accessToken = acct.access_token;
     }
 
+    // V29.1 — Real follow verification.
+    // The fan tapped "I followed ✅", but tapping is free — anyone can lie.
+    // Query Meta to see if they actually did. If `false`: send them a
+    // "still not following!" nudge instead of the real DM, and mark the
+    // gate row 'failed' with the reason (they can comment again to get a
+    // fresh gate). If Meta returns null (unknown), fall back to trust:
+    // send the real DM. Better UX to be wrong on one nudge than to
+    // block a real follower over a transient Meta hiccup.
+    const followCheck = await checkIsFollower(gate.sender_ig_id, accessToken);
+    if (followCheck.isFollower === false) {
+      console.log(
+        `[webhook] Follow-gate DENIED for gate ${gate.id}: fan tapped but is_user_follow_business=false`
+      );
+      // We already claimed the row as unlocked_by_button in the atomic
+      // claim above — overwrite to 'failed' so audit is clean.
+      markFollowGateFailed(gate.id, "postback_tap_but_not_following").catch(() => {});
+      // Send a friendly nudge so the fan knows why they didn't get the
+      // promised DM. Fire-and-forget: even if this fails, the state is
+      // already terminal.
+      sendDM(
+        gate.sender_ig_id,
+        "Hmm, looks like you haven't followed us yet 👀 Please follow and comment again — I'll send the link right away!",
+        accessToken,
+        ownIgAccountId
+      ).catch(() => {});
+      continue;
+    }
+    // isFollower === true OR null (unknown) — proceed with the real DM.
+
     // Also fetch the automation for logging (name, user_id).
     const automation = await getAutomation(gate.automation_id);
 
@@ -557,7 +620,7 @@ async function handleMessagingEntry(
 
     if (dmResult.success) {
       console.log(
-        `[webhook] Follow-gate UNLOCKED by button for gate ${gate.id} → real DM sent to ${gate.sender_ig_id}`
+        `[webhook] Follow-gate UNLOCKED by button for gate ${gate.id} (verified=${followCheck.isFollower}) → real DM sent to ${gate.sender_ig_id}`
       );
       if (automation?.user_id) {
         markFirstDmSent(automation.user_id).catch(() => {});

@@ -1337,10 +1337,13 @@ function AutomationForm({
                   }
                 />
                 <p className="mt-1 text-xs text-emerald-500">
-                  Default 90s. Fans who don’t tap the button still receive
-                  the DM after this timeout (avoids losing the ones who
-                  followed but forgot to tap). Meta’s messaging window is
-                  24h; we cap at 23h for safety.
+                  Default 90s. Fans who tap the button get the DM
+                  instantly. Fans who <em>don’t</em> tap: we send the DM
+                  anyway once the timeout expires — but the fallback
+                  sweep runs <strong>once daily (03:15 UTC)</strong> on
+                  our current hosting tier, so effective wait can be up
+                  to 24h. Meta’s messaging window is 24h; we cap the
+                  timeout at 23h for safety.
                 </p>
               </div>
 

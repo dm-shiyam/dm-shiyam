@@ -1,16 +1,23 @@
 // src/app/api/cron/dispatch-follow-gates/route.ts
 // V29 — Timeout dispatcher for the Follow-to-Unlock feature.
 //
-// Runs on a Vercel cron every 5 minutes. Finds any pending_follow_gates
+// Runs once daily (03:15 UTC = 08:45 IST). Finds any pending_follow_gates
 // rows whose `timeout_at` has passed without a button-tap and sends the
-// real DM to the fan (with a small "hope you're still around!" prefix
-// so the UX stays warm). This is the "we trust you followed" fallback.
+// real DM to the fan. This is the "we trust you followed" fallback.
 //
-// Why every 5 min and not every 1 min:
-//   - Vercel Hobby cron minimum used to be daily; is now 1min but bumped to
-//     5min here to conserve serverless invocations (we run 4 crons already).
-//     Users pay UP TO 5 min of latency past their configured timeout, which
-//     is fine for a "you forgot to tap" fallback. Button tap is still instant.
+// Why once daily (and not */5 as originally planned):
+//   Vercel Hobby (free) tier caps crons at once-per-day. */5 * * * * is
+//   rejected at deploy time with "Hobby accounts are limited to daily
+//   cron jobs". Upgrading to Pro (~$20/mo) unlocks per-minute crons.
+//
+// Practical impact:
+//   * BUTTON-TAP PATH (primary flow): instant, unaffected — the postback
+//     handler in the webhook sends the real DM within ~1s of the tap.
+//   * TIMEOUT PATH (fallback for fans who didn't tap): effective wait can
+//     be up to 24h from the moment the fan commented, regardless of the
+//     configured follow_gate_timeout_seconds. The AutomationEditor UI
+//     honestly documents this so users can weigh whether to enable the
+//     gate on time-sensitive campaigns.
 //
 // Auth: standard Bearer <CRON_SECRET> pattern, matches other crons.
 // Batch size: 100 per invocation to stay well under Meta's 100 msg/s cap.

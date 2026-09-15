@@ -20,7 +20,7 @@
     },
     {
       "path": "/api/cron/dispatch-follow-gates",
-      "schedule": "*/5 * * * *"
+      "schedule": "15 3 * * *"
     }
   ]
 }

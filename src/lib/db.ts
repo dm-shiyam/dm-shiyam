@@ -1604,6 +1604,45 @@ export async function markFollowGateFailed(
 }
 
 /**
+ * V29.4 — Non-mutating lookup for a gate row. Used by the postback
+ * handler in the "re-nudge" flow: we need to know if the gate is still
+ * pending WITHOUT claiming it, so a fan who taps "I followed" without
+ * actually following can be re-nudged (with the button again) rather
+ * than permanently rejected.
+ */
+export async function getPendingFollowGate(
+  id: string
+): Promise<PendingFollowGate | null> {
+  await ensureInit();
+  return (await queryOne<PendingFollowGate>(
+    "SELECT * FROM pending_follow_gates WHERE id = $1",
+    [id]
+  )) ?? null;
+}
+
+/**
+ * V29.4 — Extend the timeout on a still-pending gate. Called each time
+ * a fan taps "I followed" but the follow-check comes back false: we
+ * give them another N seconds to actually go follow + tap again. Only
+ * updates rows still in 'pending' state so a raced cron-claim can't be
+ * accidentally reopened. Returns true if a row was updated.
+ */
+export async function extendFollowGateTimeout(
+  id: string,
+  additionalSeconds: number
+): Promise<boolean> {
+  await ensureInit();
+  const secs = Math.max(10, Math.min(23 * 60 * 60, Math.floor(additionalSeconds)));
+  const n = await execute(
+    `UPDATE pending_follow_gates
+     SET timeout_at = NOW() + ($2 || ' seconds')::interval
+     WHERE id = $1 AND state = 'pending'`,
+    [id, String(secs)]
+  );
+  return n > 0;
+}
+
+/**
  * V29.1 — Atomically transition state='pending' → 'failed' with a
  * descriptive reason. Used by the postback handler and the timeout cron
  * when the follow-check API says the fan is NOT following. The atomic

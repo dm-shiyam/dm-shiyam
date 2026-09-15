@@ -26,6 +26,8 @@ import {
   claimPendingFollowGate,
   markFollowGateFailed,
   rejectPendingFollowGate,
+  getPendingFollowGate,
+  extendFollowGateTimeout,
   getAutomation,
 } from "@/lib/db";
 import {
@@ -565,12 +567,18 @@ async function handleMessagingEntry(
       continue;
     }
 
-    // Atomic claim — races the timeout cron. If cron already claimed this
-    // row (state='unlocked_by_timeout') we get null and MUST NOT resend.
-    const gate = await claimPendingFollowGate(decoded.gateId, "button");
+    // V29.4 — Peek first (no state mutation). We only want to claim the
+    // gate row IF the fan is actually verified as a follower. If they
+    // tapped without following, we KEEP the gate 'pending' so they can
+    // tap again after actually following — no need to comment again.
+    const gate = await getPendingFollowGate(decoded.gateId);
     if (!gate) {
+      console.log(`[webhook] Postback for gate ${decoded.gateId} — row missing`);
+      continue;
+    }
+    if (gate.state !== "pending") {
       console.log(
-        `[webhook] Postback for gate ${decoded.gateId} — already claimed (timeout ran first?) — skipping`
+        `[webhook] Postback for gate ${decoded.gateId} — already ${gate.state} — skipping`
       );
       continue;
     }
@@ -585,47 +593,81 @@ async function handleMessagingEntry(
     }
 
     // V29.1 — Real follow verification.
-    // The fan tapped "I followed ✅", but tapping is free — anyone can lie.
-    // Query Meta to see if they actually did. If `false`: send them a
-    // "still not following!" nudge instead of the real DM, and mark the
-    // gate row 'failed' with the reason (they can comment again to get a
-    // fresh gate). If Meta returns null (unknown), fall back to trust:
-    // send the real DM. Better UX to be wrong on one nudge than to
-    // block a real follower over a transient Meta hiccup.
+    // The fan tapped "I followed ✅", but tapping is free — anyone can
+    // lie. Query Meta to see if they actually did. If Meta returns null
+    // (unknown due to permission scope / rate limit), fall back to
+    // trust and send the real DM — better UX to be wrong on one nudge
+    // than to block a real follower over a Meta hiccup.
     const followCheck = await checkIsFollower(gate.sender_ig_id, accessToken);
+
     if (followCheck.isFollower === false) {
-      console.log(
-        `[webhook] Follow-gate DENIED for gate ${gate.id}: fan tapped but is_user_follow_business=false`
-      );
-      // We already claimed the row as unlocked_by_button in the atomic
-      // claim above — overwrite to 'failed' so audit is clean.
-      markFollowGateFailed(gate.id, "postback_tap_but_not_following").catch(() => {});
-      // Send a friendly nudge so the fan knows why they didn't get the
-      // promised DM. Fire-and-forget: even if this fails, the state is
-      // already terminal.
-      sendDM(
+      // V29.4 — Re-nudge flow. The fan hasn't followed yet. Instead of
+      // marking the gate as failed and telling them to comment again
+      // (extra friction — they'd have to go back to the reel), we just
+      // send a follow-up DM with the SAME quick-reply button so they
+      // can (a) go follow us, (b) come back and tap again. No DB state
+      // change — the gate stays 'pending' so subsequent taps are still
+      // valid. We DO extend the timeout so the cron doesn't reject
+      // them while they're actively trying to comply.
+      const accountUsername =
+        (await import("@/lib/db").then((m) => m.getAccount(gate.account_id!))
+          .then((a) => a?.instagram_username)
+          .catch(() => undefined)) ?? "us";
+      const nudgeText = `Hmm, looks like you're not following @${accountUsername} yet 👀 Head to their profile, tap Follow, then come back and hit "I followed ✅" below and I'll send you the link right away!`;
+      const payload = encodePostbackPayload(gate.id);
+
+      const nudgeResult = await sendDmWithQuickReply(
         gate.sender_ig_id,
-        "Hmm, looks like you haven't followed us yet 👀 Please follow and comment again — I'll send the link right away!",
-        accessToken,
-        ownIgAccountId
-      ).catch(() => {});
+        nudgeText,
+        { title: GATE_BUTTON_TITLE, payload },
+        accessToken
+        // No commentId — we're inside the messaging window now (the fan
+        // just messaged us via the postback tap), so recipient.id works.
+      );
+
+      if (nudgeResult.success) {
+        // Extend timeout by the automation's configured window so the
+        // fan has a fresh grace period to follow + tap again. Fire and
+        // forget — even if this write fails, the tap loop still works,
+        // the cron just might reject them slightly sooner than expected.
+        const automation = await getAutomation(gate.automation_id);
+        const extend = automation?.follow_gate_timeout_seconds ?? 90;
+        extendFollowGateTimeout(gate.id, extend).catch(() => {});
+        console.log(
+          `[webhook] Follow-gate RE-NUDGED gate ${gate.id}: not following yet, sent tap-again DM (timeout +${extend}s)`
+        );
+      } else {
+        console.error(
+          `[webhook] Follow-gate re-nudge failed for gate ${gate.id}:`,
+          nudgeResult.error
+        );
+      }
       continue;
     }
     // isFollower === true OR null (unknown) — proceed with the real DM.
 
-    // Also fetch the automation for logging (name, user_id).
-    const automation = await getAutomation(gate.automation_id);
+    // Only NOW do we atomically claim (state='pending' → 'unlocked_by_button').
+    // If the timeout cron raced us and already claimed, we get null and
+    // don't double-send.
+    const claimed = await claimPendingFollowGate(gate.id, "button");
+    if (!claimed) {
+      console.log(
+        `[webhook] Postback for gate ${gate.id} — cron already claimed between peek + claim, skipping`
+      );
+      continue;
+    }
 
+    const automation = await getAutomation(claimed.automation_id);
     const dmResult = await sendDM(
-      gate.sender_ig_id,
-      gate.real_dm_text,
+      claimed.sender_ig_id,
+      claimed.real_dm_text,
       accessToken,
       ownIgAccountId
     );
 
     if (dmResult.success) {
       console.log(
-        `[webhook] Follow-gate UNLOCKED by button for gate ${gate.id} (verified=${followCheck.isFollower}) → real DM sent to ${gate.sender_ig_id}`
+        `[webhook] Follow-gate UNLOCKED by button for gate ${claimed.id} (verified=${followCheck.isFollower}) → real DM sent to ${claimed.sender_ig_id}`
       );
       if (automation?.user_id) {
         markFirstDmSent(automation.user_id).catch(() => {});
@@ -633,12 +675,10 @@ async function handleMessagingEntry(
     } else {
       const errMsg = humanizeMetaError(dmResult.error) ?? "send failed";
       console.error(
-        `[webhook] Follow-gate button unlock: real DM failed for gate ${gate.id}:`,
+        `[webhook] Follow-gate button unlock: real DM failed for gate ${claimed.id}:`,
         dmResult.error
       );
-      // We already flipped state to unlocked_by_button; overwrite to
-      // 'failed' so ops can see it in the pending_follow_gates table.
-      markFollowGateFailed(gate.id, errMsg).catch(() => {});
+      markFollowGateFailed(claimed.id, errMsg).catch(() => {});
     }
   }
 }

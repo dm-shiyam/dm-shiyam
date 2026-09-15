@@ -373,11 +373,16 @@ async function processWebhookAsync(body: WebhookPayload) {
 
               if (gateRow) {
                 const payload = encodePostbackPayload(gateRow.id);
+                // Pass commentId so the gate DM is sent as a private_reply
+                // to the comment (Meta requires this for first-touch DMs —
+                // otherwise error #10 "outside of allowed window"). This
+                // was the V29.1 bug that caused every gate DM to fail.
                 const gateResult = await sendDmWithQuickReply(
                   senderId,
                   gateText,
                   { title: GATE_BUTTON_TITLE, payload },
-                  accountAccessToken
+                  accountAccessToken,
+                  commentId
                 );
                 if (gateResult.success) {
                   dmSent = true;

@@ -170,12 +170,24 @@ export async function sendDmWithQuickReply(
   recipientId: string,
   messageText: string,
   button: { title: string; payload: string },
-  accessToken: string
+  accessToken: string,
+  // V29.2 — When this DM is a first-touch reply to a comment (no prior
+  // messaging window with the user), Meta REQUIRES the recipient to be
+  // keyed by `comment_id`, not `id`. Passing `recipient: { id: ... }` in
+  // that case returns error #10 "This message is sent outside of allowed
+  // window." Callers who DO have an open messaging window (e.g. postback
+  // handler responding after a button tap) can omit commentId and we'll
+  // use the standard id-based recipient.
+  commentId?: string
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
   const url = `${BASE_URL}/me/messages`;
 
-  const body = {
-    recipient: { id: recipientId },
+  const recipient = commentId
+    ? { comment_id: commentId }
+    : { id: recipientId };
+
+  const body: Record<string, unknown> = {
+    recipient,
     message: {
       text: messageText.slice(0, 1000),
       quick_replies: [
@@ -186,8 +198,13 @@ export async function sendDmWithQuickReply(
         },
       ],
     },
-    messaging_type: "RESPONSE",
   };
+  // messaging_type only applies to id-based recipient. For comment_id
+  // recipient, Meta ignores it (or errors on some API versions), so we
+  // omit it entirely in that branch.
+  if (!commentId) {
+    body.messaging_type = "RESPONSE";
+  }
 
   let lastError = "";
 

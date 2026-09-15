@@ -392,3 +392,14 @@ CREATE INDEX IF NOT EXISTS idx_follow_gates_dedup
 ALTER TABLE sent_dms
   ADD COLUMN IF NOT EXISTS sent_via_follow_gate TEXT
   CHECK (sent_via_follow_gate IS NULL OR sent_via_follow_gate IN ('gate_impression','button','timeout'));
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- ── Email verification backfill (2026-09-15) ──
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Backfill email_verified_at for existing Google OAuth users who signed up
+-- before the email verification feature was added. Google OAuth already proves
+-- email ownership, so these users should be pre-verified.
+UPDATE users
+SET email_verified_at = created_at
+WHERE provider = 'google'
+  AND email_verified_at IS NULL;

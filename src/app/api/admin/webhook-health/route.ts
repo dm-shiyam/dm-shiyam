@@ -39,6 +39,11 @@ type AccountHealth = {
     expires_at: string | null;
     days_until_expiry: number | null;
     status: "ok" | "expiring_soon" | "expired" | "unknown";
+    // Set by touchAccountRefresh() at the end of /api/cron/refresh-tokens
+    // whenever an account's long-lived token is successfully refreshed.
+    // Surfacing it here is the fastest way for ops to confirm the daily
+    // refresh cron is actually running (rather than SSH'ing into the DB).
+    last_refreshed_at: string | null;
   };
 
   subscription: {
@@ -123,6 +128,7 @@ async function buildAccountHealth(acct: Awaited<ReturnType<typeof getAllAccounts
       expires_at: acct.token_expires_at ?? null,
       days_until_expiry: daysLeft,
       status: tokenStatus,
+      last_refreshed_at: acct.last_refreshed_at ?? null,
     },
     subscription: {
       fields: subFields,

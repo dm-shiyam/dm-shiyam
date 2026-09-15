@@ -1028,6 +1028,7 @@ type WebhookHealthResponse = {
       expires_at: string | null;
       days_until_expiry: number | null;
       status: "ok" | "expiring_soon" | "expired" | "unknown";
+      last_refreshed_at: string | null;
     };
     subscription: {
       fields: string[];
@@ -1184,6 +1185,12 @@ function WebhookHealthTab() {
                 </td>
                 <td className="px-4 py-3">
                   <TokenPill status={a.token.status} days={a.token.days_until_expiry} />
+                  <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-500">
+                    refreshed:{" "}
+                    {a.token.last_refreshed_at
+                      ? new Date(a.token.last_refreshed_at).toLocaleString()
+                      : "never"}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   {a.subscription.error ? (

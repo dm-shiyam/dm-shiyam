@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Send, Mail, RefreshCw, CheckCircle } from "lucide-react";
 
 function PendingContent({ email }: { email: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(
     errorParam === "invalid"
       ? "That verification link is invalid or has expired. Send a fresh one below."
@@ -18,6 +20,50 @@ function PendingContent({ email }: { email: string }) {
         ? "Verification link was missing a token. Send a fresh one below."
         : null
   );
+
+  // Poll for verification completion so this tab auto-redirects the
+  // moment the user clicks the link in their email (which opens in a
+  // new tab and updates email_verified_at in DB). Without this, the
+  // user has to manually refresh — Priyanka flagged this UX gap on
+  // 2026-09-16. Poll interval of 3s balances responsiveness against
+  // server load; polling stops once the tab is closed or verified.
+  useEffect(() => {
+    let cancelled = false;
+
+    const check = async () => {
+      try {
+        const res = await fetch("/api/auth/verification-status", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.verified && !cancelled) {
+          // Show a brief "Verified!" state before the navigation kicks
+          // in so the user gets a clear success signal (otherwise the
+          // page just abruptly changes and feels janky).
+          setVerifying(true);
+          // Full navigation so the /dashboard page re-runs its server
+          // guard against fresh session/user state.
+          setTimeout(() => {
+            if (!cancelled) router.push("/dashboard?verified=1");
+          }, 500);
+        }
+      } catch {
+        // Silent — will retry on next tick. Network blips shouldn't
+        // surface a scary error on this friendly onboarding page.
+      }
+    };
+
+    // Fire once immediately (handles the case where the user verified
+    // in another tab BEFORE landing back on this page — race window
+    // when they had multiple tabs open).
+    check();
+    const interval = setInterval(check, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [router]);
 
   const resend = async () => {
     setLoading(true);
@@ -37,6 +83,21 @@ function PendingContent({ email }: { email: string }) {
     }
   };
 
+  // Optimistic success screen once polling detects email_verified_at is
+  // set. Shown for ~500ms before router.push transitions to /dashboard.
+  if (verifying) {
+    return (
+      <div className="text-center py-4">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle className="h-7 w-7 text-green-600" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">Email verified!</h2>
+        <p className="mt-2 text-sm text-gray-600">Taking you to your dashboard…</p>
+        <RefreshCw className="mx-auto mt-4 h-5 w-5 animate-spin text-purple-500" />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="text-center">
@@ -51,6 +112,9 @@ function PendingContent({ email }: { email: string }) {
         </p>
         <p className="mt-3 text-xs text-gray-500">
           Click the link in that email to activate your account. The link expires in 24 hours.
+        </p>
+        <p className="mt-2 text-xs text-purple-600">
+          This page will refresh automatically once you verify.
         </p>
       </div>
 

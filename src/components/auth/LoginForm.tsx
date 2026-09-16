@@ -82,14 +82,24 @@ export default function LoginForm({ defaultSignup = false }: Props) {
       toast.error(msg);
     } else {
       if (isSignup) {
-        // GA4 conversion — V13.1 signup_completed
+        // GA4 conversion — V13.1 signup_completed (fires at row-creation
+        // time, not verification time — this measures signup CTA
+        // conversion, not activated-user rate).
         trackEvent({
           name: "signup_completed",
           params: { method: "credentials" },
         });
+        // No celebratory toast on signup — the account isn't usable until
+        // the user clicks the verification link in their email. Showing
+        // "Account created! Welcome 🎉" here was misleading; the
+        // /verify-email-pending page (where the dashboard redirect lands
+        // them) already communicates the correct next step. Reported
+        // 2026-09-16.
+        router.push(callbackUrl);
+      } else {
+        toast.success("Welcome back!");
+        router.push(callbackUrl);
       }
-      toast.success(isSignup ? "Account created! Welcome 🎉" : "Welcome back!");
-      router.push(callbackUrl);
     }
   } catch {
     setError("Something went wrong. Please try again.");

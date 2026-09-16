@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { getUserByEmail, getUserByProviderId, getUserById, createUser, touchUserLogin, claimOnboardingEmail, setEmailVerificationToken } from "./db";
 import { rateLimit } from "./rate-limiter";
 import { sendWelcomeEmail, sendVerificationEmail } from "./email";
+import { validatePassword } from "./password-policy";
 
 // Hard-block email verification — credentials signups only. Generates a
 // token, persists it, and emails the verify link. Fire-and-forget so a
@@ -60,11 +61,10 @@ export const authOptions: NextAuthOptions = {
           if (existing) throw new Error("Email already registered");
           if (!name) throw new Error("Name is required");
 
-          // Password policy: min 8 chars, must contain letters and digits
-          if (password.length < 8) throw new Error("Password must be at least 8 characters");
-          if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-            throw new Error("Password must contain letters and numbers");
-          }
+          // Password policy — shared with UI checklist (lib/password-policy.ts)
+          // so the rules a user sees while typing match what we enforce here.
+          const check = validatePassword(password);
+          if (!check.valid) throw new Error(check.error);
 
           const hash = await bcrypt.hash(password, 12);
           try {

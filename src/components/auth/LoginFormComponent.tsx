@@ -268,14 +268,18 @@ function LoginFormContent({ defaultSignup }: { defaultSignup?: boolean }) {
             </button>
           </form>
 
-          {/* Toggle Signup/Login */}
+          {/* Toggle Signup/Login — navigates to /register instead of
+              toggling in-place so all signup traffic funnels through the
+              single canonical form (LoginForm.tsx) which asks for Name +
+              confirm password + enforces strong password policy. Fixes
+              the "sign-up-from-login-page" UX bug reported 2026-09-16. */}
           <div className="mt-4 text-center text-sm text-gray-500">
             {isSignup ? "Already have an account? " : "Don't have an account? "}
             <button
               type="button"
               onClick={() => {
-                setIsSignup(!isSignup);
                 setError("");
+                router.push(isSignup ? "/login" : "/register");
               }}
               className="text-purple-600 font-semibold hover:text-purple-700 transition-colors"
             >

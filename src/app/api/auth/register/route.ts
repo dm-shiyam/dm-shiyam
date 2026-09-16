@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { createUser, getUserByEmail, claimOnboardingEmail } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limiter";
 import { sendWelcomeEmail } from "@/lib/email";
+import { validatePassword } from "@/lib/password-policy";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,18 +40,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Password policy: min 8 chars, letters + digits
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters" },
-        { status: 400 }
-      );
-    }
-    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: "Password must contain letters and numbers" },
-        { status: 400 }
-      );
+    // Password policy — shared with UI checklist (lib/password-policy.ts).
+    const pw = validatePassword(password);
+    if (!pw.valid) {
+      return NextResponse.json({ error: pw.error }, { status: 400 });
     }
 
     // Check duplicate

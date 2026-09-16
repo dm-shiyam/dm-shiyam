@@ -1,14 +1,15 @@
 // src/components/auth/LoginForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Send, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Send, Mail, Lock, User, Eye, EyeOff, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
 import { trackEvent } from "@/lib/analytics";
+import { PASSWORD_RULES, validatePassword } from "@/lib/password-policy";
 
 interface Props {
   defaultSignup?: boolean;
@@ -22,14 +23,46 @@ export default function LoginForm({ defaultSignup = false }: Props) {
   const [isSignup, setIsSignup] = useState(defaultSignup);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+
+  // Live password rule evaluation — memoised so we only recompute when
+  // the password field actually changes (not on every re-render). Used
+  // by the checklist UI + the submit-button disabled state.
+  const passwordRules = useMemo(
+    () => PASSWORD_RULES.map((r) => ({ ...r, met: r.test(password) })),
+    [password]
+  );
+  const passwordValid = passwordRules.every((r) => r.met);
+  const passwordsMatch = !isSignup || password === confirmPassword;
+  // The checklist is only relevant during signup; showing it on the
+  // login form would be visual noise for existing users who set their
+  // password before the policy was tightened.
+  const showChecklist = isSignup && (passwordFocused || password.length > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError("");
+
+  // Client-side pre-flight — mirrors server-side rules from
+  // lib/password-policy.ts. Avoids a network round-trip when the user
+  // hasn't met all rules yet.
+  if (isSignup) {
+    const check = validatePassword(password);
+    if (!check.valid) {
+      setError(check.error);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match. Please re-type your password.");
+      return;
+    }
+  }
+
   setLoading(true);
 
   try {
@@ -166,23 +199,27 @@ export default function LoginForm({ defaultSignup = false }: Props) {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-gray-700">Password</label>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">Password</label>
             <div className="relative">
               <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <input
                 type={showPassword ? "text" : "password"}
                 className="w-full text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-purple-200"
                 style={{ border: "1.5px solid #9ca3af", borderRadius: 12, padding: "12px 44px 12px 40px", background: "#f9fafb" }}
-                placeholder="Min. 6 characters"
+                placeholder={isSignup ? "Create a strong password" : "Your password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 required
-                minLength={6}
+                minLength={isSignup ? 8 : undefined}
+                autoComplete={isSignup ? "new-password" : "current-password"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -194,7 +231,65 @@ export default function LoginForm({ defaultSignup = false }: Props) {
                 </Link>
               </div>
             )}
+
+            {/* Live password strength checklist — only shown during signup
+                once the user has interacted with the password field. Each
+                rule turns green with a check when met, greyscale with a
+                dash when unmet. Users get instant feedback rather than a
+                server-side rejection after clicking Create Account. */}
+            {showChecklist && (
+              <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 dark:bg-gray-800 p-2.5 text-xs">
+                {passwordRules.map((r) => (
+                  <li key={r.id} className="flex items-center gap-2">
+                    {r.met ? (
+                      <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                    )}
+                    <span className={r.met ? "text-green-700" : "text-gray-500"}>
+                      {r.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
+          {/* Confirm password — only on signup, to catch typos before
+              the account is created. Server-side does NOT re-check this
+              (it only sees one password field), so client-side is the
+              only line of defence against a mistyped password locking
+              the user out on next login. */}
+          {isSignup && (
+            <div>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Confirm password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className="w-full text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:ring-2 focus:ring-purple-200"
+                  style={{
+                    border: `1.5px solid ${confirmPassword && !passwordsMatch ? "#ef4444" : "#9ca3af"}`,
+                    borderRadius: 12,
+                    padding: "12px 16px 12px 40px",
+                    background: "#f9fafb",
+                  }}
+                  placeholder="Re-type your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required={isSignup}
+                  autoComplete="new-password"
+                />
+              </div>
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <p className="mt-1.5 text-xs text-red-600">
+                  Passwords don&apos;t match.
+                </p>
+              )}
+            </div>
+          )}
 
           {error && (
             <div style={{ border: "1px solid #fca5a5", borderRadius: 12, padding: "10px 16px", background: "#fef2f2" }}
@@ -205,7 +300,14 @@ export default function LoginForm({ defaultSignup = false }: Props) {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={
+              loading ||
+              // On signup, block submit until all password rules pass +
+              // both password fields agree. On login, only block on the
+              // in-flight state (existing users may have pre-policy
+              // passwords that don't satisfy every new rule).
+              (isSignup && (!passwordValid || !passwordsMatch))
+            }
             className="btn-primary w-full !rounded-xl !py-3 !text-sm"
             style={{ marginTop: 8 }}
           >

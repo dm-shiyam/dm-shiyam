@@ -574,3 +574,170 @@
 | Paying customers | 10+ |
 | MRR | ₹15,000+ |
 | Uptime | 99.5%+ |
+
+---
+
+## Sprint 5 — Go-Live: Payments, Security, Domain, Marketing
+
+> **Goal**: Flip the switch from "beta on Vercel subdomain" to "real product on real domain, taking real money, safely."
+> **7 top-level tracks / 42 sub-tasks** split between Ankit + Venkat, with Priyanka pulled in only for Razorpay KYC.
+> Legend: 🔴 P0 (blocker) · 🟡 P1 (should) · 🟢 P2 (nice)
+
+### Ownership summary
+
+| Track | Owner | Priority |
+|-------|-------|----------|
+| S5.1 Razorpay LIVE integration | **Shared** — Ankit + Venkat + Priyanka (KYC) | 🔴 |
+| S5.2 Security issues | Venkat | 🔴 |
+| S5.3 End-to-end website testing | Ankit | 🔴 |
+| S5.4 Vercel Premium — required? | Ankit | 🟡 |
+| S5.5 Make Git repo private | Ankit | 🔴 (High) |
+| S5.6 Finalize marketing platform (Google Ads flow, HicksField) | Ankit | 🟡 |
+| S5.7 Domain deployment (`dmshiyam.com`) | Venkat | 🔴 |
+
+---
+
+### S5.1 — Razorpay LIVE Integration 🔴 (Shared: Ankit + Venkat + Priyanka)
+
+*Currently on test keys. Flip to live mode, run real money end-to-end, keep webhooks idempotent.*
+
+| # | Sub-task | Owner | Status |
+|---|----------|-------|--------|
+| 1.1 | Complete Razorpay KYC — PAN, GST/Udyam, bank a/c, business proof upload | **Priyanka** | Pending |
+| 1.2 | Get live-mode activation approval from Razorpay (1–3 business days after KYC) | **Priyanka** | Pending |
+| 1.3 | Generate LIVE `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`; store in Vercel env (Production scope only, not Preview) | **Venkat** | Pending |
+| 1.4 | Create LIVE subscription plans mirroring test IDs (Starter / Pro / Business / Agency) and update `PLANS` config with live plan IDs | **Venkat** | Pending |
+| 1.5 | Point Razorpay webhook to `https://dmshiyam.com/api/billing/webhook` and subscribe to `subscription.activated`, `subscription.charged`, `subscription.cancelled`, `payment.failed` | **Venkat** | Pending |
+| 1.6 | Verify webhook idempotency table (`billing_events` from V6/V7) is deployed to prod DB before first live charge | **Venkat** | Pending |
+| 1.7 | Real ₹1 payment smoke test end-to-end: checkout → UPI → webhook → plan flips → dashboard reflects → cancel → downgrade → refund | **Ankit** (UX QA) + **Venkat** (backend) | Pending |
+| 1.8 | Update `/pricing` page + landing CTAs to remove any "test mode" copy; publish live refund policy link | **Ankit** | Pending |
+| 1.9 | Wire `/billing/success` + `/billing/cancel` pages to real subscription IDs; verify GA4 `subscription_started` fires with live event | **Ankit** | Pending |
+| 1.10 | Post-launch monitoring: first 48 hours — daily reconcile Razorpay dashboard vs `users.subscription_status` in DB; log any mismatches | **Venkat** | Pending |
+
+---
+
+### S5.2 — Security Issues 🔴 (Venkat)
+
+*Address the deferred P12.1 audit items + any new findings from Sprint 4.*
+
+| # | Sub-task | Priority | Status |
+|---|----------|----------|--------|
+| 2.1 | Resolve outstanding `npm audit --production` high-severity vulns — plan Next.js 15 + NextAuth v5 upgrade (deferred from P12.1) | 🔴 | Pending |
+| 2.2 | Rotate ALL production secrets before domain go-live: `NEXTAUTH_SECRET`, `CRON_SECRET`, DB password, Resend key, Razorpay live keys | 🔴 | Pending |
+| 2.3 | Flip CSP from `Report-Only` to enforced (`CSP_ENFORCE=1`) after 7-day clean report window | 🟡 | Pending |
+| 2.4 | Review `/api/csp-report` violations in Sentry; whitelist legit sources (GA, Razorpay, IG embeds) | 🟡 | Pending |
+| 2.5 | Enable Vercel WAF / bot protection on `/api/auth/*`, `/api/billing/*`, `/api/webhook/*` | 🟡 | Pending |
+| 2.6 | Audit all env vars — remove unused keys, ensure no secrets leak to client bundle (`NEXT_PUBLIC_*` sweep) | 🟡 | Pending |
+| 2.7 | Penetration-test checklist run: OWASP Top 10 (auth bypass, IDOR on `/api/automations/[id]`, XSS in DM template preview, SSRF in IG media fetch) | 🔴 | Pending |
+| 2.8 | Add security.txt at `/.well-known/security.txt` with disclosure contact | 🟢 | Pending |
+| 2.9 | Session hardening — verify NextAuth cookie flags (`Secure`, `HttpOnly`, `SameSite=Lax`) on production domain, not just vercel.app subdomain | 🔴 | Pending |
+| 2.10 | Backup + restore drill on Neon Postgres — verify PITR works, document runbook | 🟡 | Pending |
+
+---
+
+### S5.3 — End-to-End Website Testing 🔴 (Ankit)
+
+*Full manual + scripted walkthrough of every user-facing flow on the live domain before public launch.*
+
+| # | Sub-task | Priority | Status |
+|---|----------|----------|--------|
+| 3.1 | Auth flow: signup (credentials + Google) → email verify → login → forgot/reset password → session persistence across tabs | 🔴 | Pending |
+| 3.2 | Onboarding flow: first-login wizard → connect IG account → create first automation → send test DM (self-comment) | 🔴 | Pending |
+| 3.3 | Billing flow: free → checkout Pro → webhook activation → dashboard limits update → cancel → grace period → downgrade | 🔴 | Pending |
+| 3.4 | Multi-account flow: connect 2 IG accounts, create per-account and general automations, verify routing (regression from Venkat #4) | 🔴 | Pending |
+| 3.5 | Cross-browser: Chrome / Safari / Firefox / Edge — desktop + iPhone Safari + Android Chrome (extend A8 methodology) | 🔴 | Pending |
+| 3.6 | Broken-link crawl of production site (blog, pricing FAQ, footer legal, help docs) — use `lychee` or similar | 🟡 | Pending |
+| 3.7 | Lighthouse audit: Performance / A11y / SEO / Best-Practices ≥ 90 on landing, pricing, dashboard | 🟡 | Pending |
+| 3.8 | Error-state QA: expired IG token, revoked OAuth, failed payment, quota exceeded, webhook down — each shows friendly UI, not stack trace | 🔴 | Pending |
+| 3.9 | Empty-state QA: no accounts, no automations, no activity — every dashboard tab has a helpful CTA, not a blank pane | 🟡 | Pending |
+| 3.10 | File defects in a shared sheet with repro / severity / owner, block launch on any 🔴 open | 🔴 | Pending |
+
+---
+
+### S5.4 — Vercel Premium: Required? 🟡 (Ankit)
+
+*Decide before domain go-live whether Hobby is sufficient or we need Pro ($20/user/mo).*
+
+| # | Sub-task | Status |
+|---|----------|--------|
+| 4.1 | Enumerate current Hobby limits actually hit or at risk: bandwidth (100 GB/mo), function invocations (100 K/day), image optimization (1 K/mo), cron count, log retention (1 day) | Pending |
+| 4.2 | Check whether Hobby permits **commercial use** — Vercel ToS explicitly disallows monetized products on Hobby; if we're taking payments, Pro is not optional | Pending |
+| 4.3 | Estimate 30-day forward usage from Sprint 3 metrics (signups × avg webhooks × avg image loads) | Pending |
+| 4.4 | Compare Pro benefits worth paying for: password-protected previews, longer log retention (7d), team seats, higher edge/serverless caps, WAF add-on | Pending |
+| 4.5 | Decision doc + recommendation → get Venkat sign-off → upgrade org before flipping live payments | Pending |
+
+---
+
+### S5.5 — Make Git Repo Private 🔴 High Priority (Ankit)
+
+*Currently public — leaks business logic, prompts, cron secrets in git history if anything slipped.*
+
+| # | Sub-task | Status |
+|---|----------|--------|
+| 5.1 | Scan full git history with `gitleaks` / `trufflehog` for any committed secrets before flipping visibility | Pending |
+| 5.2 | If secrets found: rotate them AND scrub via `git filter-repo` (BFG is deprecated), force-push cleaned history | Pending |
+| 5.3 | GitHub → repo Settings → Danger Zone → Change visibility → **Private** | Pending |
+| 5.4 | Re-invite collaborators (Ankit, Venkat, Priyanka) as repo members with least-privilege roles (Maintainer / Write) | Pending |
+| 5.5 | Reconnect Vercel Git integration under private repo (may require re-auth of GitHub App on the org) | Pending |
+| 5.6 | Verify preview deploys, cron jobs, and webhook redeploys still work post-privatization | Pending |
+| 5.7 | Update README to remove any "open source" language; add internal-only notice | Pending |
+
+---
+
+### S5.6 — Finalize Platform for Marketing 🟡 (Ankit)
+
+*Pick the acquisition stack before spending money. Evaluate Google Flow vs HicksField (and anything else).*
+
+| # | Sub-task | Status |
+|---|----------|--------|
+| 6.1 | Define success metric per channel: CPA target, expected LTV, payback window | Pending |
+| 6.2 | Google Flow evaluation — pricing, targeting quality for IG creators in IN, landing-page requirements, conversion tracking setup | Pending |
+| 6.3 | HicksField evaluation — feature parity, audience overlap with target ICP, contract terms, minimum spend | Pending |
+| 6.4 | Compare vs alternatives (Meta Ads, YouTube Shorts ads, X ads, LinkedIn for agency plan) | Pending |
+| 6.5 | Set up conversion tracking end-to-end for the chosen platform: pixel/tag → GA4 → server-side event for `subscription_started` | Pending |
+| 6.6 | Draft 3 ad creatives + 2 landing-page variants for the launch campaign; run past Venkat for tech accuracy | Pending |
+| 6.7 | Recommendation doc → pick 1 primary + 1 experiment channel, allocate first-month budget cap | Pending |
+
+---
+
+### S5.7 — Domain Deployment 🔴 (Venkat)
+
+*Move from `dm-shiyam.vercel.app` to `dmshiyam.com` (or final chosen domain) as the canonical production URL.*
+
+| # | Sub-task | Status |
+|---|----------|--------|
+| 7.1 | Confirm domain registrar + WHOIS privacy enabled | Pending |
+| 7.2 | Add domain in Vercel project → configure `A` / `CNAME` records at registrar per Vercel instructions | Pending |
+| 7.3 | Wait for SSL cert provisioning (Vercel auto — usually < 10 min); verify `https://` works with valid cert chain | Pending |
+| 7.4 | Set `dmshiyam.com` as primary domain in Vercel; redirect `www.` → apex (or vice versa, pick one) | Pending |
+| 7.5 | Update `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_URL`, and any hardcoded URLs in codebase / env / DB email templates | Pending |
+| 7.6 | Update Meta app: OAuth redirect URIs, webhook callback URL, privacy/ToS URLs, app icon domain | Pending |
+| 7.7 | Update Google OAuth authorized redirect URIs in Google Cloud Console | Pending |
+| 7.8 | Update Razorpay dashboard webhook URL + allowed origins | Pending |
+| 7.9 | Set up 301 redirects from `dm-shiyam.vercel.app/*` → `dmshiyam.com/*` (preserve SEO for indexed pages) | Pending |
+| 7.10 | Update sitemap.xml / robots.txt with new domain; re-submit to Google Search Console; add domain property | Pending |
+| 7.11 | Post-cutover smoke test: run S5.3 (E2E) checklist on the new domain before announcing publicly | Pending |
+
+---
+
+## Sprint 5 Execution Plan (suggested)
+
+| Week | Priyanka | Ankit | Venkat |
+|------|----------|-------|--------|
+| **Week 1** | S5.1.1–1.2 (KYC submission) | S5.5 (repo private), S5.4 (Vercel decision) | S5.7.1–7.5 (domain + DNS + env cutover) |
+| **Week 2** | (KYC review wait) | S5.3 (E2E testing pass 1), S5.1.8–1.9 (pricing UI live-mode) | S5.2.1–2.6 (security hardening), S5.7.6–7.10 (external URL updates) |
+| **Week 3** | S5.1.2 (live activation) | S5.6 (marketing platform decision), S5.3 (E2E pass 2 on new domain) | S5.1.3–1.6 (live keys + webhook), S5.2.7–2.10 (pen-test + backups) |
+| **Week 4** | — | S5.1.7 (real-money UX QA), S5.6 (launch creatives) | S5.1.7 + S5.1.10 (real-money backend + reconcile), S5.7.11 (final smoke) |
+
+---
+
+## Sprint 5 Definition of Done
+
+- [ ] Razorpay live mode processing real payments; ≥5 real transactions reconciled
+- [ ] `dmshiyam.com` is the canonical URL with valid SSL and all integrations pointing at it
+- [ ] Git repo is private, no secrets in history, all collaborators re-invited
+- [ ] E2E test checklist has zero open 🔴 defects
+- [ ] Security audit items S5.2.1–2.7 all resolved or explicitly deferred with rationale
+- [ ] Vercel plan decision made and applied
+- [ ] Marketing platform chosen, first campaign ready to launch
+

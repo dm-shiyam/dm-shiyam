@@ -660,11 +660,11 @@
 
 | # | Sub-task | Status |
 |---|----------|--------|
-| 4.1 | Enumerate current Hobby limits actually hit or at risk: bandwidth (100 GB/mo), function invocations (100 K/day), image optimization (1 K/mo), cron count, log retention (1 day) | Pending |
-| 4.2 | Check whether Hobby permits **commercial use** — Vercel ToS explicitly disallows monetized products on Hobby; if we're taking payments, Pro is not optional | Pending |
-| 4.3 | Estimate 30-day forward usage from Sprint 3 metrics (signups × avg webhooks × avg image loads) | Pending |
-| 4.4 | Compare Pro benefits worth paying for: password-protected previews, longer log retention (7d), team seats, higher edge/serverless caps, WAF add-on | Pending |
-| 4.5 | Decision doc + recommendation → get Venkat sign-off → upgrade org before flipping live payments | Pending |
+| 4.1 | Enumerate current Hobby limits actually hit or at risk: bandwidth (100 GB/mo), function invocations (100 K/day), image optimization (1 K/mo), cron count, log retention (1 day) | ✅ Done (Ankit, 2026-09-26) |
+| 4.2 | Check whether Hobby permits **commercial use** — Vercel ToS explicitly disallows monetized products on Hobby; if we're taking payments, Pro is not optional | ✅ Done — confirmed Pro is mandatory |
+| 4.3 | Estimate 30-day forward usage from Sprint 3 metrics (signups × avg webhooks × avg image loads) | ✅ Done |
+| 4.4 | Compare Pro benefits worth paying for: password-protected previews, longer log retention (7d), team seats, higher edge/serverless caps, WAF add-on | ✅ Done |
+| 4.5 | **Decision: upgrade to Vercel Pro** — research complete, upgrade action still pending (only remaining Sprint 5 blocker on this track) | 🔶 Upgrade pending |
 
 ---
 
@@ -674,12 +674,12 @@
 
 | # | Sub-task | Status |
 |---|----------|--------|
-| 5.1 | Scan full git history with `gitleaks` / `trufflehog` for any committed secrets before flipping visibility | Pending |
-| 5.2 | If secrets found: rotate them AND scrub via `git filter-repo` (BFG is deprecated), force-push cleaned history | Pending |
-| 5.3 | GitHub → repo Settings → Danger Zone → Change visibility → **Private** | Pending |
-| 5.4 | Re-invite collaborators (Ankit, Venkat, Priyanka) as repo members with least-privilege roles (Maintainer / Write) | Pending |
-| 5.5 | Reconnect Vercel Git integration under private repo (may require re-auth of GitHub App on the org) | Pending |
-| 5.6 | Verify preview deploys, cron jobs, and webhook redeploys still work post-privatization | Pending |
+| 5.1 | Scan full git history with `gitleaks` / `trufflehog` for any committed secrets before flipping visibility | ✅ Done (Ankit, 2026-09-26) |
+| 5.2 | If secrets found: rotate them AND scrub via `git filter-repo` (BFG is deprecated), force-push cleaned history | ✅ Done |
+| 5.3 | GitHub → repo Settings → Danger Zone → Change visibility → **Private** | ✅ Done — repo is now private |
+| 5.4 | Re-invite collaborators (Ankit, Venkat, Priyanka) as repo members with least-privilege roles (Maintainer / Write) | ✅ Done |
+| 5.5 | Reconnect Vercel Git integration under private repo (may require re-auth of GitHub App on the org) | 🔶 Blocked on S5.4.5 (Vercel Pro upgrade); Vercel currently rejecting private-repo builds on Hobby |
+| 5.6 | Verify preview deploys, cron jobs, and webhook redeploys still work post-privatization | 🔶 Blocked on 5.5 |
 | 5.7 | Update README to remove any "open source" language; add internal-only notice | Pending |
 
 ---

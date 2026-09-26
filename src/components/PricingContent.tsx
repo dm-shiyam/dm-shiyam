@@ -550,7 +550,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="Do you offer refunds?"
-              answer="7-day money-back guarantee on your first paid month — email dmshiyamofficial@gmail.com within 7 days of the first charge and we'll refund it in full, no questions asked. After 7 days, refunds are handled case-by-case."
+              answer="Refunds are handled on a case-by-case basis. If you're not happy, just email us at dmshiyamofficial@gmail.com — tell us what went wrong and we'll work it out with you."
             />
             <FAQItem
               question="Is there a free trial?"
@@ -562,7 +562,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="Is this Instagram-safe? Will my account get banned?"
-              answer="Yes — DM Shiyam uses Meta's official Instagram Graph API (not scraping / not automation via mobile app), and we're a Meta-reviewed app with instagram_manage_messages and instagram_business_manage_messages Advanced Access. We respect Instagram's messaging window (24 hours) and rate limits. Zero accounts banned to date across our user base."
+              answer="Yes, it's completely safe. We send DMs through Instagram's own official system (approved by Meta) — not by logging into your account or using any tricks that break Instagram's rules. We also stay within Instagram's daily limits so nothing looks spammy. So far, not a single user's account has been banned or restricted because of DM Shiyam."
             />
             <FAQItem
               question="Do I need an Instagram Business or Creator account?"

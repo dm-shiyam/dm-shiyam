@@ -27,26 +27,9 @@ export async function POST(request: NextRequest) {
     crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 
   if (!sigValid) {
-    // TEMPORARY (S5.6.5 debugging) — every delivery has been failing here
-    // even after rotating RAZORPAY_WEBHOOK_SECRET. None of these values are
-    // secret (lengths/hex prefixes only, never the secret or full signature)
-    // — safe to log. Remove once the mismatch is diagnosed.
-    const rawSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
     captureAlert(
       "Razorpay webhook: invalid signature",
-      {
-        route: "billing/webhook",
-        ip: request.headers.get("x-forwarded-for") ?? "",
-        bodyLength: body.length,
-        secretConfigured: rawSecret.length > 0,
-        secretLength: rawSecret.length,
-        secretHasLeadingOrTrailingWhitespace: rawSecret !== rawSecret.trim(),
-        receivedSignaturePresent: signature !== null,
-        receivedSignatureLength: signature?.length ?? 0,
-        expectedSignatureLength: expectedSignature.length,
-        receivedSignaturePrefix: (signature ?? "").slice(0, 8),
-        expectedSignaturePrefix: expectedSignature.slice(0, 8),
-      },
+      { route: "billing/webhook", ip: request.headers.get("x-forwarded-for") ?? "" },
       "warning"
     );
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });

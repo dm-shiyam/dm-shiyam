@@ -54,7 +54,6 @@ export async function POST(request: NextRequest) {
 
   // ── 2. Parse event ──
   let event: {
-    id?: string;
     event: string;
     payload: {
       subscription?: {
@@ -79,28 +78,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const eventId = event.id;
+  // S5.6.5 fix: the event id is NOT in the JSON body (confirmed via a real
+  // signature-valid payload — body only has entity/account_id/event/
+  // contains/payload/created_at, no `id`). Razorpay sends it as the
+  // `x-razorpay-event-id` header instead.
+  const eventId = request.headers.get("x-razorpay-event-id");
   if (!eventId) {
-    // TEMPORARY (S5.6.5 debugging) — a real, signature-valid payload hit
-    // this path, so the "Razorpay always sends event.id" assumption below
-    // may be wrong for this event type/API version. Log the payload's
-    // actual top-level shape (keys only, no values — this can include
-    // account_id/created_at but never notes/user data) plus header names,
-    // to find the right idempotency key instead of guessing. Remove once
-    // diagnosed.
     captureAlert(
-      "Razorpay webhook: missing event.id",
-      {
-        route: "billing/webhook",
-        eventType: event.event,
-        topLevelKeys: Object.keys(event).join(","),
-        headerKeys: Array.from(request.headers.keys())
-          .filter((k) => k.toLowerCase().includes("razorpay"))
-          .join(","),
-      },
+      "Razorpay webhook: missing x-razorpay-event-id header",
+      { route: "billing/webhook", eventType: event.event },
       "warning"
     );
-    return NextResponse.json({ error: "Missing event.id" }, { status: 400 });
+    return NextResponse.json({ error: "Missing event id" }, { status: 400 });
   }
 
   const payload = event.payload;

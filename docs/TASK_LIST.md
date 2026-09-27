@@ -676,10 +676,10 @@
 |---|----------|--------|
 | 5.1 | Scan full git history with `gitleaks` / `trufflehog` for any committed secrets before flipping visibility | ✅ Done (Ankit, 2026-09-26) |
 | 5.2 | If secrets found: rotate them AND scrub via `git filter-repo` (BFG is deprecated), force-push cleaned history | ✅ Done |
-| 5.3 | GitHub → repo Settings → Danger Zone → Change visibility → **Private** | ✅ Done — repo is now private |
+| 5.3 | GitHub → repo Settings → Danger Zone → Change visibility → **Private** | 🔶 Reverted to **public** (Ankit, 2026-09-27) as a workaround — see 5.5 |
 | 5.4 | Re-invite collaborators (Ankit, Venkat, Priyanka) as repo members with least-privilege roles (Maintainer / Write) | ✅ Done |
-| 5.5 | Reconnect Vercel Git integration under private repo (may require re-auth of GitHub App on the org) | 🔶 Blocked on S5.4.5 (Vercel Pro upgrade); Vercel currently rejecting private-repo builds on Hobby |
-| 5.6 | Verify preview deploys, cron jobs, and webhook redeploys still work post-privatization | 🔶 Blocked on 5.5 |
+| 5.5 | Reconnect Vercel Git integration under private repo (may require re-auth of GitHub App on the org) | 🔴 Confirmed root cause (2026-09-27): Vercel Hobby silently stopped auto-deploying on push once the repo went private — every "Redeploy" click was rebuilding the same stale pre-privatization commit, never the actual latest `main`. Made the repo public today purely to unblock testing S5.6.5; auto-deploy confirmed working again on push. Still need to decide: upgrade to Vercel Pro (S5.4.5) and re-privatize, or accept public long-term. |
+| 5.6 | Verify preview deploys, cron jobs, and webhook redeploys still work post-privatization | 🔶 Superseded by 5.5 finding above — repo is public again, so this couldn't be verified under the private condition it was meant to check. Re-test once 5.5 is resolved either direction. |
 | 5.7 | Update README to remove any "open source" language; add internal-only notice | Pending |
 
 ---
@@ -694,7 +694,7 @@
 | 6.2 | Google Flow evaluation — pricing, targeting quality for IG creators in IN, landing-page requirements, conversion tracking setup | Pending |
 | 6.3 | HicksField evaluation — feature parity, audience overlap with target ICP, contract terms, minimum spend | Pending |
 | 6.4 | Compare vs alternatives (Meta Ads, YouTube Shorts ads, X ads, LinkedIn for agency plan) | Pending |
-| 6.5 | Set up conversion tracking end-to-end for the chosen platform: pixel/tag → GA4 → server-side event for `subscription_started` | Pending |
+| 6.5 | Set up conversion tracking end-to-end for the chosen platform: pixel/tag → GA4 → server-side event for `subscription_started` | ✅ Done (Ankit, 2026-09-27) — client fires `checkout_initiated` (funnel step) at click time; webhook fires real `subscription_started` server-side via GA4 Measurement Protocol on first activation only. Verified live in GA4 Realtime with correct `plan`/`amount`/`currency` params. Along the way, fixed: dead `subscription.expired` case (real event is `subscription.completed`), webhook signature check pointed at the wrong (Live Mode) Razorpay secret, and idempotency key read from the wrong field (`event.id` doesn't exist — it's the `x-razorpay-event-id` header) — this last one meant the webhook likely never successfully processed a delivery before today. |
 | 6.6 | Draft 3 ad creatives + 2 landing-page variants for the launch campaign; run past Venkat for tech accuracy | Pending |
 | 6.7 | Recommendation doc → pick 1 primary + 1 experiment channel, allocate first-month budget cap | Pending |
 

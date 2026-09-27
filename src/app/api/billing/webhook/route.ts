@@ -81,11 +81,23 @@ export async function POST(request: NextRequest) {
 
   const eventId = event.id;
   if (!eventId) {
-    // Razorpay always sends event.id — its absence indicates a malformed or
-    // forged payload. Reject with 400 so Razorpay doesn't retry.
+    // TEMPORARY (S5.6.5 debugging) — a real, signature-valid payload hit
+    // this path, so the "Razorpay always sends event.id" assumption below
+    // may be wrong for this event type/API version. Log the payload's
+    // actual top-level shape (keys only, no values — this can include
+    // account_id/created_at but never notes/user data) plus header names,
+    // to find the right idempotency key instead of guessing. Remove once
+    // diagnosed.
     captureAlert(
       "Razorpay webhook: missing event.id",
-      { route: "billing/webhook", eventType: event.event },
+      {
+        route: "billing/webhook",
+        eventType: event.event,
+        topLevelKeys: Object.keys(event).join(","),
+        headerKeys: Array.from(request.headers.keys())
+          .filter((k) => k.toLowerCase().includes("razorpay"))
+          .join(","),
+      },
       "warning"
     );
     return NextResponse.json({ error: "Missing event.id" }, { status: 400 });

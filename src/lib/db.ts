@@ -1048,6 +1048,9 @@ export async function updateUserAdmin(
     dm_limit: number;
     dms_used_this_month: number;
     role: string;
+    subscription_status: string;
+    razorpay_subscription_id: string | null;
+    razorpay_customer_id: string | null;
   }>
 ): Promise<User | undefined> {
   await ensureInit();
@@ -1059,6 +1062,14 @@ export async function updateUserAdmin(
   if (data.dm_limit !== undefined) { fields.push(`dm_limit = $${i++}`); values.push(data.dm_limit); }
   if (data.dms_used_this_month !== undefined) { fields.push(`dms_used_this_month = $${i++}`); values.push(data.dms_used_this_month); }
   if (data.role !== undefined) { fields.push(`role = $${i++}`); values.push(data.role); }
+  // Admin-only reset knobs (S5.6.5 testing need) — lets ops manually put a
+  // test account back to a clean "never subscribed" state so a real
+  // Razorpay checkout can be re-run end-to-end without a stale
+  // subscription_status='active' suppressing the webhook's first-activation
+  // GA4 event (see src/app/api/billing/webhook/route.ts `wasActive` check).
+  if (data.subscription_status !== undefined) { fields.push(`subscription_status = $${i++}`); values.push(data.subscription_status); }
+  if (data.razorpay_subscription_id !== undefined) { fields.push(`razorpay_subscription_id = $${i++}`); values.push(data.razorpay_subscription_id); }
+  if (data.razorpay_customer_id !== undefined) { fields.push(`razorpay_customer_id = $${i++}`); values.push(data.razorpay_customer_id); }
   if (fields.length === 0) return getUserById(userId);
 
   fields.push(`updated_at = NOW()`);

@@ -9,6 +9,7 @@ import { PLANS } from "@/lib/plans";
 import type { PlanType } from "@/types";
 import crypto from "crypto";
 import { captureError, captureAlert } from "@/lib/monitoring";
+import { trackServerEvent } from "@/lib/analytics-server";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -39,7 +40,12 @@ export async function POST(request: NextRequest) {
     id?: string;
     event: string;
     payload: {
-      subscription?: { entity?: { id?: string; notes?: { user_id?: string; plan?: string } } };
+      subscription?: {
+        entity?: {
+          id?: string;
+          notes?: { user_id?: string; plan?: string; ga_client_id?: string };
+        };
+      };
       payment?: {
         entity?: {
           id?: string;
@@ -109,7 +115,14 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.event) {
       case "subscription.cancelled":
-      case "subscription.expired": {
+      // S5.6 fix: Razorpay has no "subscription.expired" webhook event —
+      // this case was dead code (see webhook Active Events dropdown, which
+      // has no such option). The real event for a subscription lapsing
+      // after it runs its total_count billing cycles without renewing is
+      // "subscription.completed". Kept the `subscription_status: "expired"`
+      // DB value as-is (schema.sql's CHECK constraint still allows it) —
+      // only the triggering event name was wrong.
+      case "subscription.completed": {
         const userId = subEntity?.notes?.user_id;
         if (userId) {
           const user = await getUserById(userId);
@@ -138,9 +151,15 @@ export async function POST(request: NextRequest) {
         // matching dm_limit from PLANS. Fall back to the existing user
         // values only if notes.plan is missing / not a real plan.
         const notesPlan = subEntity?.notes?.plan as PlanType | undefined;
+        const gaClientId = subEntity?.notes?.ga_client_id;
         if (userId) {
           const user = await getUserById(userId);
           if (user) {
+            // Captured before updateUserPlan overwrites it — distinguishes a
+            // genuine new subscription (S5.6.5 conversion) from a monthly
+            // renewal charge, which dispatches through this same case but
+            // must NOT re-fire subscription_started.
+            const wasActive = user.subscription_status === "active";
             const planConfig =
               notesPlan && PLANS[notesPlan] ? PLANS[notesPlan] : undefined;
             if (!planConfig) {
@@ -168,6 +187,19 @@ export async function POST(request: NextRequest) {
                 ? `active_${targetPlan}`
                 : `upgraded_${user.plan}_to_${targetPlan}`
               : `active_fallback_${user.plan}`;
+
+            // S5.6.5 — server-side GA4 conversion, fired once per subscriber
+            // on the payment-confirmed transition (not the checkout click,
+            // not renewals). Falls back to a synthetic client_id when the
+            // browser's wasn't captured, so the conversion still counts
+            // toward revenue/volume even without campaign attribution.
+            if (planConfig && !wasActive) {
+              await trackServerEvent(
+                gaClientId || `srv.${userId}`,
+                "subscription_started",
+                { plan: targetPlan, amount: planConfig.price_monthly, currency: "INR" }
+              );
+            }
           }
         }
         break;

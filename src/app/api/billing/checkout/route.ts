@@ -23,6 +23,22 @@ const RAZORPAY_PLAN_IDS: Partial<Record<PlanType, string>> = {
   agency: process.env.RAZORPAY_PLAN_AGENCY || "",
 };
 
+function isPlaceholderValue(value?: string) {
+  return !value || value.includes("xxx") || value.includes("YOUR_") || value.includes("replace") || value.includes("test_plan");
+}
+
+function shouldUseMockCheckout() {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    (isPlaceholderValue(process.env.RAZORPAY_KEY_ID) ||
+      isPlaceholderValue(process.env.RAZORPAY_KEY_SECRET) ||
+      isPlaceholderValue(process.env.RAZORPAY_PLAN_STARTER) ||
+      isPlaceholderValue(process.env.RAZORPAY_PLAN_PRO) ||
+      isPlaceholderValue(process.env.RAZORPAY_PLAN_BUSINESS) ||
+      isPlaceholderValue(process.env.RAZORPAY_PLAN_AGENCY))
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -43,7 +59,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { plan } = await request.json();
+    const { plan, ga_client_id } = await request.json();
+
+    // GA4 client_id captured client-side at click time (see PricingContent's
+    // handleCheckout). Threaded through Razorpay's `notes` so the webhook —
+    // which has no browser — can fire the server-side `subscription_started`
+    // conversion attributed back to this session. Bound to a sane length;
+    // this is client-supplied input reaching a third-party API field.
+    const gaClientId =
+      typeof ga_client_id === "string" && ga_client_id.length <= 64
+        ? ga_client_id
+        : undefined;
 
     if (!plan || !PLANS[plan as PlanType] || plan === "free") {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
@@ -51,6 +77,16 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserByEmail(session.user.email);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    if (shouldUseMockCheckout()) {
+      return NextResponse.json({
+        subscription_id: `mock-${plan}-${user.id}`,
+        razorpay_key: process.env.RAZORPAY_KEY_ID || "mock",
+        short_url: "https://razorpay.com/payments-onboard-1/",
+        shortUrl: "https://razorpay.com/payments-onboard-1/",
+        mock: true,
+      });
+    }
 
     const razorpayPlanId = RAZORPAY_PLAN_IDS[plan as PlanType];
     if (!razorpayPlanId) {
@@ -62,13 +98,14 @@ export async function POST(request: NextRequest) {
       plan_id: razorpayPlanId,
       customer_notify: 1,
       total_count: 12,
-      notes: { user_id: user.id, plan },
+      notes: { user_id: user.id, plan, ...(gaClientId ? { ga_client_id: gaClientId } : {}) },
     });
 
     return NextResponse.json({
       subscription_id: subscription.id,
       razorpay_key: process.env.RAZORPAY_KEY_ID,
       short_url: subscription.short_url,
+      shortUrl: subscription.short_url,
     });
   } catch (error) {
     console.error("Checkout error:", error);

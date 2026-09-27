@@ -22,10 +22,33 @@ export async function PATCH(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (!await isAdmin(userId)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const { targetUserId, plan, dm_limit, dms_used_this_month, role } = await req.json();
+    const {
+      targetUserId,
+      plan,
+      dm_limit,
+      dms_used_this_month,
+      role,
+      subscription_status,
+      razorpay_subscription_id,
+      razorpay_customer_id,
+    } = await req.json();
     if (!targetUserId) return NextResponse.json({ error: "targetUserId required" }, { status: 400 });
 
-    const updated = await updateUserAdmin(targetUserId, { plan, dm_limit, dms_used_this_month, role });
+    // Matches the schema.sql CHECK constraint on users.subscription_status.
+    const VALID_SUBSCRIPTION_STATUSES = ["none", "active", "past_due", "cancelled", "expired"];
+    if (subscription_status !== undefined && !VALID_SUBSCRIPTION_STATUSES.includes(subscription_status)) {
+      return NextResponse.json({ error: "Invalid subscription_status" }, { status: 400 });
+    }
+
+    const updated = await updateUserAdmin(targetUserId, {
+      plan,
+      dm_limit,
+      dms_used_this_month,
+      role,
+      subscription_status,
+      razorpay_subscription_id,
+      razorpay_customer_id,
+    });
     if (!updated) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     return NextResponse.json(updated);

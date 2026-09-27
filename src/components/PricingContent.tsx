@@ -6,7 +6,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, getGaClientId } from "@/lib/analytics";
 import { PLANS } from "@/lib/plans";
 
 // Razorpay Checkout Modal — loaded via <Script> below. The global is only
@@ -81,20 +81,27 @@ export default function PricingContent() {
     const amount = PLANS[plan].price_monthly;
     const planName = `DM Shiyam ${PLANS[plan].name}`;
 
-    // GA4 conversion — V13.4 subscription_started (checkout intent).
-    // Fired at click time. The actual "paid" event is tracked server-side
-    // via the Razorpay webhook (see `src/app/api/billing/webhook/route.ts`).
+    // GA4 funnel step — checkout_initiated (S5.6.5). Fired at click time,
+    // before payment. The real `subscription_started` conversion is fired
+    // server-side from the Razorpay webhook once payment is confirmed —
+    // see `src/app/api/billing/webhook/route.ts` — so abandoned checkout
+    // modals don't inflate the conversion count.
     trackEvent({
-      name: "subscription_started",
+      name: "checkout_initiated",
       params: { plan, amount, currency: "INR" },
     });
+
+    // Capture GA4's client_id so the server-side conversion (fired later
+    // from the webhook, with no browser available) can still attribute
+    // back to this session's acquisition channel/campaign.
+    const gaClientId = await getGaClientId();
 
     setCheckoutLoading(plan);
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, plan, planName }),
+        body: JSON.stringify({ amount, plan, planName, ga_client_id: gaClientId }),
       });
       const data = await res.json();
 

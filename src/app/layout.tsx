@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import type { Metadata, Viewport } from "next";
 import { defaultMetadata } from "@/lib/seo";
+import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 import CookieConsent from "@/components/CookieConsent";
 import Providers from "@/components/Providers";   // <-- ADD
 
@@ -28,12 +29,12 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-KDFFVFWBLC"></script>
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}></script>
         <script dangerouslySetInnerHTML={{ __html: `
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-KDFFVFWBLC');
+          gtag('config', '${GA_MEASUREMENT_ID}');
         `}} />
       </head>
 

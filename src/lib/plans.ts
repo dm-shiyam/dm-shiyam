@@ -22,6 +22,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: "Starter",
     price_monthly: 14900, // ₹149 in paise
     price_label: "₹149",
+    price_yearly: 149000, // ₹1,490 — 2 months free (10 × monthly)
+    price_label_yearly: "₹1,490",
     dm_limit: 5000,
     max_automations: 10,
     max_accounts: 1,
@@ -39,6 +41,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: "Pro",
     price_monthly: 79900, // ₹799 in paise
     price_label: "₹799",
+    price_yearly: 799000, // ₹7,990 — 2 months free (10 × monthly)
+    price_label_yearly: "₹7,990",
     dm_limit: 25000,
     max_automations: -1, // unlimited
     max_accounts: 3,
@@ -57,6 +61,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: "Business",
     price_monthly: 249900, // ₹2,499 in paise
     price_label: "₹2,499",
+    price_yearly: 2499000, // ₹24,990 — 2 months free (10 × monthly)
+    price_label_yearly: "₹24,990",
     dm_limit: 100000,
     max_automations: -1,
     max_accounts: 10,
@@ -76,6 +82,8 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     name: "Agency",
     price_monthly: 599900, // ₹5,999 in paise
     price_label: "₹5,999",
+    price_yearly: 5999000, // ₹59,990 — 2 months free (10 × monthly)
+    price_label_yearly: "₹59,990",
     dm_limit: -1, // unlimited
     max_automations: -1,
     max_accounts: -1, // unlimited

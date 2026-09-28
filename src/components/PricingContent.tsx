@@ -56,6 +56,10 @@ export default function PricingContent() {
   const handleCheckout = async (
     plan: "starter" | "pro" | "business" | "agency"
   ) => {
+    // Snapshot the cycle at click time so a mid-flight toggle can't
+    // desync the GA event / verify call from the subscription actually
+    // being created on the server.
+    const cycle = billingCycle;
     // Guard: user must be signed in — the checkout API requires a session
     // to attach the subscription to. If not, punt to /register carrying
     // the plan intent in the callback URL so they resume here after auth.
@@ -78,8 +82,13 @@ export default function PricingContent() {
     // from plan_id, but the Checkout MODAL displayed ₹99 / ₹999 to the user,
     // and the GA4 subscription_started event reported fake revenue 10x low.
     // Pull from PLANS so the modal price, GA event, and actual charge agree.
-    const amount = PLANS[plan].price_monthly;
-    const planName = `DM Shiyam ${PLANS[plan].name}`;
+    // For yearly, amount === price_yearly (already the "2 months free" total).
+    const planConfig = PLANS[plan];
+    const amount =
+      cycle === "yearly" && planConfig.price_yearly
+        ? planConfig.price_yearly
+        : planConfig.price_monthly;
+    const planName = `DM Shiyam ${planConfig.name}${cycle === "yearly" ? " (Yearly)" : ""}`;
 
     // GA4 funnel step — checkout_initiated (S5.6.5). Fired at click time,
     // before payment. The real `subscription_started` conversion is fired
@@ -88,7 +97,7 @@ export default function PricingContent() {
     // modals don't inflate the conversion count.
     trackEvent({
       name: "checkout_initiated",
-      params: { plan, amount, currency: "INR" },
+      params: { plan, cycle, amount, currency: "INR" },
     });
 
     // Capture GA4's client_id so the server-side conversion (fired later
@@ -101,7 +110,7 @@ export default function PricingContent() {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, plan, planName, ga_client_id: gaClientId }),
+        body: JSON.stringify({ amount, plan, planName, cycle, ga_client_id: gaClientId }),
       });
       const data = await res.json();
 
@@ -131,6 +140,7 @@ export default function PricingContent() {
                 razorpay_subscription_id: response.razorpay_subscription_id,
                 razorpay_signature: response.razorpay_signature,
                 plan,
+                cycle,
               }),
             });
             if (verifyRes.ok) {
@@ -237,12 +247,56 @@ export default function PricingContent() {
           a conversation (custom seat counts, white-label branding) rather
           than a Razorpay click. */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Billing cycle toggle — monthly (default) vs yearly (2 months
+            free). Free tier ignores the toggle (still "forever"); paid tiers
+            switch price + priceSuffix live via billingCycle prop. */}
+        <div className="flex flex-col items-center mb-10">
+          <div
+            role="tablist"
+            aria-label="Billing cycle"
+            className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-1"
+          >
+            <button
+              role="tab"
+              aria-selected={billingCycle === "monthly"}
+              onClick={() => setBillingCycle("monthly")}
+              className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+                billingCycle === "monthly"
+                  ? "bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              role="tab"
+              aria-selected={billingCycle === "yearly"}
+              onClick={() => setBillingCycle("yearly")}
+              className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors inline-flex items-center gap-2 ${
+                billingCycle === "yearly"
+                  ? "bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              Yearly
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                2 MONTHS FREE
+              </span>
+            </button>
+          </div>
+          {billingCycle === "yearly" && (
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              Save ~17% with yearly billing — pay for 10 months, get 12.
+            </p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Free Tier */}
           <PricingCard
             plan="free"
             tagline="Perfect for getting started"
-            priceSuffix="forever"
+            billingCycle={billingCycle}
             isAuthed={isAuthed}
             currentPlan={currentPlan}
             checkoutLoading={checkoutLoading}
@@ -262,7 +316,7 @@ export default function PricingContent() {
           <PricingCard
             plan="starter"
             tagline="For solo creators"
-            priceSuffix="/month"
+            billingCycle={billingCycle}
             isAuthed={isAuthed}
             currentPlan={currentPlan}
             checkoutLoading={checkoutLoading}
@@ -281,7 +335,7 @@ export default function PricingContent() {
           <PricingCard
             plan="pro"
             tagline="For growing businesses"
-            priceSuffix="/month"
+            billingCycle={billingCycle}
             isAuthed={isAuthed}
             currentPlan={currentPlan}
             checkoutLoading={checkoutLoading}
@@ -303,7 +357,7 @@ export default function PricingContent() {
           <PricingCard
             plan="business"
             tagline="For teams & bigger brands"
-            priceSuffix="/month"
+            billingCycle={billingCycle}
             isAuthed={isAuthed}
             currentPlan={currentPlan}
             checkoutLoading={checkoutLoading}
@@ -760,7 +814,7 @@ function ComparisonRow({
 function PricingCard({
   plan,
   tagline,
-  priceSuffix,
+  billingCycle,
   features,
   excludedFeatures = [],
   isAuthed,
@@ -771,7 +825,7 @@ function PricingCard({
 }: {
   plan: "free" | "starter" | "pro" | "business";
   tagline: string;
-  priceSuffix: string;
+  billingCycle: "monthly" | "yearly";
   features: string[];
   excludedFeatures?: string[];
   isAuthed: boolean;
@@ -784,6 +838,27 @@ function PricingCard({
   const isCurrent = isAuthed && currentPlan === plan;
   const isLoading = checkoutLoading === plan;
   const isFree = plan === "free";
+
+  // Free tier ignores the toggle (always "forever"). Paid tiers with a
+  // yearly price defined swap in the yearly label + suffix when the
+  // toggle is on; if a tier has no yearly price configured yet, we
+  // gracefully fall back to the monthly display.
+  const showYearly =
+    !isFree && billingCycle === "yearly" && !!p.price_yearly && !!p.price_label_yearly;
+  const priceLabel = showYearly ? p.price_label_yearly! : p.price_label;
+  const priceSuffix = isFree
+    ? "forever"
+    : showYearly
+      ? "/year"
+      : "/month";
+  // Effective monthly cost when paying yearly — helps the buyer compare
+  // apples-to-apples without a calculator. Rendered as small helper text
+  // below the headline price (only in yearly mode).
+  const effectiveMonthlyPaise = showYearly ? Math.round(p.price_yearly! / 12) : null;
+  const effectiveMonthlyLabel =
+    effectiveMonthlyPaise !== null
+      ? `₹${Math.round(effectiveMonthlyPaise / 100).toLocaleString("en-IN")}`
+      : null;
 
   // Button visual style differs per tier so the buyer's eye lands on Pro.
   // Pro = solid indigo (primary), Business = dark slate (secondary),
@@ -832,12 +907,19 @@ function PricingCard({
       </div>
 
       <div className="mb-6">
-        <span className="text-4xl font-bold text-gray-900 dark:text-white">
-          {p.price_label}
-        </span>
-        <span className="text-gray-600 dark:text-gray-400 ml-2">
-          {priceSuffix}
-        </span>
+        <div>
+          <span className="text-4xl font-bold text-gray-900 dark:text-white">
+            {priceLabel}
+          </span>
+          <span className="text-gray-600 dark:text-gray-400 ml-2">
+            {priceSuffix}
+          </span>
+        </div>
+        {effectiveMonthlyLabel && (
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            ≈ {effectiveMonthlyLabel}/mo · billed annually
+          </p>
+        )}
       </div>
 
       {isFree ? (

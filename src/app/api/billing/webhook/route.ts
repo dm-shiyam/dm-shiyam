@@ -42,7 +42,12 @@ export async function POST(request: NextRequest) {
       subscription?: {
         entity?: {
           id?: string;
-          notes?: { user_id?: string; plan?: string; ga_client_id?: string };
+          notes?: {
+            user_id?: string;
+            plan?: string;
+            cycle?: string;
+            ga_client_id?: string;
+          };
         };
       };
       payment?: {
@@ -195,10 +200,20 @@ export async function POST(request: NextRequest) {
             // browser's wasn't captured, so the conversion still counts
             // toward revenue/volume even without campaign attribution.
             if (planConfig && !wasActive) {
+              // Amount attributed to the conversion matches what the user
+              // was actually charged for this billing cycle. Yearly ==
+              // price_yearly (upfront 12-month charge, "2 months free"),
+              // monthly == price_monthly. Falls back to monthly if the
+              // notes are missing a cycle (older subscriptions).
+              const cycle = subEntity?.notes?.cycle === "yearly" ? "yearly" : "monthly";
+              const amount =
+                cycle === "yearly" && planConfig.price_yearly
+                  ? planConfig.price_yearly
+                  : planConfig.price_monthly;
               await trackServerEvent(
                 gaClientId || `srv.${userId}`,
                 "subscription_started",
-                { plan: targetPlan, amount: planConfig.price_monthly, currency: "INR" }
+                { plan: targetPlan, cycle, amount, currency: "INR" }
               );
             }
           }

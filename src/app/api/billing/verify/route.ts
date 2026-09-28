@@ -13,8 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, plan } =
+    const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, plan, cycle: cycleRaw } =
       await request.json();
+
+    // Cycle is accepted for observability / consistency with checkout —
+    // the source of truth for what was actually billed lives in the
+    // Razorpay subscription's notes, echoed by the webhook. Verify only
+    // marks the plan active and doesn't need to gate on cycle.
+    void (cycleRaw === "yearly" ? "yearly" : "monthly");
 
     if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature || !plan) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

@@ -50,10 +50,21 @@ export interface FunnelStats {
   median_seconds_signup_to_first_dm: number | null;
 }
 
+// Billing cycle for paid plans. Yearly = pay upfront for 12 months and get
+// 2 of them free (see PLANS in src/lib/plans.ts — price_yearly is exactly
+// 10× price_monthly, i.e. ~17% off). Free tier has no yearly option.
+export type BillingCycle = "monthly" | "yearly";
+
 export interface PlanConfig {
   name: string;
   price_monthly: number; // in paise (₹1999 = 199900)
   price_label: string;
+  // Yearly billing (optional — Free tier omits it). Represents a single
+  // upfront charge for a 12-month period. price_yearly = price_monthly * 10
+  // by convention ("2 months free"). Razorpay bills this via a separate
+  // yearly-period Plan object; see RAZORPAY_PLAN_*_YEARLY env vars.
+  price_yearly?: number;       // in paise
+  price_label_yearly?: string; // e.g. "₹7,990"
   dm_limit: number;
   max_automations: number;
   max_accounts: number;

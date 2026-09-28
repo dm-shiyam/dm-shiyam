@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { getUserByEmail } from "@/lib/db";
 import Razorpay from "razorpay";
 import { PLANS } from "@/lib/plans";
-import type { PlanType } from "@/types";
+import type { PlanType, BillingCycle } from "@/types";
 import { rateLimit } from "@/lib/rate-limiter";
 
 function getRazorpay() {
@@ -16,26 +16,49 @@ function getRazorpay() {
   });
 }
 
-const RAZORPAY_PLAN_IDS: Partial<Record<PlanType, string>> = {
-  starter: process.env.RAZORPAY_PLAN_STARTER || "",
-  pro: process.env.RAZORPAY_PLAN_PRO || "",
-  business: process.env.RAZORPAY_PLAN_BUSINESS || "",
-  agency: process.env.RAZORPAY_PLAN_AGENCY || "",
+// Razorpay Plan IDs — one per (plan, cycle) pair. Yearly plans must be
+// created as separate Plan objects in the Razorpay dashboard with
+// period=yearly, interval=1. Monthly plans use period=monthly, interval=1.
+// If a yearly env var isn't set, /pricing yearly checkout for that tier
+// will 500 with "Plan not configured in Razorpay" — safer than silently
+// billing the monthly price.
+const RAZORPAY_PLAN_IDS: Record<BillingCycle, Partial<Record<PlanType, string>>> = {
+  monthly: {
+    starter: process.env.RAZORPAY_PLAN_STARTER || "",
+    pro: process.env.RAZORPAY_PLAN_PRO || "",
+    business: process.env.RAZORPAY_PLAN_BUSINESS || "",
+    agency: process.env.RAZORPAY_PLAN_AGENCY || "",
+  },
+  yearly: {
+    starter: process.env.RAZORPAY_PLAN_STARTER_YEARLY || "",
+    pro: process.env.RAZORPAY_PLAN_PRO_YEARLY || "",
+    business: process.env.RAZORPAY_PLAN_BUSINESS_YEARLY || "",
+    agency: process.env.RAZORPAY_PLAN_AGENCY_YEARLY || "",
+  },
+};
+
+// Razorpay's `total_count` is the number of billing cycles the subscription
+// runs before completing. Monthly: 12 = ~1 year cap. Yearly: 3 = ~3 year cap
+// (each cycle already covers 12 months, so 3 gives a comfortable renewal
+// horizon before the subscription completes and the user re-subscribes).
+const TOTAL_COUNT_BY_CYCLE: Record<BillingCycle, number> = {
+  monthly: 12,
+  yearly: 3,
 };
 
 function isPlaceholderValue(value?: string) {
   return !value || value.includes("xxx") || value.includes("YOUR_") || value.includes("replace") || value.includes("test_plan");
 }
 
-function shouldUseMockCheckout() {
+// Only fall back to mock checkout in dev when the SPECIFIC plan id being
+// used is a placeholder (or the shared Razorpay keys are). This lets
+// yearly env vars stay unset locally without breaking monthly checkout.
+function shouldUseMockCheckout(razorpayPlanId: string | undefined) {
   return (
     process.env.NODE_ENV !== "production" &&
     (isPlaceholderValue(process.env.RAZORPAY_KEY_ID) ||
       isPlaceholderValue(process.env.RAZORPAY_KEY_SECRET) ||
-      isPlaceholderValue(process.env.RAZORPAY_PLAN_STARTER) ||
-      isPlaceholderValue(process.env.RAZORPAY_PLAN_PRO) ||
-      isPlaceholderValue(process.env.RAZORPAY_PLAN_BUSINESS) ||
-      isPlaceholderValue(process.env.RAZORPAY_PLAN_AGENCY))
+      isPlaceholderValue(razorpayPlanId))
   );
 }
 
@@ -59,7 +82,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { plan, ga_client_id } = await request.json();
+    const { plan, ga_client_id, cycle: cycleRaw } = await request.json();
+
+    // Validate billing cycle. Defaults to "monthly" for backward compat
+    // with existing callers (e.g. old links without ?cycle=). Free tier
+    // rejected below regardless of cycle.
+    const cycle: BillingCycle =
+      cycleRaw === "yearly" ? "yearly" : "monthly";
 
     // GA4 client_id captured client-side at click time (see PricingContent's
     // handleCheckout). Threaded through Razorpay's `notes` so the webhook —
@@ -75,20 +104,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
+    // Guard: yearly checkout only for tiers that have a yearly price
+    // configured. Should be impossible from the UI, but the API is
+    // publicly reachable so we validate defensively.
+    if (cycle === "yearly" && !PLANS[plan as PlanType].price_yearly) {
+      return NextResponse.json(
+        { error: "Yearly billing is not available for this plan" },
+        { status: 400 }
+      );
+    }
+
     const user = await getUserByEmail(session.user.email);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    if (shouldUseMockCheckout()) {
+    const razorpayPlanId = RAZORPAY_PLAN_IDS[cycle][plan as PlanType];
+
+    if (shouldUseMockCheckout(razorpayPlanId)) {
       return NextResponse.json({
-        subscription_id: `mock-${plan}-${user.id}`,
+        subscription_id: `mock-${plan}-${cycle}-${user.id}`,
         razorpay_key: process.env.RAZORPAY_KEY_ID || "mock",
         short_url: "https://razorpay.com/payments-onboard-1/",
         shortUrl: "https://razorpay.com/payments-onboard-1/",
+        cycle,
         mock: true,
       });
     }
 
-    const razorpayPlanId = RAZORPAY_PLAN_IDS[plan as PlanType];
     if (!razorpayPlanId) {
       return NextResponse.json({ error: "Plan not configured in Razorpay" }, { status: 500 });
     }
@@ -97,8 +138,16 @@ export async function POST(request: NextRequest) {
     const subscription = await razorpay.subscriptions.create({
       plan_id: razorpayPlanId,
       customer_notify: 1,
-      total_count: 12,
-      notes: { user_id: user.id, plan, ...(gaClientId ? { ga_client_id: gaClientId } : {}) },
+      total_count: TOTAL_COUNT_BY_CYCLE[cycle],
+      // `cycle` propagates through Razorpay's notes so the webhook — which
+      // has no request context — can attribute the correct amount to the
+      // GA4 subscription_started conversion (monthly vs yearly revenue).
+      notes: {
+        user_id: user.id,
+        plan,
+        cycle,
+        ...(gaClientId ? { ga_client_id: gaClientId } : {}),
+      },
     });
 
     return NextResponse.json({
@@ -106,6 +155,7 @@ export async function POST(request: NextRequest) {
       razorpay_key: process.env.RAZORPAY_KEY_ID,
       short_url: subscription.short_url,
       shortUrl: subscription.short_url,
+      cycle,
     });
   } catch (error) {
     console.error("Checkout error:", error);

@@ -140,15 +140,15 @@ export default function PricingContent() {
             } else {
               const err = await verifyRes.json().catch(() => ({}));
               alert(
-                "Payment received, but verification failed: " +
+                "Your payment went through, but we couldn't confirm it right away (" +
                   (err.error || "unknown") +
-                  ". Please refresh — the Razorpay webhook will reconcile within a minute."
+                  "). Please refresh this page in a minute — your account will update automatically."
               );
             }
           } catch (err) {
             console.error("[checkout] verify failed:", err);
             alert(
-              "Payment received. Refresh in a moment — the webhook will update your account."
+              "Payment received! Please refresh this page in a moment — your account will update automatically."
             );
           }
         },
@@ -549,55 +549,55 @@ export default function PricingContent() {
           <div className="space-y-6">
             <FAQItem
               question="Can I upgrade or downgrade anytime?"
-              answer="Yes. Upgrades take effect immediately and unlock the new tier's DM limit right away. Downgrades take effect at the end of your current billing cycle so you don't lose paid days."
+              answer="Yes, anytime. When you upgrade, your new plan starts right away and you get more DMs instantly. When you downgrade, your current plan keeps running until it ends — so you don't lose any days you've already paid for."
             />
             <FAQItem
               question="How do I cancel my subscription?"
-              answer="Cancel in one click from Dashboard → Settings → Subscription. You keep access until the end of the paid period; we don't pro-rate refunds for unused days, but there are also no cancellation fees or lock-ins."
+              answer="Just go to Dashboard → Settings → Subscription and click Cancel. You'll keep using DM Shiyam until your paid month ends. No cancellation fees, no lock-in, no questions asked."
             />
             <FAQItem
               question="Do you offer refunds?"
-              answer="Refunds are handled on a case-by-case basis. If you're not happy, just email us at dmshiyamofficial@gmail.com — tell us what went wrong and we'll work it out with you."
+              answer="If something's not working for you, just email us at dmshiyamofficial@gmail.com. Tell us what went wrong and we'll sort it out — we handle every refund personally and always try to make things right."
             />
             <FAQItem
               question="Is there a free trial?"
-              answer="Yes — the Free plan gives you 500 DMs/month forever, no credit card. Use it to validate that DM Shiyam works for your niche before upgrading. Most creators only need to upgrade once they hit the 500 DM cap."
+              answer="Yes! The Free plan gives you 500 DMs every month, forever — no credit card needed. Try it out and see how it works for your audience. Most creators only upgrade once they run out of free DMs."
             />
             <FAQItem
               question="What happens if I exceed my plan limits?"
-              answer="You'll get an email + in-app alert at 80% of your monthly cap. If you exhaust it, new triggers pause until the 1st of the next month (or you can upgrade anytime for an instant limit bump). We never send DMs and charge you for overages — hard cap by design."
+              answer="We'll email you (and show a notification in your dashboard) once you've used 80% of your DMs. If you finish them all, DM Shiyam simply pauses until your next month starts on the 1st — or you can upgrade anytime for more DMs instantly. We'll never send extra DMs and surprise you with a bigger bill."
             />
             <FAQItem
               question="Is this Instagram-safe? Will my account get banned?"
-              answer="Yes, it's completely safe. We send DMs through Instagram's own official system (approved by Meta) — not by logging into your account or using any tricks that break Instagram's rules. We also stay within Instagram's daily limits so nothing looks spammy. So far, not a single user's account has been banned or restricted because of DM Shiyam."
+              answer="100% safe. We use Instagram's official partner system (approved by Meta, the company behind Instagram) — we never log into your account or use any shady tricks. We also stay well within Instagram's daily limits so your account always looks natural. Not a single DM Shiyam user has ever been banned or restricted."
             />
             <FAQItem
               question="Do I need an Instagram Business or Creator account?"
-              answer="Yes — Instagram's API only allows DMs from Business or Creator accounts (not personal). Switching is free and takes 30 seconds in the Instagram app: Settings → Account → Switch to Professional Account. You'll also need to link it to a Facebook Page."
+              answer="Yes. Instagram only allows auto-DMs from Business or Creator accounts (not personal ones). Switching is free and takes 30 seconds — in the Instagram app, go to Settings → Account → Switch to Professional Account. You'll also need to connect it to a Facebook Page, and we'll guide you through every step."
             />
             <FAQItem
               question="Do prices include GST?"
-              answer="Prices shown are exclusive of GST. Indian customers are charged 18% GST on top, which appears on your invoice. International customers pay in INR without GST."
+              answer="Prices shown are exclusive of GST. 18% GST is added at checkout and appears on your invoice."
             />
             <FAQItem
-              question="Can I pay via UPI / net banking / international card?"
-              answer="Yes — all major Indian payment methods work: UPI (GPay/PhonePe/Paytm), all Indian debit + credit cards, net banking, and Razorpay-supported wallets. International Visa/Mastercard/Amex cards also work."
+              question="What payment methods do you accept?"
+              answer="You can pay using UPI (GPay, PhonePe, Paytm), any Indian debit or credit card, net banking, or popular wallets — all securely processed through Razorpay."
             />
             <FAQItem
               question="Can I connect multiple Instagram accounts?"
-              answer="Starter supports 1 account. Pro supports 3. Business supports 10. Agency is unlimited. Each account has its own DM quota and automations, and you can manage all of them from a single dashboard."
+              answer="Yes! Starter includes 1 account, Pro includes 3, Business includes 10, and Agency has no limit. Each account gets its own DMs and setup, and you can manage all of them from one simple dashboard."
             />
             <FAQItem
               question="Can I use AI-generated replies?"
-              answer="Pro / Business / Agency plans include AI Smart Replies powered by GPT-4o-mini — writes personalized DMs based on each comment's context, in your brand voice. Starter and Free use static templates only."
+              answer="Yes — Pro, Business, and Agency plans include AI Smart Replies. Our AI reads each comment and writes a personal reply in your own style, so every DM feels like you wrote it yourself. Free and Starter plans use ready-made message templates instead."
             />
             <FAQItem
-              question="What if my Instagram token expires?"
-              answer="We automatically refresh Instagram long-lived tokens 7 days before expiry — no action needed. If a refresh ever fails (e.g., you revoked our app permissions), you'll get an email alert with a one-click reconnect link."
+              question="What if my Instagram connection breaks?"
+              answer="Don't worry — we keep your Instagram connection active automatically in the background, so you never have to think about it. If anything ever goes wrong (like if you accidentally disconnected the app), you'll get an email with a one-click link to reconnect. No technical setup needed."
             />
             <FAQItem
               question="Do you offer discounts for annual billing?"
-              answer="Annual billing launches in Q4 2026 with a 20% discount (2.4 months free). Existing monthly subscribers get first access — subscribe now to lock in the beta discount."
+              answer="Yearly plans are launching in late 2026 with a 20% discount — that's nearly 2.5 months free. Existing monthly subscribers get first access, so subscribe now to lock in the early-bird discount."
             />
           </div>
         </div>

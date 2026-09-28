@@ -39,7 +39,7 @@ Everything else is nice-to-have. Now let's compare.
 - Invoices are USD-denominated with no Indian GST breakdown.
 
 **DM Shiyam**
-- Free trial for 14 days, no credit card.
+- Free plan forever — 500 DMs every month, no credit card.
 - Paid plans priced in **INR**, starting well below ManyChat's entry tier.
 - Billing via **Razorpay** — cards, UPI, netbanking, wallets.
 - GST-compliant invoices with your GSTIN if you provide one.
@@ -65,16 +65,16 @@ Both products cover the core:
 
 - **Setup speed.** No Facebook Page dance. Connect Instagram directly, create your first automation in under 10 minutes.
 - **Focused UX.** DM Shiyam does one thing — Instagram DM automation — and the UI is built around that, not around a general "chatbot builder" abstraction.
-- **Sensible defaults.** Follow-up sequences, deduplication, rate limiting, and reply detection are on by default. No configuration required to be compliant.
-- **Meta Tech Provider approved.** Same official Meta Graph API path as ManyChat, but reviewed and approved specifically for Indian small business use cases.
+- **Sensible defaults.** Follow-up sequences, duplicate-DM prevention, safe daily limits, and reply detection are all on by default. Nothing to configure to stay compliant.
+- **Meta Tech Provider approved.** Same official Meta-approved system as ManyChat, but built specifically for Indian small business use cases.
 
 If you need multi-channel omnichannel messaging including WhatsApp Business and Messenger, ManyChat wins. If you want Instagram DM automation that works, priced fairly for the Indian market, an alternative like DM Shiyam is a better fit.
 
 ## Compliance and account safety
 
-Both tools use the official **Instagram Graph API** and are approved by Meta. Neither uses scrapers or unofficial endpoints. Neither will get your account banned when used correctly.
+Both tools use Instagram's **official partner system** and are approved by Meta. Neither uses scrapers or unofficial tricks. Neither will get your account banned when used correctly.
 
-That said, watch out for the many "ManyChat alternatives" advertised on YouTube and Instagram itself that promise "unlimited free DMs" or "bulk cold outreach." Those tools almost always use scraping or unofficial APIs and *will* get you banned. If the tool doesn't have the Meta Tech Provider badge and hasn't passed App Review, avoid it.
+That said, watch out for the many "ManyChat alternatives" advertised on YouTube and Instagram itself that promise "unlimited free DMs" or "bulk cold outreach." Those tools almost always use scraping or unofficial methods and *will* get you banned. If the tool doesn't have the Meta Tech Provider badge and hasn't been officially approved by Meta, avoid it.
 
 ## Support and language
 
@@ -111,7 +111,7 @@ Pick a leaner, India-first alternative if:
 
 - **Cost matters** and you're paying out of pocket, not from a media budget.
 - You want **UPI/Razorpay** and **GST invoices** without workarounds.
-- You want a tool that **just does Instagram DMs really well**, without teaching you a flow-builder DSL.
+- You want a tool that **just does Instagram DMs really well**, without making you learn a complicated flow builder.
 - You value **local support** in your timezone and language.
 - You're getting started and want to be running your first automation in 10 minutes, not 10 evenings.
 
@@ -129,6 +129,6 @@ If you're already on ManyChat and considering switching:
 
 ManyChat is a great product. It's also priced and designed for the US market. If you're an Indian creator or small D2C brand, you can get 90% of the functionality — and often better UX for the specific job of Instagram DM automation — at 40–60% of the cost, with UPI billing and GST invoices.
 
-If you want to try that, [DM Shiyam offers a 14-day free trial](/register) with no credit card required. First automation runs in under 10 minutes.
+If you want to try that, [DM Shiyam has a free forever plan](/register) — 500 DMs every month, no credit card required. First automation runs in under 10 minutes.
 
-Whichever you pick, do the compliance check: Meta Tech Provider badge, approved permissions, official Graph API. That's the only thing that keeps your account safe long-term.
+Whichever you pick, do the compliance check: Meta Tech Provider badge, only asks for basic Instagram permissions, and Meta-approved. That's the only thing that keeps your account safe long-term.

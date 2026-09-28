@@ -80,7 +80,7 @@ In your DM automation tool, create a new automation:
 - **Public reply (required by Meta):** "Sent you a DM! 📩" — keep it short and directive.
 - **DM:** The message body, ideally with the deliverable link and a soft CTA.
 
-The public reply is not optional — Meta's DM API requires it. A compliant tool handles this automatically. If yours doesn't, that's a red flag.
+The public reply is not optional — Instagram requires it. A compliant tool handles this automatically. If yours doesn't, that's a red flag.
 
 ## Step 4: Write the DM (this is where most creators lose leads)
 
@@ -102,7 +102,7 @@ Template:
 
 The question at the end matters enormously. It:
 
-- Opens the **24-hour service window**, so you can follow up compliantly.
+- Opens a **24-hour reply window** with Instagram, so you can safely send a follow-up.
 - **Segments** leads (weekly vs starting) so you can tailor DM 2.
 - Signals you're a human, not a bot.
 
@@ -153,9 +153,9 @@ If **match rate** is low, the caption CTA isn't directive enough. If **reply rat
 To keep this working long-term:
 
 - Only run automations on **your own** content. You can't legally auto-DM commenters on someone else's posts.
-- Use a **Meta-approved** tool. Look for the Tech Provider badge and approved `instagram_business_manage_messages` permission.
-- Respect the **24-hour service window**. After that, follow-ups must use approved message tags or be human-sent.
-- Never buy commenter lists or scrape follower lists. Both violate ToS and get accounts banned.
+- Use a **Meta-approved** tool. Look for the Tech Provider badge — it means Meta has personally reviewed and approved the app.
+- Respect the **24-hour reply window**. After that, follow-ups need to be sent by hand or use special approved templates.
+- Never buy commenter lists or scrape follower lists. Both break Instagram's rules and will get your account banned.
 - Give people a way to **opt out** — most compliant tools handle STOP replies automatically.
 
 ## Common mistakes
@@ -170,4 +170,4 @@ To keep this working long-term:
 
 You do not need a huge audience for this to work. Creators with 5,000–10,000 followers routinely generate 20–100 qualified DMs per Reel using this exact playbook. The compounding kicks in fast: every new post becomes a new lead magnet, and the automation runs 24/7.
 
-If you want to set your first automation up with a Meta-approved, India-first tool, [try DM Shiyam free for 14 days](/register) — no credit card, no Facebook Page required. You'll have your first comment-to-DM loop running in under 10 minutes.
+If you want to set your first automation up with a Meta-approved, India-first tool, [try DM Shiyam free](/register) — 500 DMs every month, forever, no credit card, no Facebook Page required. You'll have your first comment-to-DM loop running in under 10 minutes.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import {
   Instagram,
@@ -21,23 +22,23 @@ import { trackEvent } from "@/lib/analytics";
 import InfoTip from "@/components/InfoTip";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  missing_params: "Instagram did not return an authorization code. Please try again.",
-  bad_state: "Session expired or invalid. Please try connecting again.",
-  misconfigured: "Instagram app credentials are not configured on the server.",
-  code_exchange_failed: "Instagram rejected the authorization code.",
-  code_exchange_error: "Network error while contacting Instagram. Please retry.",
-  long_lived_failed: "Could not obtain a long-lived access token.",
-  long_lived_error: "Network error while extending the access token.",
-  profile_fetch_failed: "Could not read your Instagram profile.",
-  profile_fetch_error: "Network error while reading your Instagram profile.",
+  missing_params: "Instagram didn't complete the sign-in. Please try connecting again.",
+  bad_state: "Your session expired. Please try connecting again.",
+  misconfigured: "Something's not set up correctly on our side. Please contact support.",
+  code_exchange_failed: "Instagram rejected the sign-in. Please try again.",
+  code_exchange_error: "Couldn't reach Instagram. Please check your internet and retry.",
+  long_lived_failed: "Couldn't complete the connection with Instagram. Please try again.",
+  long_lived_error: "Network issue while connecting to Instagram. Please retry.",
+  profile_fetch_failed: "Couldn't read your Instagram profile. Please try again.",
+  profile_fetch_error: "Network issue while reading your Instagram profile. Please retry.",
   already_connected: "This Instagram account is already connected to another DM Shiyam user.",
-  persist_failed: "Could not save the connected account.",
-  access_denied: "You cancelled the Instagram authorization.",
+  persist_failed: "Couldn't save your connected account. Please try again.",
+  access_denied: "You cancelled the Instagram sign-in.",
 };
 
 const OAUTH_WARNING_MESSAGES: Record<string, string> = {
   subscription_failed:
-    "Account connected, but webhook subscription failed — comments won't trigger DMs. Try Reconnect to retry.",
+    "Account connected, but we couldn't set up comment listening — new comments won't trigger DMs. Click Reconnect to fix this.",
 };
 
 // Detect iOS third-party browsers (Chrome / Firefox / Edge) where iOS
@@ -59,6 +60,9 @@ function isIosThirdPartyBrowser(): boolean {
 }
 
 export default function AccountsTab() {
+  const { data: session } = useSession();
+  const isAdmin =
+    ((session?.user as Record<string, unknown>)?.role as string) === "admin";
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -176,10 +180,9 @@ const handleDelete = async (id: string) => {
           the click so users don't hit the dead-end. */}
       {showIosHint && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/30 dark:text-amber-300">
-          <p className="font-semibold">On iPhone? Open this page in Safari before connecting Instagram.</p>
+          <p className="font-semibold">On iPhone? Please open this page in Safari before connecting Instagram.</p>
           <p className="mt-1 text-xs">
-            Chrome and Firefox on iOS have a known issue with Meta&apos;s OAuth
-            handoff to the Instagram app. Native Safari works normally.
+            Chrome and Firefox on iPhone have a known issue when connecting Instagram — Safari works normally.
           </p>
         </div>
       )}
@@ -205,16 +208,16 @@ const handleDelete = async (id: string) => {
           <Instagram className="mx-auto mb-4 h-12 w-12 text-gray-300" />
           <h3 className="mb-2 flex items-center justify-center gap-1.5 text-lg font-semibold text-gray-700 dark:text-gray-200">
             No accounts connected
-            <InfoTip text="You'll be redirected to Meta's official OAuth screen. We only receive the permissions you grant — no password ever." />
+            <InfoTip text="You'll be taken to Instagram's official sign-in page. We only get the permissions you approve — we never see your password." />
           </h3>
           <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-            Click below to sign in with Instagram. You&apos;ll be redirected to Meta&apos;s
-            official OAuth screen to grant access.
+            Click below to sign in with Instagram. You&apos;ll be taken to Instagram&apos;s
+            official sign-in page to approve access.
           </p>
           <div className="mb-6 mx-auto max-w-md rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2 text-left text-xs text-amber-800 dark:text-amber-300">
             <strong>Before you connect:</strong> your Instagram account must be
             a <em>Business</em> or <em>Creator</em> account linked to a
-            Facebook Page. Personal accounts can&apos;t receive DMs via API.
+            Facebook Page. Personal accounts can&apos;t send automated DMs (this is Instagram&apos;s rule, not ours).
             {" "}
             <a
               href="https://help.instagram.com/502981923235522"
@@ -252,7 +255,7 @@ const handleDelete = async (id: string) => {
                     )}
                   </div>
                   <p className="text-xs text-gray-400">
-                    ID: {account.instagram_account_id} &middot; Token: {account.access_token}
+                    ID: {account.instagram_account_id}
                   </p>
                 </div>
               </div>
@@ -284,43 +287,49 @@ const handleDelete = async (id: string) => {
 
       {/* Info card */}
       <div className="card mt-6 bg-blue-50 border-blue-200">
-        <h3 className="mb-2 font-semibold text-blue-800">How Multi-Account Works</h3>
+        <h3 className="mb-2 font-semibold text-blue-800">Managing multiple Instagram accounts</h3>
         <ul className="space-y-1 text-sm text-blue-700">
-          <li>1. Connect multiple Instagram Business/Creator accounts here</li>
-          <li>2. When creating automations, assign them to a specific account</li>
-          <li>3. Webhooks auto-route to the correct account based on the Instagram Account ID</li>
-          <li>4. Each account uses its own access token for API calls</li>
+          <li>1. Connect as many Business or Creator accounts as your plan allows</li>
+          <li>2. When creating an automation, choose which account it belongs to</li>
+          <li>3. Comments on each account automatically trigger only that account&apos;s DMs</li>
+          <li>4. Each account has its own separate DM limit — one running out doesn&apos;t affect the others</li>
         </ul>
       </div>
 
-      {/* Advanced: manual paste of access token (dev / recovery only) */}
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-        >
-          <ChevronDown
-            className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
-          />
-          Advanced: paste access token manually
-        </button>
-        {showAdvanced && (
-          <div className="mt-3">
-            <p className="mb-3 text-xs text-gray-500">
-              Only use this if the OAuth flow above doesn&apos;t work (e.g. sandbox
-              testing with a manually generated token).
-            </p>
-            <AccountForm
-              onSave={() => {
-                setShowAdvanced(false);
-                fetchAccounts();
-              }}
-              onCancel={() => setShowAdvanced(false)}
+      {/* Advanced: manual paste of access token (dev / recovery only).
+          Admin-gated — regular end users have no reason to see a raw
+          access-token paste form, and exposing it invites confusion and
+          support tickets. Admins still need it for sandbox testing and
+          recovery when the OAuth flow fails for a specific account. */}
+      {isAdmin && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+          >
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
             />
-          </div>
-        )}
-      </div>
+            Advanced: paste access token manually (admin)
+          </button>
+          {showAdvanced && (
+            <div className="mt-3">
+              <p className="mb-3 text-xs text-gray-500">
+                Only use this if the OAuth flow above doesn&apos;t work (e.g. sandbox
+                testing with a manually generated token).
+              </p>
+              <AccountForm
+                onSave={() => {
+                  setShowAdvanced(false);
+                  fetchAccounts();
+                }}
+                onCancel={() => setShowAdvanced(false)}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -289,7 +289,7 @@ export default function DashboardContent() {
             )}
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600">
               <span className="h-2 w-2 rounded-full bg-emerald-500 pulse-dot" />
-              Webhook Active
+              Live
             </div>
             <ThemeToggle />
             <button onClick={fetchData} className="btn-secondary !px-3 !py-2">
@@ -347,7 +347,13 @@ export default function DashboardContent() {
             { id: "activity" as Tab, label: "Activity", icon: Activity },
             { id: "analytics" as Tab, label: "Analytics", icon: BarChart3 },
             { id: "accounts" as Tab, label: "Accounts", icon: Instagram },
-            { id: "setup" as Tab, label: "Setup", icon: Hash },
+            // Setup guide is only useful before a user has set up their
+            // first account. Hide it once a paid user is fully set up so
+            // the sidebar stops nagging with a "getting started" tab
+            // they no longer need. Free users always see it as a nudge.
+            ...(userPlan === "free" || !stats || stats.accounts_connected === 0
+              ? [{ id: "setup" as Tab, label: "Setup", icon: Hash }]
+              : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1036,9 +1042,10 @@ function AutomationForm({
   const [followGateMessage, setFollowGateMessage] = useState(
     initial?.follow_gate_message || ""
   );
-  const [followGateTimeout, setFollowGateTimeout] = useState<number>(
-    initial?.follow_gate_timeout_seconds ?? 90
-  );
+  // Timeout UI removed — backend still accepts this field, so we send a
+  // fixed default (90s) whenever follow-gate is enabled to preserve
+  // existing behavior without exposing a knob users don't need.
+  const followGateTimeout = initial?.follow_gate_timeout_seconds ?? 90;
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -1130,7 +1137,7 @@ function AutomationForm({
               Instagram Account
               {/* A9.2 — Was a common confusion point: users would leave the
                   default and wonder why DMs never sent. */}
-              <InfoTip text="Which of your connected Instagram accounts this automation will send DMs from. 'Default (env vars)' uses the server's fallback token and is only for local development." />
+              <InfoTip text="Choose which of your connected Instagram accounts should send this DM. Connect an account in the Accounts tab if you haven't yet." />
             </label>
             <select
               className="input-field"
@@ -1140,7 +1147,7 @@ function AutomationForm({
               <option value="">
                 {accounts.length === 0
                   ? "— No accounts connected —"
-                  : "Default (env vars)"}
+                  : "Choose an account"}
               </option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -1168,7 +1175,7 @@ function AutomationForm({
             required
           />
           <p className="mt-1 text-xs text-gray-400">
-            Bot triggers when a comment contains any of these words
+            Your DM sends automatically when a comment contains any of these words
           </p>
         </div>
 
@@ -1190,8 +1197,7 @@ function AutomationForm({
           />
           {aiEnabled && (
             <p className="mt-1 text-xs text-violet-500">
-              With AI enabled, this is used as context/fallback. AI will
-              personalize based on the comment.
+              With AI turned on, this message is used as a backup. The AI will personalize each reply based on what the person commented.
             </p>
           )}
         </div>
@@ -1220,8 +1226,7 @@ function AutomationForm({
               <div>
                 <p className="font-medium text-sm">AI Smart Replies</p>
                 <p className="text-xs text-gray-500">
-                  Use GPT to generate personalized DMs based on each
-                  comment
+                  Let AI write a personal DM for each comment, in your voice
                 </p>
               </div>
             </div>
@@ -1241,9 +1246,9 @@ function AutomationForm({
           {aiEnabled && (
             <div className="mt-4">
               <label className="mb-1 block text-sm font-medium text-violet-700">
-                AI System Prompt{" "}
+                AI instructions{" "}
                 <span className="text-xs text-violet-400">
-                  (optional — customize AI behavior)
+                  (optional — tell the AI how to reply)
                 </span>
               </label>
               <textarea
@@ -1253,10 +1258,6 @@ function AutomationForm({
                 value={aiSystemPrompt}
                 onChange={(e) => setAiSystemPrompt(e.target.value)}
               />
-              <p className="mt-1 text-xs text-violet-400">
-                Requires OPENAI_API_KEY in your .env.local. Uses
-                gpt-4o-mini (~$0.15 per 1M tokens).
-              </p>
             </div>
           )}
         </div>
@@ -1310,57 +1311,12 @@ function AutomationForm({
                   onChange={(e) => setFollowGateMessage(e.target.value)}
                 />
                 <p className="mt-1 text-xs text-emerald-500">
-                  Use <code>{"{username}"}</code> for the fan’s handle and{" "}
-                  <code>{"{account}"}</code> for your own. Button text is
-                  fixed to <strong>“I followed ✅”</strong> for this release.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-emerald-700">
-                  Timeout{" "}
-                  <span className="text-xs text-emerald-400">
-                    (seconds before we send the DM anyway)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  min={10}
-                  max={82800}
-                  step={10}
-                  className="input-field !border-emerald-200 !bg-white focus:!border-emerald-400 focus:!ring-emerald-100"
-                  value={followGateTimeout}
-                  onChange={(e) =>
-                    setFollowGateTimeout(
-                      Math.max(10, Math.min(82800, Number(e.target.value) || 90))
-                    )
-                  }
-                />
-                <p className="mt-1 text-xs text-emerald-500">
-                  Default 90s. Fans who tap the button get the DM
-                  instantly. Fans who <em>don’t</em> tap: we send the DM
-                  anyway once the timeout expires — but the fallback
-                  sweep runs <strong>once daily (03:15 UTC)</strong> on
-                  our current hosting tier, so effective wait can be up
-                  to 24h. Meta’s messaging window is 24h; we cap the
-                  timeout at 23h for safety.
+                  Use <code>{"{username}"}</code> for the fan&rsquo;s handle and <code>{"{account}"}</code> for yours.
                 </p>
               </div>
 
               <div className="rounded-lg bg-white/70 border border-emerald-100 p-3 text-xs text-gray-600">
-                <p className="font-medium text-gray-700 mb-1">
-                  ✅ How verification works
-                </p>
-                <p>
-                  We query Meta’s Instagram Messaging API to check{" "}
-                  <code>is_user_follow_business</code> before sending the
-                  real DM (same technique as ManyChat). Fans who already
-                  follow you <strong>skip the gate entirely</strong> and
-                  get the DM instantly. Fans who tap “I followed” without
-                  actually following get a friendly nudge instead of the
-                  payload. If Meta’s API is unreachable for a specific
-                  fan, we fall back to trust rather than block them out.
-                </p>
+                Fans who already follow you get the DM instantly. Fans who tap &ldquo;I followed&rdquo; without following get a friendly reminder.
               </div>
             </div>
           )}
@@ -1489,51 +1445,42 @@ function SetupGuide() {
     <div className="space-y-4">
       <div className="card">
         <h3 className="mb-4 text-lg font-semibold">
-          Instagram API Setup Guide
+          Getting started with DM Shiyam
         </h3>
+        <p className="mb-6 text-sm text-gray-500">
+          Follow these simple steps to send your first automated DM. The whole thing takes under 5 minutes.
+        </p>
         <div className="space-y-6">
           {[
             {
               step: 1,
-              title: "Create a Meta Developer Account",
+              title: "Switch to a Business or Creator account",
               content:
-                'Go to developers.facebook.com and create an account. Click "Create App" and select "Business" type.',
+                "Instagram only allows automated DMs from Business or Creator accounts (not personal ones). In the Instagram app, go to Settings → Account → Switch to Professional Account. It's free and takes 30 seconds.",
             },
             {
               step: 2,
-              title: "Switch to Instagram Business/Creator Account",
+              title: "Link your Instagram to a Facebook Page",
               content:
-                "In the Instagram app, go to Settings > Account > Switch to Professional Account. Link it to a Facebook Page.",
+                "In the Instagram app, go to Settings → Account → Linked Accounts → Facebook, and connect it to a Facebook Page you manage. If you don't have a Page, you can create one for free.",
             },
             {
               step: 3,
-              title: "Add Instagram Product to Your App",
+              title: "Connect Instagram to DM Shiyam",
               content:
-                'In the Meta Developer dashboard, add the "Instagram" product. Configure the Instagram Graph API.',
+                "Head over to the Accounts tab and click Connect Instagram. You'll be taken to Instagram's official sign-in page — approve the permissions and you're done.",
             },
             {
               step: 4,
-              title: "Generate Access Token",
+              title: "Create your first automation",
               content:
-                "Use the Graph API Explorer to generate a User Access Token with permissions: instagram_manage_comments, instagram_manage_messages, pages_manage_metadata, pages_messaging.",
+                "Go to the Automations tab and click New Automation. Pick a keyword (e.g. \"link\"), write your DM message, and hit Save. That's it — you're live!",
             },
             {
               step: 5,
-              title: "Set Up Webhooks",
+              title: "Test it",
               content:
-                "In your app settings, add a Webhook subscription for Instagram. Set the callback URL to YOUR_DOMAIN/api/webhook/instagram and use the WEBHOOK_VERIFY_TOKEN from your .env file.",
-            },
-            {
-              step: 6,
-              title: "Subscribe to Comments",
-              content:
-                'In the Webhooks settings, subscribe to the "comments" field. This will send real-time notifications when someone comments on your posts.',
-            },
-            {
-              step: 7,
-              title: "Configure Environment Variables",
-              content:
-                "Copy .env.example to .env.local and fill in your credentials. For AI, add your OPENAI_API_KEY.",
+                "From another account, comment your keyword on one of your posts. Within a few seconds, DM Shiyam sends your message. Check the Activity tab to see it in action.",
             },
           ].map((item) => (
             <div key={item.step} className="flex gap-4">
@@ -1553,74 +1500,37 @@ function SetupGuide() {
 
       <div className="card bg-violet-50 border-violet-200">
         <h3 className="mb-2 font-semibold text-violet-800">
-          AI Smart Replies Setup
+          Using AI Smart Replies (Pro plan and above)
         </h3>
         <ul className="space-y-1 text-sm text-violet-700">
-          <li>
-            1. Get an API key from <strong>platform.openai.com</strong>
-          </li>
-          <li>
-            2. Add{" "}
-            <code className="bg-violet-100 px-1 rounded">
-              OPENAI_API_KEY=sk-...
-            </code>{" "}
-            to your .env.local
-          </li>
-          <li>
-            3. Enable AI on any automation via the toggle in the form
-          </li>
-          <li>
-            4. Optionally customize the AI system prompt per automation
-          </li>
-          <li>
-            5. Cost: ~$0.15 per 1M tokens (gpt-4o-mini) — roughly
-            $0.0001 per DM
-          </li>
+          <li>1. When creating an automation, turn on the AI Smart Replies toggle</li>
+          <li>2. Optionally add a short description of your brand voice so replies sound like you</li>
+          <li>3. Instead of the same message every time, DM Shiyam writes a personal reply for each comment</li>
+          <li>4. AI usage is included in your plan — no extra cost, no separate account needed</li>
         </ul>
       </div>
 
       <div className="card bg-blue-50 border-blue-200">
         <h3 className="mb-2 font-semibold text-blue-800">
-          Multi-Account Setup
+          Using multiple Instagram accounts
         </h3>
         <ul className="space-y-1 text-sm text-blue-700">
-          <li>
-            1. Go to the <strong>Accounts</strong> tab and click
-            "Connect Account"
-          </li>
-          <li>
-            2. Enter the Instagram Account ID, username, and access
-            token
-          </li>
-          <li>
-            3. When creating automations, select which account to use
-          </li>
-          <li>
-            4. Webhooks auto-route based on the Instagram Account ID
-            in the payload
-          </li>
+          <li>1. Go to the Accounts tab and click Connect Instagram for each account</li>
+          <li>2. When creating an automation, choose which account it belongs to</li>
+          <li>3. Each account only responds to comments on its own posts</li>
+          <li>4. Each account has its own DM limit, so one running out doesn&apos;t stop the others</li>
         </ul>
       </div>
 
       <div className="card bg-amber-50 border-amber-200">
         <h3 className="mb-2 font-semibold text-amber-800">
-          Important Notes
+          Good to know
         </h3>
         <ul className="space-y-1 text-sm text-amber-700">
-          <li>
-            - Your app must be publicly accessible (use ngrok for local
-            dev)
-          </li>
-          <li>
-            - Access tokens expire — set up token refresh for production
-          </li>
-          <li>
-            - Instagram DMs only work if the user has interacted with
-            your account
-          </li>
-          <li>
-            - For production, submit your app for Meta App Review
-          </li>
+          <li>- Only Business or Creator accounts can send automated DMs (Instagram&apos;s rule, not ours)</li>
+          <li>- Instagram only lets us reply to a comment within 24 hours — we handle this automatically</li>
+          <li>- We stay well within Instagram&apos;s daily limits so your account stays safe</li>
+          <li>- Need help? Email us anytime at dmshiyamofficial@gmail.com</li>
         </ul>
       </div>
     </div>

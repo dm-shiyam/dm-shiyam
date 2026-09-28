@@ -237,7 +237,7 @@ export default function LandingContent() {
                 Real-Time Analytics
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Track every message sent, response rate, and engagement metrics. Optimize your campaigns with actionable insights.
+                See every DM you send, how many replies you get, and which posts drive the most engagement — all in one simple dashboard.
               </p>
             </div>
           </div>
@@ -266,7 +266,7 @@ export default function LandingContent() {
                 Connect Instagram
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Link your Instagram Business or Creator account securely via Meta's authentication. Takes 30 seconds.
+                Sign in with Instagram to securely connect your Business or Creator account. Takes 30 seconds — no password shared with us.
               </p>
             </div>
             {/* Arrow (hidden on mobile) */}
@@ -415,15 +415,15 @@ export default function LandingContent() {
             },
             {
               q: "Is this safe for my Instagram account?",
-              a: "Yes. DM Shiyam uses Meta's official Instagram Graph API — the same infrastructure Meta approves for business messaging. We never scrape, never use unofficial endpoints, and we respect Instagram's messaging policy (24-hour window, per-user rate limits, dedup). Our app has passed Meta's official App Review.",
+              a: "Yes, 100% safe. DM Shiyam uses Instagram's official partner system, approved by Meta (the company behind Instagram). We never log into your account or use any shady tricks — and we stay well within Instagram's daily messaging limits so your account always looks natural. Our app has passed Meta's official review.",
             },
             {
               q: "How is my data handled and protected?",
-              a: "Your Instagram access token and message data are encrypted at rest and only used to power your automations. We never sell your data or share it with third parties for advertising. You can request full deletion at any time via the deletion link on your dashboard or by emailing dmshiyamofficial@gmail.com. See our Privacy Policy for the full list of sub-processors.",
+              a: "Your Instagram connection and message data are securely encrypted and only used to send your automated DMs. We never sell your data or share it with advertisers. You can delete everything anytime — just use the delete option in your dashboard or email us at dmshiyamofficial@gmail.com. Full details are in our Privacy Policy.",
             },
             {
               q: "Do I need a Facebook Page to use DM Shiyam?",
-              a: "No. We use Instagram Login directly — you only need an Instagram Business or Creator account. No Facebook Page required.",
+              a: "No. You only need an Instagram Business or Creator account — you can connect directly with Instagram Login. No Facebook Page needed.",
             },
           ].map((item) => (
             <details

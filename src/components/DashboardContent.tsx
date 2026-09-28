@@ -37,6 +37,7 @@ import {
   UserPlus,
   LogOut,
   Crown,
+  AlertTriangle,
 } from "lucide-react";
 import type { Automation, ActivityLog, DashboardStats, Account } from "@/types";
 import AnalyticsTab from "@/components/AnalyticsTab";
@@ -315,6 +316,14 @@ export default function DashboardContent() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
+        {/* DM quota banner — mirrors the 80% and 100% email alerts sent
+            from the webhook (see api/webhook/instagram/route.ts). Hidden
+            when the user is under 80% or on an unlimited plan
+            (dm_limit === -1). Not dismissible on purpose: it's the
+            primary trigger to upgrade before automations pause on
+            the 1st. */}
+        {stats && <DmQuotaBanner stats={stats} />}
+
         {/* A9.3 — Getting Started checklist; auto-hides once user has activated */}
         {stats && (
           <GettingStartedChecklist
@@ -416,6 +425,97 @@ export default function DashboardContent() {
 // The three milestones mirror the funnel we instrument server-side in
 // users.first_account_connected_at / first_automation_created_at /
 // first_dm_sent_at (see schema.sql and getFunnelStats).
+
+// ── DM Quota Banner ──
+//
+// Renders a yellow banner at 80-99% usage and a red banner at 100%.
+// Matches the 80% and 100% email alerts sent from the Instagram webhook
+// so the in-app and email channels tell the same story. Silent below
+// 80% and on unlimited plans (dm_limit === -1, Agency tier).
+
+function DmQuotaBanner({ stats }: { stats: DashboardStats }) {
+  const { dm_limit, dms_used_this_month } = stats;
+  if (
+    dm_limit === null ||
+    dm_limit === -1 ||
+    dms_used_this_month === null ||
+    dm_limit === 0
+  ) {
+    return null;
+  }
+  const pct = dms_used_this_month / dm_limit;
+  if (pct < 0.8) return null;
+
+  const isAtLimit = pct >= 1;
+  const percent = Math.min(100, Math.round(pct * 100));
+  const remaining = Math.max(0, dm_limit - dms_used_this_month);
+
+  return (
+    <div
+      role="alert"
+      className={`mb-6 rounded-xl border p-4 ${
+        isAtLimit
+          ? "border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30"
+          : "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <AlertTriangle
+          className={`h-5 w-5 shrink-0 mt-0.5 ${
+            isAtLimit ? "text-red-600" : "text-amber-600"
+          }`}
+        />
+        <div className="flex-1 min-w-0">
+          <p
+            className={`text-sm font-semibold ${
+              isAtLimit
+                ? "text-red-900 dark:text-red-200"
+                : "text-amber-900 dark:text-amber-200"
+            }`}
+          >
+            {isAtLimit
+              ? "You've used all your DMs this month — automations are paused"
+              : `You've used ${percent}% of your monthly DMs`}
+          </p>
+          <p
+            className={`mt-1 text-sm ${
+              isAtLimit
+                ? "text-red-700 dark:text-red-300"
+                : "text-amber-700 dark:text-amber-300"
+            }`}
+          >
+            {isAtLimit
+              ? `${dms_used_this_month} of ${dm_limit} DMs sent. New DMs will resume on the 1st of next month, or upgrade to keep sending now.`
+              : `${dms_used_this_month} of ${dm_limit} DMs used. Only ${remaining} left before your automations pause until the 1st.`}
+          </p>
+          {/* Progress bar */}
+          <div
+            className={`mt-3 h-1.5 w-full overflow-hidden rounded-full ${
+              isAtLimit ? "bg-red-200/60" : "bg-amber-200/60"
+            }`}
+          >
+            <div
+              className={`h-full rounded-full ${
+                isAtLimit ? "bg-red-600" : "bg-amber-500"
+              }`}
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+        <Link
+          href="/pricing"
+          className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-colors ${
+            isAtLimit
+              ? "bg-red-600 hover:bg-red-700"
+              : "bg-amber-600 hover:bg-amber-700"
+          }`}
+        >
+          Upgrade
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function GettingStartedChecklist({
   stats,

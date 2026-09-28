@@ -526,6 +526,26 @@ export async function getDashboardStats(
     q(`SELECT COUNT(*)::int as count FROM accounts WHERE is_active = TRUE${uf}`),
   ]);
 
+  // Per-user monthly quota — powers the dashboard's 80%/100% usage
+  // banner. Only queried when scoped to a userId; admin-wide stats calls
+  // (userId undefined) leave these null since there's no single user
+  // to attribute to.
+  let dms_used_this_month: number | null = null;
+  let dm_limit: number | null = null;
+  if (userId) {
+    const row = await queryOne<{
+      dms_used_this_month: number;
+      dm_limit: number;
+    }>(
+      "SELECT dms_used_this_month, dm_limit FROM users WHERE id = $1",
+      [userId]
+    );
+    if (row) {
+      dms_used_this_month = Number(row.dms_used_this_month);
+      dm_limit = Number(row.dm_limit);
+    }
+  }
+
   return {
     total_automations: Number(total_automations),
     active_automations: Number(active_automations),
@@ -535,6 +555,8 @@ export async function getDashboardStats(
     dms_this_week: Number(dms_this_week),
     ai_replies: Number(ai_replies),
     accounts_connected: Number(accounts_connected),
+    dms_used_this_month,
+    dm_limit,
   };
 }
 

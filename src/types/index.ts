@@ -160,6 +160,12 @@ export interface DashboardStats {
   dms_this_week: number;
   ai_replies: number;
   accounts_connected: number;
+  // Monthly DM quota — surfaced so the dashboard can render the 80%/100%
+  // usage banner without a second round-trip. `dm_limit === -1` means
+  // unlimited (Agency plan). Both fields are null when userId isn't
+  // scoped (admin-wide stats call).
+  dms_used_this_month: number | null;
+  dm_limit: number | null;
 }
 
 // ── Analytics ──

@@ -565,7 +565,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="What happens if I exceed my plan limits?"
-              answer="We'll email you (and show a notification in your dashboard) once you've used 80% of your DMs. If you finish them all, DM Shiyam simply pauses until your next month starts on the 1st — or you can upgrade anytime for more DMs instantly. We'll never send extra DMs and surprise you with a bigger bill."
+              answer="We'll email you and show a warning banner in your dashboard once you've used 80% of your monthly DMs. If you finish them all, DM Shiyam simply pauses until your next month starts on the 1st — or you can upgrade anytime for more DMs instantly. We'll never send extra DMs and surprise you with a bigger bill."
             />
             <FAQItem
               question="Is this Instagram-safe? Will my account get banned?"

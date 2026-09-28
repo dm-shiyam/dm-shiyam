@@ -411,7 +411,7 @@ export default function LandingContent() {
             },
             {
               q: "Can I cancel anytime?",
-              a: "Yes. There are no long-term contracts. You can cancel your subscription from your dashboard at any time and you will retain access until the end of your current billing period. No cancellation fees, ever.",
+              a: "Yes. There are no long-term contracts. Just email us at dmshiyamofficial@gmail.com and we'll cancel your subscription within 24 hours — you'll keep access until the end of your current billing period. No cancellation fees, ever. (One-click cancel from the dashboard is coming soon.)",
             },
             {
               q: "Is this safe for my Instagram account?",

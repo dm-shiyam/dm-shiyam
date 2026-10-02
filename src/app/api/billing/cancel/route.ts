@@ -123,15 +123,24 @@ export async function POST(request: NextRequest) {
         statusCode,
       });
 
-      // Common case: Razorpay says the subscription is already cancelled
-      // (e.g. webhook hasn't synced yet, or support cancelled it manually).
-      // Treat as success — bring our DB in line and tell the user.
-      const alreadyCancelled =
+      // Cases where there's nothing to cancel on Razorpay's side — the
+      // right move is to sync our DB and tell the user they're cancelled:
+      //   • already cancelled / completed (webhook not synced yet, or
+      //     support cancelled it manually in the dashboard)
+      //   • id invalid / not found — the stored id is stale (e.g. test-mode
+      //     subscription recorded against a live-mode account, or a plan
+      //     granted manually without a real sub). No active billing to
+      //     stop; silently sync and move on.
+      const desc = rzpDescription?.toLowerCase() ?? "";
+      const nothingToCancel =
         statusCode === 400 &&
-        (rzpDescription?.toLowerCase().includes("cancelled") ||
-          rzpDescription?.toLowerCase().includes("completed"));
+        (desc.includes("cancelled") ||
+          desc.includes("completed") ||
+          desc.includes("invalid") ||
+          desc.includes("not be found") ||
+          desc.includes("not found"));
 
-      if (alreadyCancelled) {
+      if (nothingToCancel) {
         await updateUserPlan(user.id, {
           plan: user.plan,
           dm_limit: user.dm_limit,

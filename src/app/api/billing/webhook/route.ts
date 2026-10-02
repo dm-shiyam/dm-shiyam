@@ -177,18 +177,25 @@ export async function POST(request: NextRequest) {
             });
             result = event.event === "subscription.cancelled" ? "cancelled" : "expired";
 
-            // Fire-and-forget — don't fail the webhook if email fails.
-            sendSubscriptionEnded({
-              to: user.email,
-              name: user.name,
-              previousPlan,
-            }).catch((err) =>
+            // Awaited (not fire-and-forget): Vercel serverless can kill
+            // the function the instant we respond, dropping any pending
+            // Resend fetch. ~400ms added is well under Razorpay's 5s
+            // webhook timeout, and the try/catch keeps a Resend outage
+            // from 500ing a webhook we otherwise processed correctly
+            // (which would force Razorpay retries and spam idempotency).
+            try {
+              await sendSubscriptionEnded({
+                to: user.email,
+                name: user.name,
+                previousPlan,
+              });
+            } catch (err) {
               captureError(err, {
                 route: "billing/webhook",
                 stage: "email_ended",
                 userId,
-              })
-            );
+              });
+            }
           }
         }
         break;
@@ -284,16 +291,19 @@ export async function POST(request: NextRequest) {
                   ? planConfig.price_yearly
                   : planConfig.price_monthly);
               const nextChargeAt = subEntity?.charge_at ?? null;
-              const emailPromise = !wasActive
-                ? sendSubscriptionActivated({
+              // Awaited — see explanation on sendSubscriptionEnded above.
+              try {
+                if (!wasActive) {
+                  await sendSubscriptionActivated({
                     to: user.email,
                     name: user.name,
                     plan: targetPlan,
                     cycle,
                     amountPaise: chargedAmount,
                     nextChargeAtUnix: nextChargeAt,
-                  })
-                : sendPaymentReceived({
+                  });
+                } else {
+                  await sendPaymentReceived({
                     to: user.email,
                     name: user.name,
                     plan: targetPlan,
@@ -302,13 +312,14 @@ export async function POST(request: NextRequest) {
                     paymentId: payEntity?.id ?? "",
                     nextChargeAtUnix: nextChargeAt,
                   });
-              emailPromise.catch((err) =>
+                }
+              } catch (err) {
                 captureError(err, {
                   route: "billing/webhook",
                   stage: wasActive ? "email_charged" : "email_activated",
                   userId,
-                })
-              );
+                });
+              }
             }
           }
         }
@@ -340,19 +351,21 @@ export async function POST(request: NextRequest) {
         if (userIdNote) {
           const user = await getUserById(userIdNote);
           if (user) {
-            sendPaymentFailed({
-              to: user.email,
-              name: user.name,
-              plan: user.plan,
-              errorReason:
-                payEntity?.error_description ?? errorReason,
-            }).catch((err) =>
+            try {
+              await sendPaymentFailed({
+                to: user.email,
+                name: user.name,
+                plan: user.plan,
+                errorReason:
+                  payEntity?.error_description ?? errorReason,
+              });
+            } catch (err) {
               captureError(err, {
                 route: "billing/webhook",
                 stage: "email_payment_failed",
                 userId: userIdNote,
-              })
-            );
+              });
+            }
           }
         }
         break;
@@ -376,20 +389,22 @@ export async function POST(request: NextRequest) {
         if (userId && amount > 0) {
           const user = await getUserById(userId);
           if (user) {
-            sendRefundInitiated({
-              to: user.email,
-              name: user.name,
-              amountPaise: amount,
-              paymentId,
-              refundId,
-            }).catch((err) =>
+            try {
+              await sendRefundInitiated({
+                to: user.email,
+                name: user.name,
+                amountPaise: amount,
+                paymentId,
+                refundId,
+              });
+            } catch (err) {
               captureError(err, {
                 route: "billing/webhook",
                 stage: "email_refund",
                 userId,
                 refundId,
-              })
-            );
+              });
+            }
             result = `refund_initiated:${amount}paise`;
           } else {
             captureAlert(

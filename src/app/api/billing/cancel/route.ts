@@ -66,21 +66,30 @@ export async function POST(request: NextRequest) {
 
     // Helper so every successful-cancel path sends the confirmation email
     // (previously only the Razorpay-happy path did — users whose IDs went
-    // through the fallback branches got a success toast but no email,
-    // which looked broken).
-    const emailCancelScheduled = (cycleEndUnix: number | null) => {
-      sendSubscriptionCancellationScheduled({
-        to: user.email,
-        name: user.name,
-        plan: user.plan,
-        cycleEndUnix,
-      }).catch((err) =>
+    // through the fallback branches got a success toast but no email).
+    //
+    // IMPORTANT: this is awaited before responding, not fire-and-forget.
+    // On Vercel serverless, as soon as the HTTP response is sent, the
+    // function instance can be terminated and pending promises (including
+    // Resend's fetch) are dropped mid-flight — confirmed 2026-10-02.
+    // Blocking adds ~400ms which is well inside users' click→toast
+    // tolerance, and the catch keeps a Resend outage from 500ing a cancel
+    // that otherwise succeeded.
+    const emailCancelScheduled = async (cycleEndUnix: number | null) => {
+      try {
+        await sendSubscriptionCancellationScheduled({
+          to: user.email,
+          name: user.name,
+          plan: user.plan,
+          cycleEndUnix,
+        });
+      } catch (err) {
         captureError(err, {
           route: "billing/cancel",
           stage: "email_cancel_scheduled",
           userId: user.id,
-        })
-      );
+        });
+      }
     };
 
     if (!user.razorpay_subscription_id) {
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
         dm_limit: user.dm_limit,
         subscription_status: "cancelled",
       });
-      emailCancelScheduled(null);
+      await emailCancelScheduled(null);
       return NextResponse.json({
         status: "cancelled",
         message: "Subscription cancelled.",
@@ -109,7 +118,7 @@ export async function POST(request: NextRequest) {
         subscription_status: "cancelled",
         razorpay_subscription_id: user.razorpay_subscription_id,
       });
-      emailCancelScheduled(null);
+      await emailCancelScheduled(null);
       return NextResponse.json({
         status: "cancelled",
         mock: true,
@@ -177,7 +186,7 @@ export async function POST(request: NextRequest) {
           subscription_status: "cancelled",
           razorpay_subscription_id: user.razorpay_subscription_id,
         });
-        emailCancelScheduled(null);
+        await emailCancelScheduled(null);
         return NextResponse.json({
           status: "cancelled",
           message: "Subscription cancelled.",
@@ -206,7 +215,7 @@ export async function POST(request: NextRequest) {
     // success toast the user is waiting on. Email failure is already
     // captured + we still have the final "ended" email from the webhook
     // when Razorpay actually cancels at period end.
-    emailCancelScheduled(cycleEndUnix);
+    await emailCancelScheduled(cycleEndUnix);
 
     return NextResponse.json({
       status: "cancelled",

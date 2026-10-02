@@ -34,16 +34,30 @@ async function sendEmail({
 }): Promise<{ success: boolean; error?: string }> {
   const client = getResend();
   if (!client) {
+    console.warn(`[email] skip "${subject}" to ${to} — RESEND_API_KEY missing`);
     return { success: false, error: "Email service not configured" };
   }
   try {
-    const result = await client.emails.send({
+    // Resend SDK returns { data, error } instead of throwing on API-level
+    // rejects (e.g. unverified sender domain, invalid API key, rate limit).
+    // Was treating every non-throw as success and logging "Sent", which
+    // masked real failures (confirmed 2026-10-02 — users clicked Cancel,
+    // got a success toast, but no email landed because Resend rejected
+    // the unverified FROM_EMAIL and the error was invisible).
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to,
       subject,
       html: wrapTemplate(html),
     });
-    console.log(`[email] Sent "${subject}" to ${to}`, result);
+    if (error) {
+      console.error(
+        `[email] Resend rejected "${subject}" to ${to}:`,
+        JSON.stringify(error)
+      );
+      return { success: false, error: JSON.stringify(error) };
+    }
+    console.log(`[email] Sent "${subject}" to ${to} id=${data?.id ?? "?"}`);
     return { success: true };
   } catch (err) {
     console.error(`[email] Failed to send "${subject}" to ${to}:`, err);

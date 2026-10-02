@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/session";
-import { isAdmin } from "@/lib/db";
+import { isAdmin, getUserByEmail } from "@/lib/db";
 import {
   sendSubscriptionActivated,
   sendPaymentReceived,
@@ -59,9 +59,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Static sample data. Chosen to match Starter monthly ₹149 so the
-  // numbers in the email look exactly like a real activation.
-  const name = "Ankit (preview)";
+  // Resolve the recipient's real name from the DB so the preview reads
+  // identically to a production email. Falls back to a generic greeting
+  // if the address isn't a known user (e.g. previewing to a test inbox).
+  const recipientUser = await getUserByEmail(to).catch(() => null);
+  const name = recipientUser?.name || "there";
+
+  // Static sample numbers. Chosen to match Starter monthly ₹149 so the
+  // email looks exactly like a real activation.
   const amountPaise = cycle === "yearly" ? 149000 : 14900;
   const nextChargeAtUnix =
     Math.floor(Date.now() / 1000) +

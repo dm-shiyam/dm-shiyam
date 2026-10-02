@@ -298,16 +298,22 @@ export default function DashboardContent() {
                   <Crown className="h-3 w-3" />{" "}
                   {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
                 </span>
-                {/* Self-serve cancel. Minimal, text-only button — the FAQ
-                    explains what happens; the confirm() dialog recaps.
-                    Hidden on mobile to keep the header uncluttered. */}
+                {/* Self-serve cancel. Styled as a small outlined pill so
+                    it reads as a real action (not a stray text link) but
+                    stays visually subordinate to the plan badge. Hidden
+                    on mobile to keep the header uncluttered. */}
                 <button
                   onClick={handleCancelSubscription}
                   disabled={cancelling}
-                  className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 underline-offset-2 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Cancel subscription (keeps access until end of billing cycle)"
                 >
-                  {cancelling ? "Cancelling…" : "Cancel"}
+                  {cancelling ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <XCircle className="h-3 w-3" />
+                  )}
+                  {cancelling ? "Cancelling…" : "Cancel plan"}
                 </button>
               </div>
             ) : (

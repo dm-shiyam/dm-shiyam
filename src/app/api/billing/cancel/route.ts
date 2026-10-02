@@ -100,7 +100,60 @@ export async function POST(request: NextRequest) {
     // `subscription.cancelled`. This is the "cancel anytime, keep what
     // you paid for" UX we promise in the FAQ.
     const razorpay = getRazorpay();
-    await razorpay.subscriptions.cancel(user.razorpay_subscription_id, true);
+    try {
+      await razorpay.subscriptions.cancel(user.razorpay_subscription_id, true);
+    } catch (rzpErr: unknown) {
+      // Razorpay surfaces its API errors as `{ statusCode, error: { code, description, ... } }`.
+      // Reach in defensively — the SDK's TS types don't expose it.
+      const e = rzpErr as {
+        statusCode?: number;
+        error?: { code?: string; description?: string };
+      };
+      const rzpDescription = e?.error?.description;
+      const rzpCode = e?.error?.code;
+      const statusCode = e?.statusCode;
+
+      captureError(rzpErr, {
+        route: "billing/cancel",
+        stage: "razorpay_cancel",
+        userId: user.id,
+        subscriptionId: user.razorpay_subscription_id,
+        rzpCode,
+        rzpDescription,
+        statusCode,
+      });
+
+      // Common case: Razorpay says the subscription is already cancelled
+      // (e.g. webhook hasn't synced yet, or support cancelled it manually).
+      // Treat as success — bring our DB in line and tell the user.
+      const alreadyCancelled =
+        statusCode === 400 &&
+        (rzpDescription?.toLowerCase().includes("cancelled") ||
+          rzpDescription?.toLowerCase().includes("completed"));
+
+      if (alreadyCancelled) {
+        await updateUserPlan(user.id, {
+          plan: user.plan,
+          dm_limit: user.dm_limit,
+          subscription_status: "cancelled",
+          razorpay_subscription_id: user.razorpay_subscription_id,
+        });
+        return NextResponse.json({
+          status: "cancelled",
+          message: "Subscription cancelled.",
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error: rzpDescription
+            ? `Razorpay: ${rzpDescription}`
+            : "Failed to cancel subscription with Razorpay. Please try again or email dmshiyamofficial@gmail.com.",
+          code: rzpCode,
+        },
+        { status: 502 }
+      );
+    }
 
     await updateUserPlan(user.id, {
       plan: user.plan,

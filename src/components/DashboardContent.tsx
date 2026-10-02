@@ -323,10 +323,18 @@ export default function DashboardContent() {
           <div className="flex items-center gap-3">
             {userPlan !== "free" ? (
               <div className="hidden sm:inline-flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200">
+                {/* Clickable plan pill → /pricing so paid users can view
+                    plans, upgrade/downgrade, and see what else is on offer.
+                    Was a plain <span>, which looked clickable but did
+                    nothing (reported 2026-10-02). */}
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200 hover:brightness-95 transition"
+                  title="See plans"
+                >
                   <Crown className="h-3 w-3" />{" "}
                   {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
-                </span>
+                </Link>
                 {subscriptionStatus === "cancelled" ? (
                   // Already scheduled to cancel — show a muted status
                   // chip instead of the action, so the user doesn't try

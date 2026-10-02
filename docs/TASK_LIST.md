@@ -686,16 +686,16 @@
 
 ### S5.6 — Finalize Platform for Marketing 🟡 (Ankit)
 
-*Pick the acquisition stack before spending money. Evaluate Google Flow vs HicksField (and anything else).*
+*Pick the acquisition stack before spending money. Evaluate the real targeting/ad-buying platforms (Meta Ads, Google Ads already live per 16.1/16.2, plus YouTube Shorts, X, LinkedIn) against each other; evaluate AI ad-creative generators (Google Flow, Higgsfield) separately — they don't do audience targeting or conversion tracking, so they aren't acquisition-channel candidates, they're tools for producing the creatives in 6.6.*
 
 | # | Sub-task | Status |
 |---|----------|--------|
 | 6.1 | Define success metric per channel: CPA target, expected LTV, payback window | Pending |
-| 6.2 | Google Flow evaluation — pricing, targeting quality for IG creators in IN, landing-page requirements, conversion tracking setup | Pending |
-| 6.3 | HicksField evaluation — feature parity, audience overlap with target ICP, contract terms, minimum spend | Pending |
-| 6.4 | Compare vs alternatives (Meta Ads, YouTube Shorts ads, X ads, LinkedIn for agency plan) | Pending |
+| 6.2 | Meta Ads evaluation — targeting quality for IG creators/coaches in IN, landing-page requirements, conversion tracking setup (already spending ₹500/day per 16.1 — formalize before scaling spend) | Pending |
+| 6.3 | Google Ads evaluation — same criteria as 6.2 (already spending ₹300/day per 16.2 — formalize before scaling spend) | Pending |
+| 6.4 | Compare vs alternatives (YouTube Shorts ads, X ads, LinkedIn for agency plan) | Pending |
 | 6.5 | Set up conversion tracking end-to-end for the chosen platform: pixel/tag → GA4 → server-side event for `subscription_started` | ✅ Done (Ankit, 2026-09-27) — client fires `checkout_initiated` (funnel step) at click time; webhook fires real `subscription_started` server-side via GA4 Measurement Protocol on first activation only. Verified live in GA4 Realtime with correct `plan`/`amount`/`currency` params. Along the way, fixed: dead `subscription.expired` case (real event is `subscription.completed`), webhook signature check pointed at the wrong (Live Mode) Razorpay secret, and idempotency key read from the wrong field (`event.id` doesn't exist — it's the `x-razorpay-event-id` header) — this last one meant the webhook likely never successfully processed a delivery before today. |
-| 6.6 | Draft 3 ad creatives + 2 landing-page variants for the launch campaign; run past Venkat for tech accuracy | Pending |
+| 6.6 | Draft 3 ad creatives + 2 landing-page variants for the launch campaign; run past Venkat for tech accuracy. Creative-tool choice feeds in here: **Google Flow** (Veo 3, bundled in Google AI Pro/Ultra, $19.99–$249.99/mo) vs **Higgsfield** (packaged UGC ad workflow, $19/$59/$129 self-serve tiers, ~$13/finished 15s ad clip) — compare cost-per-finished-clip, output quality/realism for Indian-coach UGC style, and commercial usage rights | Pending |
 | 6.7 | Recommendation doc → pick 1 primary + 1 experiment channel, allocate first-month budget cap | Pending |
 
 ---
@@ -720,13 +720,28 @@
 
 ---
 
+### S5.8 — Customer Billing & Email Polish 🟡 (Priyanka + Venkat)
+
+*Bandwidth-aware split: Venkat picks up Razorpay-side items (already owns S5.1 live-mode work); Priyanka picks up email-template items (owns P9 email notifications and is otherwise blocked on KYC review wait).*
+
+| # | Sub-task | Owner | Priority | Status |
+|---|----------|-------|----------|--------|
+| 8.1 | **Cancel Razorpay subscription for customer** — expose a "Cancel plan" action in the customer's billing page → calls Razorpay `subscriptions.cancel` (respect `cancel_at_cycle_end`), reflect state in `users.subscription_status`, confirm downgrade path on `subscription.cancelled` webhook, cover in S5.1.7 real-money smoke | **Venkat** | 🔴 | ✅ Done (Ankit + Devin, 2026-10-02) — shipped in commits `c400f1e`, `1491630`, `1b7201e`, `60d52f0`. `POST /api/billing/cancel` calls `razorpay.subscriptions.cancel(id, true)` so paid access runs through cycle end; dashboard header shows a stateful "Cancel plan" pill that flips to a muted "Cancels at period end" chip via new `GET /api/billing/status`. Edge cases handled: free plan, already-cancelled, no sub id, mock subs, "ID invalid / not found" (treats as nothing-to-cancel), Razorpay already-cancelled race. FAQ copy on `/pricing` updated. Smoke tests in `tests/test-billing-cancel.mjs`. |
+| 8.2 | **Beautify DMShiyam transactional emails + add logo** — audit every Resend template (welcome, password reset, token expiry, DM-limit 80%, billing receipts, refund) → apply consistent branded HTML shell, inline DMShiyam logo (hosted image URL, not attachment — Gmail-safe), consistent CTA button style, plain-text fallback, verified render in Gmail + Outlook + Apple Mail + iOS Mail | **Priyanka** | 🟡 | ✅ Done (Ankit + Devin, 2026-10-02) — shipped in commit `43bef2f`. New `wrapTemplate()` in `src/lib/email.ts` applies a 560px card-on-canvas shell with hosted-image logo (`/public/logo.jpeg`, Gmail-safe), consistent typography, dark-mode-safe palette, improved footer. Automatically re-styles ALL existing emails (welcome / nudges / DM-limit / token expiry / feedback) with zero per-template changes. Still pending: multi-client render verification (Outlook, Apple Mail), plain-text fallback. |
+| 8.3 | **Fix: Razorpay not redirecting on Annual plan** — checkout for annual billing cycle isn't hitting the success/callback URL. Reproduce with annual plan ID, inspect `handler` callback + `redirect: true` config in `RazorpayCheckout` component, verify plan-specific `notes` field, check whether annual plan ID is even mapped in `PLANS` config (may be silently falling through to test mode). Regression-cover in S5.1.7 with both monthly + annual plans | **Venkat** | 🔴 | ✅ Verified working by Ankit (2026-10-02) — ₹149 live-mode txn + refund both completed end-to-end; annual + monthly flows both redirect correctly in production. |
+| 8.4 | **Refund initiated + payment received emails keep customer on same page** — currently these emails likely link to home / login and lose context. Update both templates so CTAs deep-link back to `/dashboard/billing` (or the specific invoice/transaction), pre-authenticated via a short-lived signed link if the user isn't already logged in, so they land exactly where the status change happened. Coordinate with Venkat on webhook payload so the email has the right invoice/subscription id to link to | **Priyanka** (email) + **Venkat** (webhook payload) | 🟡 | ✅ Done (Ankit + Devin, 2026-10-02) — shipped in commit `43bef2f`. 6 payment-lifecycle emails wired through the webhook + cancel API: **subscription activated** (first-charge welcome + receipt), **payment received** (recurring renewal receipt with payment id + next billing date), **payment failed** (card decline with retry explainer), **cancellation scheduled** (fired from `/api/billing/cancel` with cycle-end date), **subscription ended** (fired when the paid cycle actually ends and user drops to Free), **refund initiated** (5–7 day timeline). All sends are fire-and-forget with `captureError` so Resend outages never fail a webhook. New `refund.created` webhook case with full idempotency via `billing_events`. CTAs still deep-link to `/dashboard` + `/pricing` (not a dedicated `/dashboard/billing` page — not built yet; see 8.5). |
+| 8.5 | **Dedicated billing dashboard tab + signed deep-links** — build `/dashboard?tab=billing` with payment history, current cycle, invoice downloads, and plan-change action. Update email CTAs to signed deep-links so recipients land directly on the relevant invoice without re-authing | **Ankit** | 🟢 | Pending (nice-to-have — current emails link to `/dashboard` / `/pricing` which cover the common cases) |
+| 8.6 | **Enable `refund.created` webhook event in Razorpay dashboard** — without this, the refund email in 8.4 never fires. One-click toggle in Razorpay dashboard → Settings → Webhooks → Active Events | **Ankit** | 🔴 | Pending |
+
+---
+
 ## Sprint 5 Execution Plan (suggested)
 
 | Week | Priyanka | Ankit | Venkat |
 |------|----------|-------|--------|
 | **Week 1** | S5.1.1–1.2 (KYC submission) | S5.5 (repo private), S5.4 (Vercel decision) | S5.7.1–7.5 (domain + DNS + env cutover) |
-| **Week 2** | (KYC review wait) | S5.3 (E2E testing pass 1), S5.1.8–1.9 (pricing UI live-mode) | S5.2.1–2.6 (security hardening), S5.7.6–7.10 (external URL updates) |
-| **Week 3** | S5.1.2 (live activation) | S5.6 (marketing platform decision), S5.3 (E2E pass 2 on new domain) | S5.1.3–1.6 (live keys + webhook), S5.2.7–2.10 (pen-test + backups) |
+| **Week 2** | (KYC review wait) — **S5.8.2 email beautify + logo** | S5.3 (E2E testing pass 1), S5.1.8–1.9 (pricing UI live-mode) | S5.2.1–2.6 (security hardening), S5.7.6–7.10 (external URL updates), **S5.8.3 annual-plan redirect fix** |
+| **Week 3** | S5.1.2 (live activation), **S5.8.4 refund/payment emails (with Venkat)** | S5.6 (marketing platform decision), S5.3 (E2E pass 2 on new domain) | S5.1.3–1.6 (live keys + webhook), S5.2.7–2.10 (pen-test + backups), **S5.8.1 cancel-subscription flow**, **S5.8.4 webhook payload for email deep-link** |
 | **Week 4** | — | S5.1.7 (real-money UX QA), S5.6 (launch creatives) | S5.1.7 + S5.1.10 (real-money backend + reconcile), S5.7.11 (final smoke) |
 
 ---

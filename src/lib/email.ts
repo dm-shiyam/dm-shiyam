@@ -71,14 +71,15 @@ async function sendEmail({
 //
 // Branded shell applied to every outgoing email. Design goals:
 //   • Logo is a hosted <img> (Gmail/Outlook refuse CID attachments by default).
-//     Served from /public/logo.jpeg — same origin as the app, so no CDN dep.
+//     Served from /public/logo.png (transparent, RGBA) — same origin as the
+//     app, so no CDN dep.
 //   • Fixed 560px card on a soft neutral canvas — renders predictably in
 //     Gmail web / iOS Mail / Outlook, which all cap width differently.
 //   • All CSS inlined on each element (email clients strip <style>).
 //   • Dark-mode agnostic: light background with high-contrast text so Gmail's
 //     auto dark-mode remap doesn't invert into unreadable blobs.
 
-const LOGO_URL = `${APP_URL}/logo.jpeg`;
+const LOGO_URL = `${APP_URL}/logo.png`;
 const BRAND_PRIMARY = "#6366f1";
 const SUPPORT_MAILTO = "dmshiyamofficial@gmail.com";
 

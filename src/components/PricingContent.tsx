@@ -198,7 +198,7 @@ export default function PricingContent() {
           <Link href="/" className="flex items-center gap-2.5">
             <span className="logo-tile h-9 w-9 overflow-hidden">
               <Image
-                src="/logo.jpeg"
+                src="/logo.png"
                 alt=""
                 width={36}
                 height={36}
@@ -738,7 +738,7 @@ export default function PricingContent() {
               <Link href="/" className="mb-4 inline-flex items-center gap-2.5">
                 <span className="logo-tile h-9 w-9 overflow-hidden">
                   <Image
-                    src="/logo.jpeg"
+                    src="/logo.png"
                     alt=""
                     width={36}
                     height={36}

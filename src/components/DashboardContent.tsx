@@ -318,7 +318,7 @@ export default function DashboardContent() {
             <Link href="/" className="flex items-center gap-2.5">
               <span className="logo-tile h-9 w-9 overflow-hidden">
                 <Image
-                  src="/logo.jpeg"
+                  src="/logo.png"
                   alt=""
                   width={36}
                   height={36}

@@ -108,10 +108,35 @@ export default function LandingContent() {
 
         <div className="section py-20 sm:py-28">
           <div className="mx-auto max-w-3xl text-center animate-fade-up">
-            {/* Pre-headline announcement pill */}
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/80 px-4 py-1.5 text-xs font-medium text-gray-700 shadow-soft backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-300">
+            {/* Pre-headline announcement pill — carries the Meta infinity
+                wordmark alongside the pulse dot so the trust signal is
+                visually anchored to the brand, not just a line of text. */}
+            <div className="mb-8 inline-flex items-center gap-2.5 rounded-full border border-gray-200/80 bg-white/80 py-1.5 pl-3 pr-4 text-xs font-medium text-gray-700 shadow-soft backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-300">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              Meta Tech Provider — approved on Instagram app review
+              <svg
+                className="h-4 w-6"
+                viewBox="0 0 36 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="metaGradPill" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#0064E0" />
+                    <stop offset="50%" stopColor="#0082FB" />
+                    <stop offset="100%" stopColor="#0081FB" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M6 18c-2.2 0-4-2.7-4-6s1.8-6 4-6c2.6 0 4.6 2.4 7.2 6.3C15.9 16.4 17.7 18 20 18c2.2 0 4-2.7 4-6s-1.8-6-4-6c-2.3 0-4.1 1.6-6.8 5.7C10.6 15.6 8.6 18 6 18z"
+                  stroke="url(#metaGradPill)"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="font-semibold text-gray-900 dark:text-white">Meta</span>
+              <span className="text-gray-400">·</span>
+              Tech Provider — approved on Instagram app review
             </div>
 
             <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 sm:text-6xl md:text-7xl dark:text-white">

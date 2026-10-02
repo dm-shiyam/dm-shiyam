@@ -64,6 +64,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Helper so every successful-cancel path sends the confirmation email
+    // (previously only the Razorpay-happy path did — users whose IDs went
+    // through the fallback branches got a success toast but no email,
+    // which looked broken).
+    const emailCancelScheduled = (cycleEndUnix: number | null) => {
+      sendSubscriptionCancellationScheduled({
+        to: user.email,
+        name: user.name,
+        plan: user.plan,
+        cycleEndUnix,
+      }).catch((err) =>
+        captureError(err, {
+          route: "billing/cancel",
+          stage: "email_cancel_scheduled",
+          userId: user.id,
+        })
+      );
+    };
+
     if (!user.razorpay_subscription_id) {
       // Edge case: a user whose plan was granted manually (e.g. comp'd by
       // support) has no Razorpay subscription to cancel. Just mark them
@@ -73,6 +92,7 @@ export async function POST(request: NextRequest) {
         dm_limit: user.dm_limit,
         subscription_status: "cancelled",
       });
+      emailCancelScheduled(null);
       return NextResponse.json({
         status: "cancelled",
         message: "Subscription cancelled.",
@@ -89,6 +109,7 @@ export async function POST(request: NextRequest) {
         subscription_status: "cancelled",
         razorpay_subscription_id: user.razorpay_subscription_id,
       });
+      emailCancelScheduled(null);
       return NextResponse.json({
         status: "cancelled",
         mock: true,
@@ -156,6 +177,7 @@ export async function POST(request: NextRequest) {
           subscription_status: "cancelled",
           razorpay_subscription_id: user.razorpay_subscription_id,
         });
+        emailCancelScheduled(null);
         return NextResponse.json({
           status: "cancelled",
           message: "Subscription cancelled.",
@@ -184,18 +206,7 @@ export async function POST(request: NextRequest) {
     // success toast the user is waiting on. Email failure is already
     // captured + we still have the final "ended" email from the webhook
     // when Razorpay actually cancels at period end.
-    sendSubscriptionCancellationScheduled({
-      to: user.email,
-      name: user.name,
-      plan: user.plan,
-      cycleEndUnix,
-    }).catch((err) =>
-      captureError(err, {
-        route: "billing/cancel",
-        stage: "email_cancel_scheduled",
-        userId: user.id,
-      })
-    );
+    emailCancelScheduled(cycleEndUnix);
 
     return NextResponse.json({
       status: "cancelled",

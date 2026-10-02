@@ -3,6 +3,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import Script from "next/script";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
@@ -189,40 +190,65 @@ export default function PricingContent() {
         strategy="afterInteractive"
       />
 
-      {/* Navbar (session-aware — 2026-09-09 fix). Was showing Login/Sign Up
-          unconditionally even for logged-in users, making the pricing page
-          look like the session had expired. */}
-      <nav className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-bold text-indigo-600">
-            DM Shiyam
+      {/* Nav — identical shape to LandingContent so the brand reads
+          consistently between pages (same logo tile, same pill links,
+          same gradient CTA). */}
+      <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl dark:border-gray-800/60 dark:bg-gray-950/80">
+        <div className="section flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="logo-tile h-9 w-9 overflow-hidden">
+              <Image
+                src="/logo.jpeg"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 object-cover"
+                priority
+              />
+            </span>
+            <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+              DM Shiyam
+            </span>
           </Link>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              href="/"
+              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+            >
+              Home
+            </Link>
+            <Link
+              href="/blog"
+              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+            >
+              Blog
+            </Link>
             {isAuthed ? (
               <>
-                <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
+                <span className="hidden lg:inline max-w-[180px] truncate text-xs text-gray-500 dark:text-gray-400">
                   {session?.user?.email}
                 </span>
                 <Link
                   href="/dashboard"
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full bg-ig-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow transition-all hover:shadow-strong"
                 >
-                  Dashboard
+                  Dashboard →
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900"
+                  className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 >
                   Login
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  className="inline-flex items-center gap-1 rounded-full bg-ig-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow transition-all hover:shadow-strong"
                 >
-                  Sign Up
+                  Start free →
                 </Link>
               </>
             )}
@@ -230,15 +256,26 @@ export default function PricingContent() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Simple, Transparent Pricing
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Choose the plan that fits your Instagram automation needs. Upgrade anytime.
-          </p>
+      {/* Hero — gradient wash + gradient-text headline, consistent with
+          the landing hero but visually distinct (no inline product mock,
+          no social-proof strip; those live on /). */}
+      <section className="relative overflow-hidden bg-hero-glow">
+        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-pink-200/30 blur-3xl dark:bg-pink-900/20" />
+        <div className="section py-20 sm:py-24">
+          <div className="mx-auto max-w-3xl text-center animate-fade-up">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/80 px-4 py-1.5 text-xs font-medium text-gray-700 shadow-soft backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Transparent pricing · GST invoices · UPI & cards
+            </div>
+            <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 sm:text-6xl dark:text-white">
+              Scale on your terms,{" "}
+              <span className="gradient-text">pay only when you grow</span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-gray-600 dark:text-gray-400">
+              Start free with 500 DMs/month, forever. Upgrade only when you
+              need more — no contracts, cancel anytime, GST-compliant invoices.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -246,24 +283,24 @@ export default function PricingContent() {
           Agency (unlimited) lives in its own band below because it's usually
           a conversation (custom seat counts, white-label branding) rather
           than a Razorpay click. */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Billing cycle toggle — monthly (default) vs yearly (2 months
-            free). Free tier ignores the toggle (still "forever"); paid tiers
-            switch price + priceSuffix live via billingCycle prop. */}
-        <div className="flex flex-col items-center mb-10">
+      <section className="section pb-10">
+        {/* Billing cycle toggle — monthly (default) vs yearly. Promoted
+            above the cards with a card-style container + 2-months-free
+            green pill on the yearly tab so the saving signals clearly. */}
+        <div className="mb-14 flex flex-col items-center">
           <div
             role="tablist"
             aria-label="Billing cycle"
-            className="inline-flex items-center bg-gray-100 dark:bg-gray-800 rounded-full p-1"
+            className="inline-flex items-center rounded-full border border-gray-200 bg-white p-1 shadow-soft dark:border-gray-800 dark:bg-gray-900"
           >
             <button
               role="tab"
               aria-selected={billingCycle === "monthly"}
               onClick={() => setBillingCycle("monthly")}
-              className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+              className={`rounded-full px-6 py-2 text-sm font-semibold transition-all ${
                 billingCycle === "monthly"
-                  ? "bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  ? "bg-gray-900 text-white shadow-medium dark:bg-white dark:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
               }`}
             >
               Monthly
@@ -272,21 +309,27 @@ export default function PricingContent() {
               role="tab"
               aria-selected={billingCycle === "yearly"}
               onClick={() => setBillingCycle("yearly")}
-              className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors inline-flex items-center gap-2 ${
+              className={`inline-flex items-center gap-2 rounded-full px-6 py-2 text-sm font-semibold transition-all ${
                 billingCycle === "yearly"
-                  ? "bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow"
-                  : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                  ? "bg-gray-900 text-white shadow-medium dark:bg-white dark:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
               }`}
             >
               Yearly
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  billingCycle === "yearly"
+                    ? "bg-emerald-200 text-emerald-800"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
+                }`}
+              >
                 2 MONTHS FREE
               </span>
             </button>
           </div>
           {billingCycle === "yearly" && (
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-              Save ~17% with yearly billing — pay for 10 months, get 12.
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+              Save ~17% — pay for 10 months, get 12.
             </p>
           )}
         </div>
@@ -380,63 +423,65 @@ export default function PricingContent() {
             self-serve today would set the wrong expectation. Sales conversations
             let us scope the deal and give a real ETA on white-label. Once
             white-label ships we'll re-enable the "or subscribe now" button. */}
-        <div className="mt-8 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 dark:from-gray-950 dark:to-gray-900 border border-gray-700 p-8 sm:p-10">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div className="relative mt-10 overflow-hidden rounded-3xl bg-gray-900 p-8 shadow-strong sm:p-10">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-60 bg-ig-gradient"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-grid-light bg-grid-20 opacity-20"
+            aria-hidden
+          />
+          <div className="relative flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h3 className="text-2xl font-bold text-white">Agency</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <h3 className="text-3xl font-bold tracking-tight text-white">
+                  Agency
+                </h3>
+                <span className="rounded-full border border-amber-400/50 bg-amber-500/20 px-2.5 py-0.5 text-xs font-semibold text-amber-200">
                   ENTERPRISE
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                <span className="rounded-full border border-white/40 bg-white/20 px-2.5 py-0.5 text-xs font-semibold text-white">
                   EARLY ACCESS
                 </span>
               </div>
-              <p className="text-gray-300 mb-4">
+              <p className="mb-5 max-w-2xl text-base leading-relaxed text-white/90">
                 Everything in Business, plus unlimited DMs, unlimited Instagram
                 accounts, a dedicated account manager, and{" "}
-                <span className="text-white font-semibold">
+                <span className="font-semibold text-white underline decoration-white/40 underline-offset-4">
                   early access to white-label branding
                 </span>{" "}
                 (Q1 2027). Ideal for agencies managing 10+ client handles.
               </p>
-              <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-200">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span> Unlimited DMs
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span> Unlimited accounts
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span> CSV export
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-emerald-400">✓</span> Dedicated manager
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-amber-300">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/90">
+                <AgencyCheck>Unlimited DMs</AgencyCheck>
+                <AgencyCheck>Unlimited accounts</AgencyCheck>
+                <AgencyCheck>CSV export</AgencyCheck>
+                <AgencyCheck>Dedicated manager</AgencyCheck>
+                <span className="inline-flex items-center gap-1.5 text-amber-200">
                   <span>◔</span> White-label · Q1 2027
                 </span>
               </div>
             </div>
-            <div className="flex flex-col items-stretch gap-3 min-w-fit lg:min-w-[220px]">
+            <div className="flex min-w-fit flex-col items-stretch gap-3 lg:min-w-[240px]">
               <div className="text-center lg:text-right">
-                <div className="text-3xl font-bold text-white">
+                <div className="text-4xl font-bold tracking-tight text-white">
                   From {PLANS.agency.price_label}
-                  <span className="text-base font-normal text-gray-400 ml-1">
+                  <span className="ml-1 text-base font-normal text-white/70">
                     /month
                   </span>
                 </div>
-                <div className="text-xs text-gray-400 mt-0.5">
+                <div className="mt-1 text-xs text-white/70">
                   Custom pricing on annual & bulk
                 </div>
               </div>
               <a
                 href="mailto:dmshiyamofficial@gmail.com?subject=Agency%20plan%20enquiry&body=Hi%20DM%20Shiyam%20team%2C%0A%0AI%27m%20interested%20in%20the%20Agency%20plan.%20A%20few%20details%20about%20us%3A%0A%0AAgency%20name%3A%0A%23%20of%20client%20IG%20accounts%3A%0AExpected%20monthly%20DM%20volume%3A%0AWebsite%3A%0AInterested%20in%20white-label%20early%20access%3F%20(Y%2FN)%3A%0A%0AThanks!"
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition"
+                className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-gray-900 shadow-strong transition-all hover:scale-[1.02]"
               >
-                Talk to sales
+                Talk to sales →
               </a>
-              <span className="text-xs text-gray-500 text-center">
+              <span className="text-center text-xs text-white/70">
                 We reply within 24 hours
               </span>
             </div>
@@ -594,13 +639,18 @@ export default function PricingContent() {
       </section>
 
       {/* FAQ Section */}
-      <section className="bg-gray-50 dark:bg-gray-900 py-16 sm:py-24">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white text-center mb-12">
-            Frequently Asked Questions
-          </h2>
+      <section className="bg-gray-50 py-24 sm:py-32 dark:bg-gray-900">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-14 text-center">
+            <h2 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
+              Questions, <span className="gradient-text">straight answers</span>
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Everything you need to know before upgrading.
+            </p>
+          </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             <FAQItem
               question="Can I upgrade or downgrade anytime?"
               answer="Yes, anytime. When you upgrade, your new plan starts right away and you get more DMs instantly. When you downgrade, your current plan keeps running until it ends — so you don't lose any days you've already paid for."
@@ -657,80 +707,103 @@ export default function PricingContent() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 rounded-2xl p-12 sm:p-16 text-center">
-          <h2 className="text-4xl font-bold text-white mb-4">
-            Ready to automate your DMs?
-          </h2>
-          <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
-            Start free with 500 DMs/month — no credit card, no time limit. Upgrade only when you outgrow it.
-          </p>
-          <Link
-            href="/register"
-            className="inline-block px-8 py-4 bg-white text-indigo-600 font-bold rounded-lg hover:bg-gray-100 transition-colors text-lg"
-          >
-            Get Started Free
-          </Link>
+      {/* CTA Section — mirrors the landing CTA for brand consistency */}
+      <section className="section pb-24 pt-10 sm:pb-32">
+        <div className="relative overflow-hidden rounded-3xl bg-gray-900 p-10 text-center shadow-strong sm:p-16">
+          <div className="pointer-events-none absolute inset-0 opacity-80 bg-ig-gradient" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 bg-grid-light bg-grid-20 opacity-20" aria-hidden />
+          <div className="relative mx-auto max-w-2xl">
+            <h2 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+              Ready to turn comments into conversations?
+            </h2>
+            <p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
+              Start free with 500 DMs/month. No credit card, no time limit —
+              upgrade only when you outgrow it.
+            </p>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-gray-900 shadow-strong transition-all hover:scale-[1.02]"
+            >
+              Get started free →
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 dark:bg-black text-white py-12 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-xl font-bold mb-4">DM Shiyam</h3>
-              <p className="text-gray-400 text-sm">
-                Automate your Instagram DMs and grow faster.
+      {/* Footer — identical to LandingContent so cross-page brand is consistent */}
+      <footer className="border-t border-gray-100 bg-white py-14 dark:border-gray-800 dark:bg-gray-950">
+        <div className="section">
+          <div className="mb-10 grid grid-cols-2 gap-10 md:grid-cols-4">
+            <div className="col-span-2">
+              <Link href="/" className="mb-4 inline-flex items-center gap-2.5">
+                <span className="logo-tile h-9 w-9 overflow-hidden">
+                  <Image
+                    src="/logo.jpeg"
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 object-cover"
+                  />
+                </span>
+                <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+                  DM Shiyam
+                </span>
+              </Link>
+              <p className="max-w-xs text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                Turn Instagram comments into personal DMs. Fully automated,
+                Meta-approved, built for Indian creators.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-white">
+                Product
+              </h4>
+              <ul className="space-y-2.5 text-sm text-gray-500 dark:text-gray-400">
                 <li>
-                  <Link href="/" className="hover:text-white">
+                  <Link href="/" className="transition-colors hover:text-gray-900 dark:hover:text-white">
                     Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-white">
+                  <Link href="/pricing" className="transition-colors hover:text-gray-900 dark:hover:text-white">
                     Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="transition-colors hover:text-gray-900 dark:hover:text-white">
+                    Blog
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-white">
+                Legal
+              </h4>
+              <ul className="space-y-2.5 text-sm text-gray-500 dark:text-gray-400">
                 <li>
-                  <Link href="/privacy" className="hover:text-white">
+                  <Link href="/privacy" className="transition-colors hover:text-gray-900 dark:hover:text-white">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="hover:text-white">
+                  <Link href="/terms" className="transition-colors hover:text-gray-900 dark:hover:text-white">
                     Terms of Service
                   </Link>
                 </li>
+                <li>
+                  <a
+                    href="mailto:dmshiyamofficial@gmail.com"
+                    className="transition-colors hover:text-gray-900 dark:hover:text-white"
+                  >
+                    Contact
+                  </a>
+                </li>
               </ul>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Contact</h4>
-              <p className="text-gray-400 text-sm">
-                <a
-                  href="mailto:dmshiyamofficial@gmail.com"
-                  className="hover:text-white"
-                >
-                  dmshiyamofficial@gmail.com
-                </a>
-              </p>
-            </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
-            <p>
-              &copy; {new Date().getFullYear()} DM Shiyam. All rights reserved.
-            </p>
+          <div className="border-t border-gray-100 pt-6 text-center text-sm text-gray-400 dark:border-gray-800">
+            © {new Date().getFullYear()} DM Shiyam. All rights reserved.
           </div>
         </div>
       </footer>
@@ -746,15 +819,39 @@ function FeatureItem({
   included?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className={included ? "text-green-500 text-lg" : "text-gray-300 text-lg"}>
-        {included ? "✓" : "✗"}
-      </span>
+    <div className="flex items-start gap-3 text-sm">
+      {included ? (
+        <svg
+          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z"
+            clipRule="evenodd"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="mt-0.5 h-4 w-4 shrink-0 text-gray-300 dark:text-gray-700"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+            clipRule="evenodd"
+          />
+        </svg>
+      )}
       <span
         className={
           included
             ? "text-gray-700 dark:text-gray-300"
-            : "text-gray-500 dark:text-gray-500"
+            : "text-gray-400 line-through dark:text-gray-600"
         }
       >
         {children}
@@ -860,16 +957,16 @@ function PricingCard({
       ? `₹${Math.round(effectiveMonthlyPaise / 100).toLocaleString("en-IN")}`
       : null;
 
-  // Button visual style differs per tier so the buyer's eye lands on Pro.
-  // Pro = solid indigo (primary), Business = dark slate (secondary),
-  // Starter = outlined indigo (tertiary), Free = neutral (utility).
+  // Button visual language — Pro (popular) gets the full brand gradient
+  // button so the eye lands there; Business the dark slate anchor,
+  // Starter a subtle outlined pill, Free a neutral utility button.
   const buttonClass = popular
-    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+    ? "bg-ig-gradient bg-[length:200%_200%] text-white shadow-strong hover:bg-[position:100%_0] hover:shadow-glow"
     : plan === "business"
-      ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
+      ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
       : plan === "starter"
-        ? "border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-        : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600";
+        ? "border-2 border-pink-200 bg-white text-pink-700 hover:border-pink-300 hover:bg-pink-50 dark:border-pink-900/40 dark:bg-gray-900 dark:text-pink-300 dark:hover:bg-pink-950/40"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700";
 
   const buttonLabel = isCurrent
     ? "Current Plan"
@@ -885,33 +982,35 @@ function PricingCard({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-xl border-2 p-6 sm:p-8 relative flex flex-col ${
+      className={`relative flex flex-col rounded-2xl p-7 transition-all sm:p-8 ${
         popular
-          ? "border-indigo-600 shadow-lg lg:scale-[1.02]"
-          : "border-gray-200 dark:border-gray-700"
+          ? "border border-transparent bg-white shadow-strong [background:linear-gradient(white,white)_padding-box,linear-gradient(135deg,#f09433,#dc2743,#bc1888)_border-box] lg:-translate-y-2 dark:bg-gray-900 dark:[background:linear-gradient(rgb(17_24_39),rgb(17_24_39))_padding-box,linear-gradient(135deg,#f09433,#dc2743,#bc1888)_border-box] [border-width:2px]"
+          : "border border-gray-200 bg-white shadow-soft hover:-translate-y-0.5 hover:shadow-medium dark:border-gray-800 dark:bg-gray-900"
       }`}
     >
       {popular && (
-        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-          <span className="bg-indigo-600 text-white px-4 py-1 rounded-full text-sm font-semibold whitespace-nowrap">
-            POPULAR
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-ig-gradient px-3.5 py-1 text-xs font-semibold text-white shadow-glow">
+            ★ POPULAR
           </span>
         </div>
       )}
 
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <div className="mb-5">
+        <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           {p.name}
         </h3>
-        <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">{tagline}</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          {tagline}
+        </p>
       </div>
 
       <div className="mb-6">
-        <div>
-          <span className="text-4xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
             {priceLabel}
           </span>
-          <span className="text-gray-600 dark:text-gray-400 ml-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             {priceSuffix}
           </span>
         </div>
@@ -926,14 +1025,14 @@ function PricingCard({
         isCurrent ? (
           <button
             disabled
-            className="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg mb-8 cursor-not-allowed"
+            className="mb-7 w-full cursor-not-allowed rounded-full bg-gray-100 py-3 px-4 text-sm font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             Current Plan
           </button>
         ) : (
           <Link
             href={isAuthed ? "/dashboard" : "/register"}
-            className={`block text-center w-full py-3 px-4 font-semibold rounded-lg mb-8 transition-colors ${buttonClass}`}
+            className={`mb-7 block w-full rounded-full py-3 px-4 text-center text-sm font-semibold transition-all ${buttonClass}`}
           >
             {buttonLabel}
           </Link>
@@ -942,13 +1041,13 @@ function PricingCard({
         <button
           onClick={() => onCheckout(plan as "starter" | "pro" | "business")}
           disabled={isCurrent || isLoading}
-          className={`w-full py-3 px-4 font-semibold rounded-lg mb-8 transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${buttonClass}`}
+          className={`mb-7 w-full rounded-full py-3 px-4 text-sm font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed ${buttonClass}`}
         >
           {buttonLabel}
         </button>
       )}
 
-      <div className="space-y-3 flex-1">
+      <div className="flex-1 space-y-2.5 border-t border-gray-100 pt-6 dark:border-gray-800">
         {features.map((f) => (
           <FeatureItem key={f} included>
             {f}
@@ -962,6 +1061,26 @@ function PricingCard({
   );
 }
 
+function AgencyCheck({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <svg
+        className="h-4 w-4 text-emerald-300"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z"
+          clipRule="evenodd"
+        />
+      </svg>
+      {children}
+    </span>
+  );
+}
+
 function FAQItem({
   question,
   answer,
@@ -972,16 +1091,30 @@ function FAQItem({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="border border-gray-300 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className={`rounded-2xl border bg-white p-6 transition-all dark:bg-gray-900 ${
+        open
+          ? "border-gray-200 shadow-medium dark:border-gray-800"
+          : "border-gray-200 dark:border-gray-800"
+      }`}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full text-left font-semibold text-gray-900 dark:text-white flex items-center justify-between hover:text-indigo-600 dark:hover:text-indigo-400"
+        className="flex w-full items-center justify-between gap-6 text-left font-semibold text-gray-900 dark:text-white"
       >
-        {question}
-        <span className="text-2xl">{open ? "−" : "+"}</span>
+        <span className="text-base sm:text-lg">{question}</span>
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all ${
+            open
+              ? "rotate-45 bg-ig-gradient text-white"
+              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          }`}
+        >
+          +
+        </span>
       </button>
       {open && (
-        <p className="mt-4 text-gray-700 dark:text-gray-400 leading-relaxed">
+        <p className="mt-4 leading-relaxed text-gray-600 dark:text-gray-400">
           {answer}
         </p>
       )}

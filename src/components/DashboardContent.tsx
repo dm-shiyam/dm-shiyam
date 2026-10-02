@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import ThemeToggle from "@/components/ThemeToggle";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import FeedbackButton from "@/components/FeedbackButton";
@@ -300,25 +301,35 @@ export default function DashboardContent() {
     ((session.user as Record<string, unknown>)?.plan as string) || "free";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50 font-sans dark:bg-gray-950">
+      {/* Header — matches landing/pricing shell for brand consistency:
+          same logo tile, same backdrop-blur glass, same gap/padding rhythm.
+          Right side carries the dashboard-specific plan + status chips. */}
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="rounded-full p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              title="Home"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-purple-600">
-                <Send className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-lg font-bold dark:text-white">
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="logo-tile h-9 w-9 overflow-hidden">
+                <Image
+                  src="/logo.jpeg"
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 object-cover"
+                  priority
+                />
+              </span>
+              <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
                 DM Shiyam
               </span>
-            </div>
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             {userPlan !== "free" ? (
@@ -329,10 +340,10 @@ export default function DashboardContent() {
                     nothing (reported 2026-10-02). */}
                 <Link
                   href="/pricing"
-                  className="inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200 hover:brightness-95 transition"
+                  className="inline-flex items-center gap-1 rounded-full border border-pink-200 bg-gradient-to-r from-pink-50 via-rose-50 to-orange-50 px-3 py-1 text-xs font-semibold text-pink-700 shadow-soft transition-all hover:border-pink-300 hover:shadow-medium dark:border-pink-900/40 dark:from-pink-950/40 dark:via-rose-950/40 dark:to-orange-950/40 dark:text-pink-300"
                   title="See plans"
                 >
-                  <Crown className="h-3 w-3" />{" "}
+                  <Crown className="h-3 w-3" />
                   {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
                 </Link>
                 {subscriptionStatus === "cancelled" ? (
@@ -375,7 +386,7 @@ export default function DashboardContent() {
               // pill in the header solves that without polluting every tab.
               <Link
                 href="/pricing"
-                className="hidden sm:inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-opacity"
+                className="hidden sm:inline-flex items-center gap-1 rounded-full bg-ig-gradient bg-[length:200%_200%] px-3.5 py-1.5 text-xs font-semibold text-white shadow-glow transition-all hover:bg-[position:100%_0] hover:shadow-strong"
                 title="See plans"
               >
                 <Crown className="h-3 w-3" />
@@ -449,7 +460,7 @@ export default function DashboardContent() {
             was unclear. Now: full labels always, horizontal scroll on
             overflow, py-2.5 for iOS 44px tap-target compliance. */}
         <div
-          className="mb-6 flex flex-nowrap gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 scrollbar-hide dark:bg-gray-800"
+          className="mb-8 flex flex-nowrap gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white p-1 shadow-soft scrollbar-hide dark:border-gray-800 dark:bg-gray-900"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {[
@@ -468,10 +479,10 @@ export default function DashboardContent() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2.5 text-sm font-medium transition-all ${
+              className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${
                 activeTab === tab.id
-                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "bg-gray-900 text-white shadow-medium dark:bg-white dark:text-gray-900"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
               }`}
             >
               <tab.icon className="h-4 w-4 flex-shrink-0" />
@@ -795,18 +806,23 @@ function StatsGrid({ stats }: { stats: DashboardStats }) {
   ];
 
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 w-full">
+    <div className="mb-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {cards.map((card) => (
-        <div key={card.label} className="card">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        <div
+          key={card.label}
+          className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-medium dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               {card.label}
             </span>
             <div className={`rounded-lg p-1.5 ${card.color}`}>
               <card.icon className="h-3.5 w-3.5" />
             </div>
           </div>
-          <p className="text-2xl font-bold">{card.value}</p>
+          <p className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            {card.value}
+          </p>
         </div>
       ))}
     </div>

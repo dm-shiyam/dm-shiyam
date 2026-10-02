@@ -88,9 +88,10 @@ function wrapTemplate(body: string): string {
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">
 
         <!-- Header -->
-        <div style="padding:28px 32px 20px;text-align:center;border-bottom:1px solid #f1f5f9;">
-          <img src="${LOGO_URL}" alt="${APP_NAME}" width="56" height="56" style="display:inline-block;width:56px;height:56px;border-radius:12px;object-fit:cover;" />
-          <div style="margin-top:10px;font-size:16px;font-weight:700;letter-spacing:-0.01em;color:#111827;">${APP_NAME}</div>
+        <div style="padding:32px 32px 24px;text-align:center;border-bottom:1px solid #f1f5f9;">
+          <img src="${LOGO_URL}" alt="${APP_NAME}" width="88" height="88" style="display:inline-block;width:88px;height:88px;border-radius:16px;object-fit:cover;box-shadow:0 2px 8px rgba(99,102,241,0.12);" />
+          <div style="margin-top:14px;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#111827;">${APP_NAME}</div>
+          <div style="margin-top:4px;font-size:12px;color:#6b7280;">Instagram DM automation on autopilot</div>
         </div>
 
         <!-- Body -->
@@ -660,6 +661,12 @@ export async function sendSubscriptionCancellationScheduled({
   cycleEndUnix?: number | null;
 }) {
   const planTxt = planLabel(plan);
+  // Fall back to a human phrase when Razorpay didn't return a cycle end
+  // (fallback cancel paths — stale sub id, comp'd accounts, mock subs).
+  // Showing an em-dash looks like a bug in the email; the sentence works.
+  const accessUntil = cycleEndUnix
+    ? formatDate(cycleEndUnix)
+    : "End of your current billing cycle";
   return sendEmail({
     to,
     subject: `Your ${APP_NAME} subscription is scheduled to cancel`,
@@ -669,7 +676,7 @@ export async function sendSubscriptionCancellationScheduled({
       <p style="margin:0 0 12px;">Your ${APP_NAME} <strong>${planTxt}</strong> subscription has been scheduled to cancel. You won't be charged again.</p>
       ${infoCard([
         { label: "Plan", value: planTxt },
-        { label: "Access until", value: formatDate(cycleEndUnix) },
+        { label: "Access until", value: accessUntil },
         { label: "What happens next", value: "Auto-downgrade to Free" },
       ])}
       <p style="margin:0 0 12px;">You'll keep full access to ${APP_NAME} ${planTxt} until the end of your current billing cycle. After that your account automatically moves to the Free plan (500 DMs/month) — your data, automations, and connected accounts stay put.</p>

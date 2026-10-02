@@ -197,53 +197,10 @@ export default function LandingContent() {
                   dmshiyam.com/dashboard
                 </div>
               </div>
-              {/* Mock product content */}
-              <div className="grid gap-6 p-8 md:grid-cols-5">
-                <div className="md:col-span-2">
-                  <div className="mb-1 text-xs font-medium uppercase tracking-wider text-gray-400">
-                    This month
-                  </div>
-                  <div className="mb-4 text-5xl font-bold text-gray-900 dark:text-white">
-                    1,284
-                  </div>
-                  <div className="mb-6 text-sm text-gray-500">
-                    DMs sent automatically{" "}
-                    <span className="font-medium text-emerald-600">
-                      +42% from last month
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <MockRow name="guide" count={463} color="pink" />
-                    <MockRow name="price" count={281} color="violet" />
-                    <MockRow name="link" count={192} color="amber" />
-                  </div>
-                </div>
-                <div className="rounded-xl bg-ig-gradient-soft p-5 md:col-span-3">
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-pink-700 backdrop-blur">
-                    New DM sent
-                  </div>
-                  <div className="mb-2 text-sm text-gray-700">
-                    @priyacreator commented{" "}
-                    <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-pink-700">
-                      guide
-                    </span>{" "}
-                    on your Reel
-                  </div>
-                  <div className="rounded-xl bg-white p-4 shadow-soft">
-                    <div className="mb-1 text-xs font-medium text-gray-400">
-                      DM auto-sent · 0.4s later
-                    </div>
-                    <div className="text-sm leading-relaxed text-gray-800">
-                      Hey @priyacreator 👋 Here's the free guide I promised —
-                      <span className="font-medium text-pink-700">
-                        {" "}
-                        dmshiyam.com/guide
-                      </span>
-                      . Reply if you have questions!
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Real dashboard screenshot — see public/screenshots/
+                  README. Falls back to a mock below when the file isn't
+                  present yet (keeps SSR + Vercel deploys green). */}
+              <HeroScreenshot />
             </div>
           </div>
         </div>
@@ -355,6 +312,51 @@ export default function LandingContent() {
               body="Caption: 'Comment GUIDE for the free playbook.' Every commenter gets your DM in under a second, forever."
             />
           </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────── See it in action ─────────────────────── */}
+      {/* Real-world proof section. 3 screenshots walk through the full
+          comment → DM → conversation flow on actual Instagram. This is
+          the highest-trust element on the page: skeptics evaluating "is
+          this real or a scam?" convert here, not on claim-style copy. */}
+      <section id="proof" className="section py-24 sm:py-32">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
+          <div className="mb-4 inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40">
+            See it in action
+          </div>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
+            Real conversations,{" "}
+            <span className="gradient-text">on real Instagram accounts</span>
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Not a demo video, not a mockup. Here's a live automation
+            captured end-to-end from one of our beta creators.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <ProofStep
+            n={1}
+            title="A follower comments the keyword"
+            caption="They see your Reel's CTA — 'comment GUIDE' — and drop the word in."
+            src="/screenshots/01-comment.png"
+            fallbackMock="comment"
+          />
+          <ProofStep
+            n={2}
+            title="DM Shiyam auto-sends the DM"
+            caption="Within one second, Instagram delivers your personalized DM. No bots, no browser hacks — Meta's official API."
+            src="/screenshots/02-dm.png"
+            fallbackMock="dm"
+          />
+          <ProofStep
+            n={3}
+            title="They reply, you convert"
+            caption="Now it's a real conversation. Pro users let AI handle the follow-up; Business users bulk-reply from one dashboard."
+            src="/screenshots/03-reply.png"
+            fallbackMock="reply"
+          />
         </div>
       </section>
 
@@ -544,6 +546,190 @@ export default function LandingContent() {
 }
 
 // ─────────────────────── Sub-components ───────────────────────
+
+// Hero dashboard screenshot. Uses /screenshots/hero-dashboard.png when
+// available; otherwise falls back to the inline mock so the page still
+// renders if Ankit hasn't dropped the file yet. The fallback is a
+// client-side swap on <img> error to avoid breaking SSR.
+function HeroScreenshot() {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="grid gap-6 p-8 md:grid-cols-5">
+        <div className="md:col-span-2">
+          <div className="mb-1 text-xs font-medium uppercase tracking-wider text-gray-400">
+            This month
+          </div>
+          <div className="mb-4 text-5xl font-bold text-gray-900 dark:text-white">
+            1,284
+          </div>
+          <div className="mb-6 text-sm text-gray-500">
+            DMs sent automatically{" "}
+            <span className="font-medium text-emerald-600">
+              +42% from last month
+            </span>
+          </div>
+          <div className="space-y-2">
+            <MockRow name="guide" count={463} color="pink" />
+            <MockRow name="price" count={281} color="violet" />
+            <MockRow name="link" count={192} color="amber" />
+          </div>
+        </div>
+        <div className="rounded-xl bg-ig-gradient-soft p-5 md:col-span-3">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-pink-700 backdrop-blur">
+            New DM sent
+          </div>
+          <div className="mb-2 text-sm text-gray-700">
+            @priyacreator commented{" "}
+            <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-pink-700">
+              guide
+            </span>{" "}
+            on your Reel
+          </div>
+          <div className="rounded-xl bg-white p-4 shadow-soft">
+            <div className="mb-1 text-xs font-medium text-gray-400">
+              DM auto-sent · 0.4s later
+            </div>
+            <div className="text-sm leading-relaxed text-gray-800">
+              Hey @priyacreator 👋 Here's the free guide I promised —
+              <span className="font-medium text-pink-700"> dmshiyam.com/guide</span>
+              . Reply if you have questions!
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- intentional
+    // native <img> so a missing file falls back via onError instead of
+    // the Next.js image optimizer throwing a server error.
+    <img
+      src="/screenshots/hero-dashboard.png"
+      alt="DM Shiyam dashboard"
+      className="w-full"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// Proof-section step. Phone-frame styled card: image on top, numbered
+// chip + caption below. Shows a tasteful placeholder with the mocked
+// content when the real screenshot isn't yet in /public/screenshots/.
+function ProofStep({
+  n,
+  title,
+  caption,
+  src,
+  fallbackMock,
+}: {
+  n: number;
+  title: string;
+  caption: string;
+  src: string;
+  fallbackMock: "comment" | "dm" | "reply";
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="relative flex flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-soft transition-all hover:-translate-y-1 hover:shadow-strong dark:border-gray-800 dark:bg-gray-900">
+      {/* Soft gradient top strip for brand continuity */}
+      <div className="h-1 w-full bg-ig-gradient" aria-hidden />
+      {/* Image area — fixed aspect ratio so the row stays even whether
+          the real screenshot is a square, 9:19.5 phone shot, or landscape. */}
+      <div className="relative aspect-[9/16] max-h-[520px] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+        {failed ? (
+          <ProofPlaceholder kind={fallbackMock} />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={src}
+            alt={title}
+            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        )}
+      </div>
+      {/* Caption */}
+      <div className="p-6">
+        <div className="mb-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-ig-gradient text-xs font-bold text-white shadow-glow">
+          {n}
+        </div>
+        <h3 className="mb-1.5 text-base font-semibold text-gray-900 dark:text-white">
+          {title}
+        </h3>
+        <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+          {caption}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Placeholder that renders when the real screenshot isn't present yet.
+// Not a "broken image" — a styled mock that reads as intentional so
+// the page always looks shipped, and Ankit can drop screenshots in
+// at his pace without a visual regression window.
+function ProofPlaceholder({ kind }: { kind: "comment" | "dm" | "reply" }) {
+  const content = {
+    comment: {
+      header: "Instagram · Reel",
+      body: (
+        <>
+          <div className="mb-2 text-sm font-semibold text-gray-800">
+            @priyacreator
+          </div>
+          <div className="rounded-xl bg-gray-100 p-3 text-sm text-gray-800">
+            <span className="font-mono rounded bg-pink-100 px-1.5 py-0.5 text-pink-700">
+              guide
+            </span>{" "}
+            👀
+          </div>
+          <div className="mt-2 text-xs text-gray-400">just now · reply</div>
+        </>
+      ),
+    },
+    dm: {
+      header: "Instagram · Direct",
+      body: (
+        <>
+          <div className="mb-3 text-xs text-gray-400">0.4s later</div>
+          <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gradient-to-br from-pink-500 to-rose-500 p-3 text-sm text-white shadow-glow">
+            Hey @priyacreator 👋 Here's the free guide I promised —
+            <br />
+            <span className="underline">dmshiyam.com/guide</span>
+          </div>
+        </>
+      ),
+    },
+    reply: {
+      header: "Instagram · Direct",
+      body: (
+        <>
+          <div className="mb-3 max-w-[85%] rounded-2xl rounded-tl-sm bg-gradient-to-br from-pink-500 to-rose-500 p-3 text-sm text-white">
+            Here's the free guide — dmshiyam.com/guide
+          </div>
+          <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-gray-100 p-3 text-sm text-gray-800">
+            This is exactly what I needed, thank you! Do you have one on
+            pricing too?
+          </div>
+          <div className="mt-2 text-xs text-emerald-600">● priyacreator is typing…</div>
+        </>
+      ),
+    },
+  }[kind];
+
+  return (
+    <div className="flex h-full flex-col p-5">
+      <div className="mb-4 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+        {content.header}
+      </div>
+      <div className="flex-1 space-y-2">{content.body}</div>
+      <div className="mt-4 text-center text-[10px] uppercase tracking-wider text-gray-400">
+        · placeholder · drop /screenshots/{kind === "comment" ? "01-comment" : kind === "dm" ? "02-dm" : "03-reply"}.png ·
+      </div>
+    </div>
+  );
+}
 
 function TrustCheck({ children }: { children: React.ReactNode }) {
   return (

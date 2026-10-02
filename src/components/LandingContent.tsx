@@ -603,11 +603,14 @@ function HeroScreenshot() {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- intentional
     // native <img> so a missing file falls back via onError instead of
-    // the Next.js image optimizer throwing a server error.
+    // the Next.js image optimizer throwing a server error. `block +
+    // h-auto` keeps the native aspect ratio of the screenshot — no
+    // cropping, no stretching — regardless of what resolution/aspect
+    // Ankit uploads.
     <img
       src="/screenshots/hero-dashboard.png"
       alt="DM Shiyam dashboard"
-      className="w-full"
+      className="block h-auto w-full"
       onError={() => setFailed(true)}
     />
   );
@@ -634,9 +637,11 @@ function ProofStep({
     <div className="relative flex flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-soft transition-all hover:-translate-y-1 hover:shadow-strong dark:border-gray-800 dark:bg-gray-900">
       {/* Soft gradient top strip for brand continuity */}
       <div className="h-1 w-full bg-ig-gradient" aria-hidden />
-      {/* Image area — fixed aspect ratio so the row stays even whether
-          the real screenshot is a square, 9:19.5 phone shot, or landscape. */}
-      <div className="relative aspect-[9/16] max-h-[520px] overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+      {/* Image area — matches a real iPhone 14 screenshot ratio (1170×2532
+          ≈ 9:19.5) so uncropped phone shots fill the frame with minimal
+          letterboxing. `object-contain` guarantees we never slice text or
+          avatars off the sides/top of the user's screenshot. */}
+      <div className="relative aspect-[9/19.5] max-h-[640px] overflow-hidden bg-gray-50 dark:bg-gray-800">
         {failed ? (
           <ProofPlaceholder kind={fallbackMock} />
         ) : (
@@ -644,7 +649,7 @@ function ProofStep({
           <img
             src={src}
             alt={title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             onError={() => setFailed(true)}
           />
         )}

@@ -10,6 +10,13 @@ import type { PlanType } from "@/types";
 import crypto from "crypto";
 import { captureError, captureAlert } from "@/lib/monitoring";
 import { trackServerEvent } from "@/lib/analytics-server";
+import {
+  sendSubscriptionActivated,
+  sendPaymentReceived,
+  sendPaymentFailed,
+  sendSubscriptionEnded,
+  sendRefundInitiated,
+} from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -42,6 +49,11 @@ export async function POST(request: NextRequest) {
       subscription?: {
         entity?: {
           id?: string;
+          // Unix seconds — the start of the next billing cycle. Present on
+          // activated/charged events; what we show as "Next billing date"
+          // in receipt emails.
+          charge_at?: number;
+          current_end?: number;
           notes?: {
             user_id?: string;
             plan?: string;
@@ -53,8 +65,23 @@ export async function POST(request: NextRequest) {
       payment?: {
         entity?: {
           id?: string;
+          // Paise. Present on payment.* and refund.* events (the latter as
+          // the amount of the *original* captured payment).
+          amount?: number;
           error_reason?: string;
           error_description?: string;
+          notes?: {
+            user_id?: string;
+            plan?: string;
+            cycle?: string;
+          };
+        };
+      };
+      refund?: {
+        entity?: {
+          id?: string;
+          amount?: number; // paise refunded (can be partial)
+          payment_id?: string;
           notes?: { user_id?: string };
         };
       };
@@ -83,8 +110,12 @@ export async function POST(request: NextRequest) {
   const payload = event.payload;
   const subEntity = payload?.subscription?.entity;
   const payEntity = payload?.payment?.entity;
+  const refundEntity = payload?.refund?.entity;
   const userIdFromNotes =
-    subEntity?.notes?.user_id ?? payEntity?.notes?.user_id ?? null;
+    subEntity?.notes?.user_id ??
+    payEntity?.notes?.user_id ??
+    refundEntity?.notes?.user_id ??
+    null;
   const planFromNotes = subEntity?.notes?.plan ?? null;
 
   // ── 3. V6+V7 — Atomic idempotency claim + audit row ──
@@ -133,6 +164,10 @@ export async function POST(request: NextRequest) {
         if (userId) {
           const user = await getUserById(userId);
           if (user) {
+            // Capture the plan the user is losing *before* we downgrade so
+            // the farewell email can show "Previous plan: Pro" instead of
+            // the already-overwritten "Free".
+            const previousPlan = user.plan;
             await updateUserPlan(userId, {
               plan: "free",
               dm_limit: PLANS.free.dm_limit,
@@ -141,6 +176,19 @@ export async function POST(request: NextRequest) {
               razorpay_subscription_id: user.razorpay_subscription_id,
             });
             result = event.event === "subscription.cancelled" ? "cancelled" : "expired";
+
+            // Fire-and-forget — don't fail the webhook if email fails.
+            sendSubscriptionEnded({
+              to: user.email,
+              name: user.name,
+              previousPlan,
+            }).catch((err) =>
+              captureError(err, {
+                route: "billing/webhook",
+                stage: "email_ended",
+                userId,
+              })
+            );
           }
         }
         break;
@@ -216,6 +264,52 @@ export async function POST(request: NextRequest) {
                 { plan: targetPlan, cycle, amount, currency: "INR" }
               );
             }
+
+            // S5.8.4 — Payment lifecycle emails.
+            //   • First activation of a brand-new subscription → "welcome
+            //     to Pro" email which doubles as the receipt for the
+            //     activation charge (so we don't also send
+            //     sendPaymentReceived for the same transaction).
+            //   • Recurring renewal charge → sendPaymentReceived receipt.
+            //   • `wasActive` is the cleanest signal: first charge flips
+            //     subscription_status from 'none'/'cancelled' to 'active'
+            //     for the first time, so wasActive === false means "this
+            //     is the activation event". Guard on planConfig so we
+            //     never email a user with an unknown/garbled plan.
+            if (planConfig) {
+              const cycle = subEntity?.notes?.cycle === "yearly" ? "yearly" : "monthly";
+              const chargedAmount =
+                payEntity?.amount ??
+                (cycle === "yearly" && planConfig.price_yearly
+                  ? planConfig.price_yearly
+                  : planConfig.price_monthly);
+              const nextChargeAt = subEntity?.charge_at ?? null;
+              const emailPromise = !wasActive
+                ? sendSubscriptionActivated({
+                    to: user.email,
+                    name: user.name,
+                    plan: targetPlan,
+                    cycle,
+                    amountPaise: chargedAmount,
+                    nextChargeAtUnix: nextChargeAt,
+                  })
+                : sendPaymentReceived({
+                    to: user.email,
+                    name: user.name,
+                    plan: targetPlan,
+                    cycle,
+                    amountPaise: chargedAmount,
+                    paymentId: payEntity?.id ?? "",
+                    nextChargeAtUnix: nextChargeAt,
+                  });
+              emailPromise.catch((err) =>
+                captureError(err, {
+                  route: "billing/webhook",
+                  stage: wasActive ? "email_charged" : "email_activated",
+                  userId,
+                })
+              );
+            }
           }
         }
         break;
@@ -239,6 +333,86 @@ export async function POST(request: NextRequest) {
           "warning"
         );
         result = `payment_failed:${errorReason}`;
+
+        // Notify the user so they know a charge didn't go through
+        // (and that we'll keep retrying). Needs the user_id in the
+        // original payment's notes — set at checkout time.
+        if (userIdNote) {
+          const user = await getUserById(userIdNote);
+          if (user) {
+            sendPaymentFailed({
+              to: user.email,
+              name: user.name,
+              plan: user.plan,
+              errorReason:
+                payEntity?.error_description ?? errorReason,
+            }).catch((err) =>
+              captureError(err, {
+                route: "billing/webhook",
+                stage: "email_payment_failed",
+                userId: userIdNote,
+              })
+            );
+          }
+        }
+        break;
+      }
+      // S5.8.4 — Refund initiated. Razorpay fires `refund.created` the
+      // instant a refund is kicked off; actual settlement is signalled
+      // later by `refund.processed`. We email on `refund.created` because
+      // the user's main anxiety is "did my refund actually start" — the
+      // "money arrived" part they'll see in their bank/UPI app.
+      case "refund.created": {
+        const refundId = refundEntity?.id ?? "";
+        const paymentId =
+          refundEntity?.payment_id ?? payEntity?.id ?? "";
+        const amount = refundEntity?.amount ?? 0;
+        // Prefer refund.notes.user_id (set manually by ops when they issue
+        // the refund in the dashboard), fall back to the original payment's
+        // notes — we always stuff user_id in there at checkout.
+        const userId =
+          refundEntity?.notes?.user_id ?? payEntity?.notes?.user_id ?? "";
+
+        if (userId && amount > 0) {
+          const user = await getUserById(userId);
+          if (user) {
+            sendRefundInitiated({
+              to: user.email,
+              name: user.name,
+              amountPaise: amount,
+              paymentId,
+              refundId,
+            }).catch((err) =>
+              captureError(err, {
+                route: "billing/webhook",
+                stage: "email_refund",
+                userId,
+                refundId,
+              })
+            );
+            result = `refund_initiated:${amount}paise`;
+          } else {
+            captureAlert(
+              "Razorpay refund.created: user not found",
+              { route: "billing/webhook", userId, refundId },
+              "warning"
+            );
+            result = `refund_initiated_no_user`;
+          }
+        } else {
+          captureAlert(
+            "Razorpay refund.created: missing user_id or amount",
+            {
+              route: "billing/webhook",
+              refundId,
+              paymentId,
+              amount,
+              hasUserId: Boolean(userId),
+            },
+            "warning"
+          );
+          result = `refund_initiated_incomplete`;
+        }
         break;
       }
       default:

@@ -7,6 +7,7 @@ import { getUserByEmail, updateUserPlan } from "@/lib/db";
 import Razorpay from "razorpay";
 import { rateLimit } from "@/lib/rate-limiter";
 import { captureError } from "@/lib/monitoring";
+import { sendSubscriptionCancellationScheduled } from "@/lib/email";
 
 function getRazorpay() {
   return new Razorpay({
@@ -100,8 +101,16 @@ export async function POST(request: NextRequest) {
     // `subscription.cancelled`. This is the "cancel anytime, keep what
     // you paid for" UX we promise in the FAQ.
     const razorpay = getRazorpay();
+    // Razorpay returns the updated subscription object — we lift
+    // current_end off it to show the user when their access actually
+    // ends in the confirmation email ("access until <date>").
+    let cycleEndUnix: number | null = null;
     try {
-      await razorpay.subscriptions.cancel(user.razorpay_subscription_id, true);
+      const updated = (await razorpay.subscriptions.cancel(
+        user.razorpay_subscription_id,
+        true
+      )) as { current_end?: number | null };
+      cycleEndUnix = updated.current_end ?? null;
     } catch (rzpErr: unknown) {
       // Razorpay surfaces its API errors as `{ statusCode, error: { code, description, ... } }`.
       // Reach in defensively — the SDK's TS types don't expose it.
@@ -170,6 +179,23 @@ export async function POST(request: NextRequest) {
       subscription_status: "cancelled",
       razorpay_subscription_id: user.razorpay_subscription_id,
     });
+
+    // Fire-and-forget — a slow email provider shouldn't delay the
+    // success toast the user is waiting on. Email failure is already
+    // captured + we still have the final "ended" email from the webhook
+    // when Razorpay actually cancels at period end.
+    sendSubscriptionCancellationScheduled({
+      to: user.email,
+      name: user.name,
+      plan: user.plan,
+      cycleEndUnix,
+    }).catch((err) =>
+      captureError(err, {
+        route: "billing/cancel",
+        stage: "email_cancel_scheduled",
+        userId: user.id,
+      })
+    );
 
     return NextResponse.json({
       status: "cancelled",

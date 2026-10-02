@@ -54,23 +54,83 @@ async function sendEmail({
 // ═══════════════════════════════════════
 //  Email template wrapper
 // ═══════════════════════════════════════
+//
+// Branded shell applied to every outgoing email. Design goals:
+//   • Logo is a hosted <img> (Gmail/Outlook refuse CID attachments by default).
+//     Served from /public/logo.jpeg — same origin as the app, so no CDN dep.
+//   • Fixed 560px card on a soft neutral canvas — renders predictably in
+//     Gmail web / iOS Mail / Outlook, which all cap width differently.
+//   • All CSS inlined on each element (email clients strip <style>).
+//   • Dark-mode agnostic: light background with high-contrast text so Gmail's
+//     auto dark-mode remap doesn't invert into unreadable blobs.
+
+const LOGO_URL = `${APP_URL}/logo.jpeg`;
+const BRAND_PRIMARY = "#6366f1";
+const SUPPORT_MAILTO = "dmshiyamofficial@gmail.com";
 
 function wrapTemplate(body: string): string {
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                max-width: 520px; margin: 0 auto; padding: 24px;">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="font-size: 20px; color: #6366f1; margin: 0;">${APP_NAME}</h1>
+    <div style="background:#f6f7fb;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;color:#1f2937;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">
+
+        <!-- Header -->
+        <div style="padding:28px 32px 20px;text-align:center;border-bottom:1px solid #f1f5f9;">
+          <img src="${LOGO_URL}" alt="${APP_NAME}" width="56" height="56" style="display:inline-block;width:56px;height:56px;border-radius:12px;object-fit:cover;" />
+          <div style="margin-top:10px;font-size:16px;font-weight:700;letter-spacing:-0.01em;color:#111827;">${APP_NAME}</div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:28px 32px;font-size:15px;line-height:1.65;color:#1f2937;">
+          ${body}
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:20px 32px 28px;background:#fafbfc;border-top:1px solid #f1f5f9;text-align:center;font-size:12px;line-height:1.6;color:#6b7280;">
+          <div style="margin-bottom:6px;">
+            <a href="${APP_URL}" style="color:#6b7280;text-decoration:none;">dmshiyam.com</a>
+            &nbsp;·&nbsp;
+            <a href="mailto:${SUPPORT_MAILTO}" style="color:#6b7280;text-decoration:none;">${SUPPORT_MAILTO}</a>
+          </div>
+          <div style="color:#9ca3af;">You're receiving this because you have an account at ${APP_NAME}.</div>
+        </div>
+
       </div>
-      ${body}
-      <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0 16px;" />
-      <p style="color: #999; font-size: 12px; text-align: center;">
-        ${APP_NAME} &middot;
-        <a href="${APP_URL}" style="color: #999;">dmshiyam.com</a> &middot;
-        <a href="mailto:dmshiyamofficial@gmail.com" style="color: #999;">dmshiyamofficial@gmail.com</a>
-      </p>
     </div>
   `;
+}
+
+// Shared primitives used across templates
+function ctaButton(href: string, label: string, color = BRAND_PRIMARY): string {
+  return `<a href="${href}" style="display:inline-block;margin:20px 0 8px;padding:12px 24px;background:${color};color:#ffffff;border-radius:10px;text-decoration:none;font-weight:600;font-size:14px;">${label}</a>`;
+}
+
+function infoCard(
+  rows: Array<{ label: string; value: string }>,
+  accent = "#f8fafc"
+): string {
+  const trs = rows
+    .map(
+      (r) =>
+        `<tr><td style="padding:8px 0;color:#6b7280;font-size:13px;">${r.label}</td><td style="padding:8px 0;color:#111827;font-size:13px;text-align:right;font-weight:600;">${r.value}</td></tr>`
+    )
+    .join("");
+  return `<table style="width:100%;border-collapse:collapse;background:${accent};border:1px solid #e5e7eb;border-radius:10px;padding:4px 14px;margin:16px 0;"><tbody>${trs}</tbody></table>`;
+}
+
+// Format paise (integer) → ₹X,XXX.XX. Razorpay amounts are always paise.
+function formatInr(paise: number): string {
+  const rupees = paise / 100;
+  return "₹" + rupees.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Format Unix seconds → "15 Nov 2026". null-safe.
+function formatDate(unixSec: number | null | undefined): string {
+  if (!unixSec) return "—";
+  return new Date(unixSec * 1000).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -129,10 +189,6 @@ function escapeHtml(s: string): string {
 //  Sent by /api/cron/send-onboarding-emails (daily) except welcome (immediate).
 //  Idempotency guarded by claimOnboardingEmail() in db.ts.
 // ═══════════════════════════════════════════════════════════════════════════
-
-function ctaButton(href: string, label: string, color = "#6366f1"): string {
-  return `<a href="${href}" style="display:inline-block;margin:20px 0;padding:14px 28px;background:${color};color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">${label}</a>`;
-}
 
 // Email verification (hard-block flow) — sent immediately on credentials signup.
 // Google signups skip this entirely since OAuth already proves ownership.
@@ -428,6 +484,250 @@ export async function sendTokenExpiryWarning({
         Reconnect Instagram
       </a>
       <p style="color: #666; font-size: 14px;">We'll try to auto-refresh your token, but if that fails you may need to reconnect manually.</p>
+    `,
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  S5.8.4 — Payment lifecycle emails
+//  Triggered from the Razorpay webhook (billing/webhook) and the self-serve
+//  cancel API (billing/cancel). Idempotency is enforced upstream by the
+//  billing_events table — if an email helper is called more than once it's
+//  because the handler was called more than once, which can't happen on a
+//  deduped webhook delivery.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  business: "Business",
+  agency: "Agency",
+};
+
+function planLabel(plan: string): string {
+  return PLAN_LABELS[plan] ?? plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+function cycleLabel(cycle: "monthly" | "yearly"): string {
+  return cycle === "yearly" ? "Yearly" : "Monthly";
+}
+
+// 1 — Subscription activated. First successful payment on a new subscription.
+//     Doubles as the receipt for the activation charge, so we don't also
+//     send sendPaymentReceived for the same transaction.
+export async function sendSubscriptionActivated({
+  to,
+  name,
+  plan,
+  cycle,
+  amountPaise,
+  nextChargeAtUnix,
+}: {
+  to: string;
+  name: string;
+  plan: string;
+  cycle: "monthly" | "yearly";
+  amountPaise: number;
+  nextChargeAtUnix?: number | null;
+}) {
+  const planTxt = planLabel(plan);
+  return sendEmail({
+    to,
+    subject: `Welcome to ${APP_NAME} ${planTxt} — your subscription is active`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">You're on ${planTxt} 🎉</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">Thanks for subscribing — your <strong>${planTxt} (${cycleLabel(cycle)})</strong> plan is now active and your new DM limit has been applied to your account.</p>
+      ${infoCard([
+        { label: "Plan", value: `${planTxt} (${cycleLabel(cycle)})` },
+        { label: "Amount paid", value: formatInr(amountPaise) },
+        { label: "Next billing date", value: formatDate(nextChargeAtUnix) },
+      ])}
+      ${ctaButton(`${APP_URL}/dashboard`, "Open dashboard →")}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">You can cancel anytime from your dashboard — your plan will stay active until the end of the billing cycle. Need a GST invoice? Reply to this email.</p>
+    `,
+  });
+}
+
+// 2 — Payment received. Recurring charge (not the activation charge; that's
+//     covered by sendSubscriptionActivated). Called from the webhook on
+//     subscription.charged when the user was already active.
+export async function sendPaymentReceived({
+  to,
+  name,
+  plan,
+  cycle,
+  amountPaise,
+  paymentId,
+  nextChargeAtUnix,
+}: {
+  to: string;
+  name: string;
+  plan: string;
+  cycle: "monthly" | "yearly";
+  amountPaise: number;
+  paymentId: string;
+  nextChargeAtUnix?: number | null;
+}) {
+  const planTxt = planLabel(plan);
+  return sendEmail({
+    to,
+    subject: `Payment received for ${APP_NAME} ${planTxt} — ${formatInr(amountPaise)}`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">Payment received</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">We've received your ${cycleLabel(cycle).toLowerCase()} payment for ${APP_NAME} ${planTxt}. Your subscription is renewed and your account is good to go.</p>
+      ${infoCard([
+        { label: "Plan", value: `${planTxt} (${cycleLabel(cycle)})` },
+        { label: "Amount", value: formatInr(amountPaise) },
+        { label: "Payment ID", value: paymentId },
+        { label: "Next billing date", value: formatDate(nextChargeAtUnix) },
+      ])}
+      ${ctaButton(`${APP_URL}/dashboard`, "Open dashboard →")}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">This email is your receipt — keep it for your records. Need a GST invoice? Reply to this email.</p>
+    `,
+  });
+}
+
+// 3 — Payment failed. Card declined / insufficient funds / UPI mandate
+//     revoked etc. The user is still on their paid plan at this point —
+//     Razorpay will retry per its own schedule. We only inform.
+export async function sendPaymentFailed({
+  to,
+  name,
+  plan,
+  errorReason,
+}: {
+  to: string;
+  name: string;
+  plan: string;
+  errorReason: string;
+}) {
+  const planTxt = planLabel(plan);
+  return sendEmail({
+    to,
+    subject: `We couldn't process your ${APP_NAME} payment`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">Payment couldn't be processed</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">We tried to charge your payment method for ${APP_NAME} <strong>${planTxt}</strong> but it didn't go through.</p>
+      ${infoCard(
+        [
+          { label: "Plan", value: planTxt },
+          { label: "Reason", value: errorReason || "Not specified" },
+        ],
+        "#fff7ed"
+      )}
+      <p style="margin:0 0 8px;">What happens next:</p>
+      <ul style="margin:0 0 12px;padding-left:20px;line-height:1.7;color:#1f2937;">
+        <li>Your subscription stays active — Razorpay will automatically retry over the next few days.</li>
+        <li>If retries fail, your plan will downgrade to Free and your automations will pause.</li>
+      </ul>
+      <p style="margin:0 0 12px;">The quickest fix is to check with your bank, make sure the card/UPI mandate is still valid, or re-subscribe with a new method.</p>
+      ${ctaButton(`${APP_URL}/pricing`, "Update payment method →")}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">Need help? Reply to this email and we'll sort it out.</p>
+    `,
+  });
+}
+
+// 4a — Cancellation scheduled. Fired from the self-serve cancel API the
+//      moment the user confirms the action, before Razorpay actually ends
+//      the cycle. "You keep access until <date>".
+export async function sendSubscriptionCancellationScheduled({
+  to,
+  name,
+  plan,
+  cycleEndUnix,
+}: {
+  to: string;
+  name: string;
+  plan: string;
+  cycleEndUnix?: number | null;
+}) {
+  const planTxt = planLabel(plan);
+  return sendEmail({
+    to,
+    subject: `Your ${APP_NAME} subscription is scheduled to cancel`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">Cancellation scheduled</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">Your ${APP_NAME} <strong>${planTxt}</strong> subscription has been scheduled to cancel. You won't be charged again.</p>
+      ${infoCard([
+        { label: "Plan", value: planTxt },
+        { label: "Access until", value: formatDate(cycleEndUnix) },
+        { label: "What happens next", value: "Auto-downgrade to Free" },
+      ])}
+      <p style="margin:0 0 12px;">You'll keep full access to ${APP_NAME} ${planTxt} until the end of your current billing cycle. After that your account automatically moves to the Free plan (500 DMs/month) — your data, automations, and connected accounts stay put.</p>
+      <p style="margin:0 0 12px;">Changed your mind? You can resubscribe anytime from the pricing page.</p>
+      ${ctaButton(`${APP_URL}/pricing`, "See plans →")}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">Mind sharing why you cancelled? Just reply — we read every message and often ship fixes within the week.</p>
+    `,
+  });
+}
+
+// 4b — Subscription ended. Fired from the webhook when Razorpay sends
+//      subscription.cancelled / subscription.completed, i.e. the paid
+//      cycle actually finished and we've downgraded the user to Free.
+export async function sendSubscriptionEnded({
+  to,
+  name,
+  previousPlan,
+}: {
+  to: string;
+  name: string;
+  previousPlan: string;
+}) {
+  const planTxt = planLabel(previousPlan);
+  return sendEmail({
+    to,
+    subject: `Your ${APP_NAME} subscription has ended`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">Your subscription has ended</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">Your ${APP_NAME} <strong>${planTxt}</strong> plan has ended as scheduled, and your account is now on the Free plan.</p>
+      ${infoCard([
+        { label: "Previous plan", value: planTxt },
+        { label: "Current plan", value: "Free (500 DMs/month)" },
+      ])}
+      <p style="margin:0 0 12px;">All your automations, Instagram connections, and settings are preserved — only your monthly DM limit has changed. You can resubscribe anytime to restore your old limits.</p>
+      ${ctaButton(`${APP_URL}/pricing`, "See plans →")}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">Thanks for being part of ${APP_NAME}. If there's anything we could've done better, just reply to this email.</p>
+    `,
+  });
+}
+
+// 5 — Refund initiated. Fired on refund.created from the Razorpay webhook.
+//     Refund typically settles in 5–7 business days depending on the source
+//     payment method (UPI usually 2–3, cards 5–7, netbanking varies).
+export async function sendRefundInitiated({
+  to,
+  name,
+  amountPaise,
+  paymentId,
+  refundId,
+}: {
+  to: string;
+  name: string;
+  amountPaise: number;
+  paymentId: string;
+  refundId: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `Refund initiated — ${formatInr(amountPaise)} is on its way back`,
+    html: `
+      <h2 style="margin:0 0 10px;font-size:20px;color:#111827;">Refund initiated</h2>
+      <p style="margin:0 0 8px;">Hi ${name || "there"},</p>
+      <p style="margin:0 0 12px;">Your refund of <strong>${formatInr(amountPaise)}</strong> has been initiated for your ${APP_NAME} payment. It'll land back in the account you paid from.</p>
+      ${infoCard([
+        { label: "Refund amount", value: formatInr(amountPaise) },
+        { label: "Payment ID", value: paymentId },
+        { label: "Refund ID", value: refundId },
+        { label: "Expected timeline", value: "5–7 business days" },
+      ])}
+      <p style="margin:0 0 12px;">The exact time depends on your bank or UPI app — UPI refunds usually arrive in 2–3 business days, cards and net-banking can take up to 7. If you don't see it after that, forward this email to <a href="mailto:${SUPPORT_MAILTO}" style="color:${BRAND_PRIMARY};">${SUPPORT_MAILTO}</a> and we'll trace it with Razorpay.</p>
+      ${ctaButton(`${APP_URL}/dashboard`, "Open dashboard →")}
     `,
   });
 }

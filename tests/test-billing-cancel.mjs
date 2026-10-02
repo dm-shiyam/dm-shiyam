@@ -69,7 +69,7 @@ async function staticChecks() {
       "utf8"
     );
     assert(
-      /subscriptions\.cancel\([^)]*,\s*true\)/.test(src),
+      /subscriptions\.cancel\([\s\S]*?,\s*true\s*\)/.test(src),
       "razorpay.subscriptions.cancel should pass true for cancelAtCycleEnd"
     );
   });

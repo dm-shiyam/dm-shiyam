@@ -121,6 +121,35 @@ export default function DashboardContent() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  // Self-serve cancel — cancels at end of current billing cycle (see
+  // /api/billing/cancel). User keeps paid access until Razorpay fires
+  // subscription.cancelled, at which point the webhook flips them to free.
+  const handleCancelSubscription = useCallback(async () => {
+    const ok = window.confirm(
+      "Cancel your subscription?\n\nYou'll keep full access to your current plan until the end of this billing cycle. You won't be charged again. You can resubscribe anytime."
+    );
+    if (!ok) return;
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/billing/cancel", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        toast.error(data.error || "Failed to cancel subscription.");
+        return;
+      }
+      toast.success(data.message || "Subscription cancelled.");
+    } catch (err) {
+      console.error("[cancel] failed:", err);
+      toast.error("Couldn't cancel right now. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -264,10 +293,23 @@ export default function DashboardContent() {
           </div>
           <div className="flex items-center gap-3">
             {userPlan !== "free" ? (
-              <span className="hidden sm:inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200">
-                <Crown className="h-3 w-3" />{" "}
-                {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
-              </span>
+              <div className="hidden sm:inline-flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 badge bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200">
+                  <Crown className="h-3 w-3" />{" "}
+                  {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
+                </span>
+                {/* Self-serve cancel. Minimal, text-only button — the FAQ
+                    explains what happens; the confirm() dialog recaps.
+                    Hidden on mobile to keep the header uncluttered. */}
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={cancelling}
+                  className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 underline-offset-2 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Cancel subscription (keeps access until end of billing cycle)"
+                >
+                  {cancelling ? "Cancelling…" : "Cancel"}
+                </button>
+              </div>
             ) : (
               // A9.3 follow-up (2026-09-09) — logged-in users on the free plan
               // had no discoverable way to reach /pricing. Explicit "Upgrade"

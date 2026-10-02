@@ -607,7 +607,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="How do I cancel my subscription?"
-              answer="Just email us at dmshiyamofficial@gmail.com and we'll cancel your subscription within 24 hours. You'll keep using DM Shiyam until your paid month ends. No cancellation fees, no lock-in, no questions asked. (Self-serve cancel from the dashboard is coming soon.)"
+              answer="You can cancel anytime — no questions asked. Just open your dashboard and click Cancel subscription in the plan menu (top-right). Your plan stays active until the end of the billing cycle you've already paid for, and you won't be charged again. No cancellation fees, no lock-in. Prefer to cancel by email? Write to dmshiyamofficial@gmail.com and we'll handle it within 24 hours."
             />
             <FAQItem
               question="Do you offer refunds?"

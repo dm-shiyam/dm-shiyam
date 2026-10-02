@@ -99,10 +99,12 @@
   background-clip: text;
 }
 
-/* Logo mark container — rounded gradient tile with the DMShiyam wordmark
-   or image on top. Reused by nav, email header, hero. */
+/* Logo mark container — the DMShiyam logo is already a full "app icon"
+   with its own gradient + wordmark, so we just render it inline with
+   subtle rounding; no second gradient-background tile competing for
+   attention. Reused by nav + email header + footer across the site. */
 .logo-tile {
-  @apply inline-flex items-center justify-center rounded-xl bg-ig-gradient shadow-glow;
+  @apply inline-flex items-center justify-center overflow-hidden rounded-xl;
 }
 
 /* Thin stat / trust pill used in hero + stats bands. */

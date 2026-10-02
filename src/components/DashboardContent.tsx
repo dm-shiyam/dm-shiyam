@@ -122,6 +122,12 @@ export default function DashboardContent() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  // Live billing state — kept client-side so the UI reflects a cancel
+  // immediately (without a sign-out/in cycle, since the session JWT
+  // only carries `plan`, not subscription_status). Null = not loaded yet.
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(
+    null
+  );
 
   // Self-serve cancel — cancels at end of current billing cycle (see
   // /api/billing/cancel). User keeps paid access until Razorpay fires
@@ -139,9 +145,17 @@ export default function DashboardContent() {
         error?: string;
       };
       if (!res.ok) {
+        // 400 "already scheduled to cancel" means our local state was
+        // stale — sync it so the button reflects reality immediately.
+        if (res.status === 400 && /already/i.test(data.error ?? "")) {
+          setSubscriptionStatus("cancelled");
+          toast.info(data.error ?? "Already cancelled.");
+          return;
+        }
         toast.error(data.error || "Failed to cancel subscription.");
         return;
       }
+      setSubscriptionStatus("cancelled");
       toast.success(data.message || "Subscription cancelled.");
     } catch (err) {
       console.error("[cancel] failed:", err);
@@ -206,6 +220,21 @@ export default function DashboardContent() {
     }
     if (status === "authenticated") {
       fetchData();
+
+      // Load current billing status so the header can show either the
+      // "Cancel plan" button or the "Cancels at period end" badge.
+      // Fire-and-forget; the UI defaults to showing nothing until this
+      // resolves, which avoids a flash of the wrong state.
+      fetch("/api/billing/status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && typeof d.subscription_status === "string") {
+            setSubscriptionStatus(d.subscription_status);
+          }
+        })
+        .catch(() => {
+          /* best-effort */
+        });
 
       const interval = setInterval(fetchData, 30000);
 
@@ -298,23 +327,39 @@ export default function DashboardContent() {
                   <Crown className="h-3 w-3" />{" "}
                   {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
                 </span>
-                {/* Self-serve cancel. Styled as a small outlined pill so
-                    it reads as a real action (not a stray text link) but
-                    stays visually subordinate to the plan badge. Hidden
-                    on mobile to keep the header uncluttered. */}
-                <button
-                  onClick={handleCancelSubscription}
-                  disabled={cancelling}
-                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Cancel subscription (keeps access until end of billing cycle)"
-                >
-                  {cancelling ? (
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <XCircle className="h-3 w-3" />
-                  )}
-                  {cancelling ? "Cancelling…" : "Cancel plan"}
-                </button>
+                {subscriptionStatus === "cancelled" ? (
+                  // Already scheduled to cancel — show a muted status
+                  // chip instead of the action, so the user doesn't try
+                  // to click Cancel again and hit a "nothing to do" alert.
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                    title="Your plan stays active until the end of the current billing cycle, then downgrades to Free."
+                  >
+                    <Clock className="h-3 w-3" />
+                    Cancels at period end
+                  </span>
+                ) : subscriptionStatus === null ? (
+                  // Still loading — render nothing to avoid a flash of
+                  // the wrong state. The badge above is enough context.
+                  null
+                ) : (
+                  // Self-serve cancel. Styled as a small outlined pill so
+                  // it reads as a real action (not a stray text link) but
+                  // stays visually subordinate to the plan badge.
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={cancelling}
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Cancel subscription (keeps access until end of billing cycle)"
+                  >
+                    {cancelling ? (
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <XCircle className="h-3 w-3" />
+                    )}
+                    {cancelling ? "Cancelling…" : "Cancel plan"}
+                  </button>
+                )}
               </div>
             ) : (
               // A9.3 follow-up (2026-09-09) — logged-in users on the free plan

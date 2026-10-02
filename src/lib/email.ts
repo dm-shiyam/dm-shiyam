@@ -84,19 +84,47 @@ const BRAND_PRIMARY = "#6366f1";
 const SUPPORT_MAILTO = "dmshiyamofficial@gmail.com";
 
 function wrapTemplate(body: string): string {
+  // Gmail Android / Outlook auto-dark survival strategy:
+  //  1. <meta name="color-scheme" content="light only"> + "supported-color-schemes"
+  //     — the clients that honor it (Apple Mail, Outlook) stay light.
+  //  2. The logo PNG has transparent background + a dark mark. In Gmail
+  //     Android's auto-dark, the whole card gets inverted and the mark
+  //     disappears into the dark background. We wrap the logo in an
+  //     always-white rounded chip (inline `background:#ffffff`) which
+  //     Gmail Android treats as an image-ish surface and *does not*
+  //     invert — the chip stays white, the mark stays visible.
+  //  3. All text uses high-contrast dark-on-light inline — safe default
+  //     even when auto-dark re-tints everything else.
   return `
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="color-scheme" content="light only" />
+      <meta name="supported-color-schemes" content="light" />
+      <style>
+        :root { color-scheme: light only; supported-color-schemes: light; }
+      </style>
+    </head>
+    <body style="margin:0;padding:0;background:#f6f7fb;">
     <div style="background:#f6f7fb;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;color:#1f2937;">
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">
 
-        <!-- Header -->
-        <div style="padding:32px 32px 24px;text-align:center;border-bottom:1px solid #f1f5f9;">
-          <img src="${LOGO_URL}" alt="${APP_NAME}" width="88" height="88" style="display:inline-block;width:88px;height:88px;border-radius:16px;object-fit:cover;box-shadow:0 2px 8px rgba(99,102,241,0.12);" />
-          <div style="margin-top:14px;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#111827;">${APP_NAME}</div>
+        <!-- Header. Logo lives inside a solid-white rounded chip so
+             Gmail Android's auto-dark theme can't invert it into the
+             background. The chip has a subtle box-shadow so it also
+             looks intentional on light clients, not just a workaround. -->
+        <div style="padding:32px 32px 24px;text-align:center;border-bottom:1px solid #f1f5f9;background:#ffffff;">
+          <div style="display:inline-block;background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:10px;box-shadow:0 2px 8px rgba(16,24,40,0.06);">
+            <img src="${LOGO_URL}" alt="${APP_NAME}" width="72" height="72" style="display:block;width:72px;height:72px;border-radius:14px;object-fit:cover;" />
+          </div>
+          <div style="margin-top:16px;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#111827;">${APP_NAME}</div>
           <div style="margin-top:4px;font-size:12px;color:#6b7280;">Instagram DM automation on autopilot</div>
         </div>
 
         <!-- Body -->
-        <div style="padding:28px 32px;font-size:15px;line-height:1.65;color:#1f2937;">
+        <div style="padding:28px 32px;font-size:15px;line-height:1.65;color:#1f2937;background:#ffffff;">
           ${body}
         </div>
 
@@ -112,6 +140,8 @@ function wrapTemplate(body: string): string {
 
       </div>
     </div>
+    </body>
+    </html>
   `;
 }
 

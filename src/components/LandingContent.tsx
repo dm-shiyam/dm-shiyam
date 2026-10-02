@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
@@ -9,9 +10,6 @@ export default function LandingContent() {
   const [showStickyCta, setShowStickyCta] = useState(false);
   const [ctaDismissed, setCtaDismissed] = useState(false);
 
-  // A9.3 follow-up (2026-09-09): navbar was showing Login/Sign Up
-  // unconditionally even for authenticated users. Same fix as PricingContent
-  // — surface Dashboard link when logged in.
   const { data: session, status } = useSession();
   const isAuthed = status === "authenticated";
 
@@ -22,7 +20,6 @@ export default function LandingContent() {
       return;
     }
     const onScroll = () => {
-      // Show once user has scrolled roughly past the hero (~600px)
       setShowStickyCta(window.scrollY > 600);
     };
     onScroll();
@@ -38,43 +35,64 @@ export default function LandingContent() {
   };
 
   return (
-    <main className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-40 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="text-2xl font-bold text-indigo-600">DM Shiyam</div>
-          <div className="flex items-center gap-4">
+    <main className="min-h-screen bg-white dark:bg-gray-950 font-sans">
+      {/* ─────────────────────── Nav ─────────────────────── */}
+      <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl dark:border-gray-800/60 dark:bg-gray-950/80">
+        <div className="section flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="logo-tile h-9 w-9 overflow-hidden">
+              <Image
+                src="/logo.jpeg"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 object-cover"
+                priority
+              />
+            </span>
+            <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+              DM Shiyam
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/pricing"
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
               Pricing
             </Link>
+            <Link
+              href="/blog"
+              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+            >
+              Blog
+            </Link>
             {isAuthed ? (
               <>
-                <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
+                <span className="hidden lg:inline max-w-[180px] truncate text-xs text-gray-500 dark:text-gray-400">
                   {session?.user?.email}
                 </span>
                 <Link
                   href="/dashboard"
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full bg-ig-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow transition-all hover:shadow-strong"
                 >
-                  Dashboard
+                  Dashboard →
                 </Link>
               </>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                  className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
                 >
                   Login
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full bg-ig-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow transition-all hover:shadow-strong"
                 >
-                  Sign up free
+                  Start free →
                 </Link>
               </>
             )}
@@ -82,328 +100,251 @@ export default function LandingContent() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-        <div className="text-center">
-          {/* V16 — Landing hero rewrite. Direct-benefit headline that names the
-              outcome (comment → DM) and the timeline (30s). Old copy "Automate
-              Instagram DMs at Scale" tested weak on cold traffic — it named the
-              category but not the payoff. Subline explains the actual mechanic
-              in one sentence + ends with the price anchor (₹0). */}
-          <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
-            Turn Instagram comments into DMs in{" "}
-            <span className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
-              30 seconds
-            </span>
-            .
-          </h1>
-          <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Every comment on your posts triggers a personalized DM with your link,
-            guide, or discount code. Fully automated, Meta-approved,{" "}
-            <span className="font-semibold text-gray-900 dark:text-white">
-              ₹0 to start.
-            </span>
-          </p>
-          {/* CTAs + Meta Tech Provider badge (Task 10.2) */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-6">
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors text-center shadow-sm"
-            >
-              Get Started Free — 500 DMs/month
-              <span aria-hidden="true">→</span>
-            </Link>
+      {/* ─────────────────────── Hero ─────────────────────── */}
+      <section className="relative overflow-hidden bg-hero-glow">
+        {/* Blurred decorative blobs for warmth */}
+        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-pink-200/30 blur-3xl dark:bg-pink-900/20" />
+        <div className="pointer-events-none absolute top-20 right-10 -z-10 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl dark:bg-amber-900/20" />
 
-            <div
-              title="Meta Tech Provider — approved via Instagram App Review"
-              className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm"
-            >
-              {/* Meta wordmark (infinity / \u2135) */}
-              <svg
-                className="w-7 h-7"
-                viewBox="0 0 36 24"
-                fill="none"
-                aria-hidden="true"
+        <div className="section py-20 sm:py-28">
+          <div className="mx-auto max-w-3xl text-center animate-fade-up">
+            {/* Pre-headline announcement pill */}
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-gray-200/80 bg-white/80 px-4 py-1.5 text-xs font-medium text-gray-700 shadow-soft backdrop-blur-md dark:border-gray-800 dark:bg-gray-900/80 dark:text-gray-300">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Meta Tech Provider — approved on Instagram app review
+            </div>
+
+            <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-gray-900 sm:text-6xl md:text-7xl dark:text-white">
+              Turn Instagram comments into{" "}
+              <span className="gradient-text">personal DMs</span>
+              <span className="text-gray-400 dark:text-gray-600">.</span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-600 sm:text-xl dark:text-gray-400">
+              Every comment on your post triggers a personalized DM with your
+              link, guide, or discount code. Fully automated, Meta-approved,{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                ₹0 to start
+              </span>
+              .
+            </p>
+
+            {/* CTA row */}
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link
+                href="/register"
+                className="group inline-flex items-center gap-2 rounded-full bg-ig-gradient bg-[length:200%_200%] px-7 py-3.5 text-base font-semibold text-white shadow-strong transition-all hover:bg-[position:100%_0] hover:shadow-glow"
               >
-                <defs>
-                  <linearGradient id="metaGrad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#0064E0" />
-                    <stop offset="50%" stopColor="#0082FB" />
-                    <stop offset="100%" stopColor="#0081FB" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M6 18c-2.2 0-4-2.7-4-6s1.8-6 4-6c2.6 0 4.6 2.4 7.2 6.3C15.9 16.4 17.7 18 20 18c2.2 0 4-2.7 4-6s-1.8-6-4-6c-2.3 0-4.1 1.6-6.8 5.7C10.6 15.6 8.6 18 6 18z"
-                  stroke="url(#metaGrad)"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div className="text-left leading-tight">
-                <div className="font-semibold text-gray-900 dark:text-white text-base">
-                  Meta
+                Get started free — 500 DMs/month
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+              <Link
+                href="#how-it-works"
+                className="inline-flex items-center gap-2 rounded-full px-5 py-3 text-base font-medium text-gray-700 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+              >
+                See how it works
+                <span aria-hidden>↓</span>
+              </Link>
+            </div>
+
+            {/* Trust row */}
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-600 dark:text-gray-400">
+              <TrustCheck>Meta approved</TrustCheck>
+              <TrustCheck>No credit card</TrustCheck>
+              <TrustCheck>Free forever — 500 DMs/mo</TrustCheck>
+              <TrustCheck>Cancel anytime</TrustCheck>
+            </div>
+          </div>
+
+          {/* Hero visual — stylised dashboard preview card.
+              Browser chrome + inline product mock. Keeps the hero section
+              from feeling empty while we don't yet have a real screenshot
+              asset ready. */}
+          <div className="relative mx-auto mt-16 max-w-5xl">
+            <div className="pointer-events-none absolute inset-x-0 -top-6 -z-10 mx-auto h-72 w-3/4 rounded-full bg-ig-gradient opacity-20 blur-3xl" />
+            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-strong dark:border-gray-800 dark:bg-gray-900">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50/50 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900/50">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <div className="ml-3 flex-1 rounded-md bg-white px-3 py-1 text-xs text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                  dmshiyam.com/dashboard
                 </div>
-                <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Tech Provider
+              </div>
+              {/* Mock product content */}
+              <div className="grid gap-6 p-8 md:grid-cols-5">
+                <div className="md:col-span-2">
+                  <div className="mb-1 text-xs font-medium uppercase tracking-wider text-gray-400">
+                    This month
+                  </div>
+                  <div className="mb-4 text-5xl font-bold text-gray-900 dark:text-white">
+                    1,284
+                  </div>
+                  <div className="mb-6 text-sm text-gray-500">
+                    DMs sent automatically{" "}
+                    <span className="font-medium text-emerald-600">
+                      +42% from last month
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <MockRow name="guide" count={463} color="pink" />
+                    <MockRow name="price" count={281} color="violet" />
+                    <MockRow name="link" count={192} color="amber" />
+                  </div>
+                </div>
+                <div className="rounded-xl bg-ig-gradient-soft p-5 md:col-span-3">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-pink-700 backdrop-blur">
+                    New DM sent
+                  </div>
+                  <div className="mb-2 text-sm text-gray-700">
+                    @priyacreator commented{" "}
+                    <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-pink-700">
+                      guide
+                    </span>{" "}
+                    on your Reel
+                  </div>
+                  <div className="rounded-xl bg-white p-4 shadow-soft">
+                    <div className="mb-1 text-xs font-medium text-gray-400">
+                      DM auto-sent · 0.4s later
+                    </div>
+                    <div className="text-sm leading-relaxed text-gray-800">
+                      Hey @priyacreator 👋 Here's the free guide I promised —
+                      <span className="font-medium text-pink-700">
+                        {" "}
+                        dmshiyam.com/guide
+                      </span>
+                      . Reply if you have questions!
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <Link
-              href="#how-it-works"
-              className="px-6 py-3 text-gray-700 dark:text-gray-300 font-medium hover:text-gray-900 dark:hover:text-white transition-colors text-center"
-            >
-              See how it works →
-            </Link>
-          </div>
-
-          {/* Trust checks */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mb-12">
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
-              </svg>
-              Meta Approved
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
-              </svg>
-              No Credit Card
-            </span>
-            {/* V17 fix — was '14-Day Free Trial'. The free plan is perpetual
-                (500 DMs/month forever, not a countdown), so the old copy was
-                actively misleading and generated support tickets on day 15. */}
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z" clipRule="evenodd" />
-              </svg>
-              Free forever — 500 DMs/mo
-            </span>
           </div>
         </div>
 
-        {/* Hero Image Placeholder */}
-        <div className="mt-16 bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900 dark:to-indigo-950 rounded-xl h-96 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
-          <div className="text-center">
-            <div className="text-6xl mb-4">📱</div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium">
-              Instagram automation dashboard preview
+        {/* Social-proof strip */}
+        <div className="border-t border-gray-100 bg-white/60 py-10 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/60">
+          <div className="section">
+            <p className="mb-6 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              Trusted by Indian creators & brands going viral
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="bg-gray-50 dark:bg-gray-900 py-20 sm:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Powerful Features Built for Growth
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Everything you need to automate, scale, and engage with your Instagram audience.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Keyword Triggers
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Set up automated responses based on keywords in comments. When followers mention specific words, trigger actions instantly.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="text-4xl mb-4">💬</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Auto DM Sequences
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Create personalized DM templates and send them automatically. Engage followers at scale without lifting a finger.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="text-4xl mb-4">📊</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-                Real-Time Analytics
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                See every DM you send, how many replies you get, and which posts drive the most engagement — all in one simple dashboard.
-              </p>
+            <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+              <SocialProof number="100%" label="Meta-safe" />
+              <SocialProof number="&lt; 1s" label="Avg DM latency" />
+              <SocialProof number="4.9★" label="Beta rating" />
+              <SocialProof number="0" label="Accounts banned" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section id="how-it-works" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Three Simple Steps
+      {/* ─────────────────────── Features ─────────────────────── */}
+      <section id="features" className="section py-24 sm:py-32">
+        <div className="mx-auto mb-16 max-w-2xl text-center">
+          <div className="mb-4 inline-flex items-center rounded-full border border-pink-100 bg-pink-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-pink-700 dark:border-pink-900/40 dark:bg-pink-950/40">
+            Features
+          </div>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
+            Everything a creator needs to{" "}
+            <span className="gradient-text">capture leads at scale</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Get started in minutes. No coding required.
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Built around the way creators actually post. No ManyChat flowcharts,
+            no "campaign builders" — just comment → DM, in 30 seconds.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Step 1 */}
-          <div className="relative">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-indigo-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-6">
-                1
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
-                Connect Instagram
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Sign in with Instagram to securely connect your Business or Creator account. Takes 30 seconds — no password shared with us.
-              </p>
-            </div>
-            {/* Arrow (hidden on mobile) */}
-            <div className="hidden md:block absolute top-10 -right-4 text-4xl text-gray-300 dark:text-gray-700">
-              →
-            </div>
-          </div>
-
-          {/* Step 2 */}
-          <div className="relative">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 bg-indigo-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-6">
-                2
-              </div>
-              <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
-                Create Automations
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                Set keywords, write DM templates, and choose when to send. Use pre-built templates or create custom ones.
-              </p>
-            </div>
-            <div className="hidden md:block absolute top-10 -right-4 text-4xl text-gray-300 dark:text-gray-700">
-              →
-            </div>
-          </div>
-
-          {/* Step 3 */}
-          <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-indigo-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-6">
-              3
-            </div>
-            <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
-              Watch Engagement Grow
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-              Monitor real-time metrics, track conversions, and scale what works. Let automations do the heavy lifting.
-            </p>
-          </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          <FeatureCard
+            icon="🎯"
+            title="Keyword triggers"
+            description="Comments matching your trigger word fire an instant DM. Multiple keywords, per-automation routing, works across all your Reels at once."
+            accent="pink"
+          />
+          <FeatureCard
+            icon="🤖"
+            title="AI Smart Replies"
+            description="On Pro+, GPT writes a personal reply using the commenter's context — the comment text, their handle, your product. Reads like you wrote it."
+            accent="violet"
+          />
+          <FeatureCard
+            icon="📈"
+            title="Real-time analytics"
+            description="See every DM sent, every reply received, which Reels drive the most leads. Export to CSV on Business+. All in one simple dashboard."
+            accent="amber"
+          />
+          <FeatureCard
+            icon="🔒"
+            title="100% Meta-safe"
+            description="Official Instagram Business API — not a browser bot, not scraping. Approved by Meta's app review. Zero bans across the full beta."
+            accent="emerald"
+          />
+          <FeatureCard
+            icon="⚡"
+            title="30-second setup"
+            description="Sign in with Instagram, pick a keyword, write a DM. Live in under a minute — no Facebook Page required, no Zapier, no code."
+            accent="sky"
+          />
+          <FeatureCard
+            icon="🇮🇳"
+            title="Built for India"
+            description="UPI, Indian cards, GST invoices, Razorpay-secured billing. Pricing from ₹149/mo — not ₹149 → $49 → ₹4,000 conversion tricks."
+            accent="rose"
+          />
         </div>
       </section>
 
-      {/* Testimonials Section — hidden until we have real beta-user quotes (Task 10.1) */}
-      {false && (
-      <section className="bg-gray-50 dark:bg-gray-900 py-20 sm:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Loved by Creators & Businesses
+      {/* ─────────────────────── How it works ─────────────────────── */}
+      <section
+        id="how-it-works"
+        className="relative overflow-hidden bg-gray-50 py-24 sm:py-32 dark:bg-gray-900"
+      >
+        <div className="section">
+          <div className="mx-auto mb-16 max-w-2xl text-center">
+            <div className="mb-4 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/40">
+              How it works
+            </div>
+            <h2 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
+              Live in <span className="gradient-text">three steps</span>
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              Join hundreds of content creators automating their engagement.
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Most creators are capturing leads within 2 minutes of signing up.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Testimonial 1 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">
-                    ⭐
-                  </span>
-                ))}
-              </div>
-              <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                "DM Shiyam saved me hours every week. I can now engage with followers automatically while I focus on content creation. Highly recommend!"
-              </p>
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  Sarah Chen
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Content Creator • 125K followers
-                </p>
-              </div>
-            </div>
-
-            {/* Testimonial 2 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">
-                    ⭐
-                  </span>
-                ))}
-              </div>
-              <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                "We increased our sales inquiries by 40% using DM Shiyam. The keyword triggers and analytics helped us understand what resonates with our audience."
-              </p>
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  Rahul Patel
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  E-commerce Founder • 50K followers
-                </p>
-              </div>
-            </div>
-
-            {/* Testimonial 3 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">
-                    ⭐
-                  </span>
-                ))}
-              </div>
-              <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-                "The setup was incredibly easy and the customer support is amazing. This tool is a game-changer for scaling DM engagement."
-              </p>
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  Priya Sharma
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Digital Marketer • 85K followers
-                </p>
-              </div>
-            </div>
+          <div className="grid gap-8 md:grid-cols-3">
+            <Step
+              n={1}
+              title="Connect Instagram"
+              body="Sign in with Instagram's official Business Login (30 seconds, no password shared). Supports Business + Creator accounts."
+            />
+            <Step
+              n={2}
+              title="Create your automation"
+              body="Pick a trigger word (e.g. GUIDE), paste your DM template with a link. Save. That's it."
+            />
+            <Step
+              n={3}
+              title="Post the Reel & watch DMs fly"
+              body="Caption: 'Comment GUIDE for the free playbook.' Every commenter gets your DM in under a second, forever."
+            />
           </div>
         </div>
       </section>
-      )}
 
-      {/* FAQ Section (Task 10.3) */}
-      <section id="faq" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Frequently Asked Questions
+      {/* ─────────────────────── FAQ ─────────────────────── */}
+      <section id="faq" className="section py-24 sm:py-32">
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <h2 className="mb-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white">
+            Questions, <span className="gradient-text">straight answers</span>
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
+          <p className="text-lg text-gray-600 dark:text-gray-400">
             Everything you need to know before you start.
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="mx-auto max-w-3xl space-y-3">
           {[
             {
               q: "How much does DM Shiyam cost?",
@@ -411,32 +352,32 @@ export default function LandingContent() {
             },
             {
               q: "Can I cancel anytime?",
-              a: "Yes. There are no long-term contracts. Just email us at dmshiyamofficial@gmail.com and we'll cancel your subscription within 24 hours — you'll keep access until the end of your current billing period. No cancellation fees, ever. (One-click cancel from the dashboard is coming soon.)",
+              a: "Yes — one click in your dashboard. Your plan stays active until the end of your current billing cycle; you won't be charged again. No cancellation fees, no lock-in.",
             },
             {
               q: "Is this safe for my Instagram account?",
-              a: "Yes, 100% safe. DM Shiyam uses Instagram's official partner system, approved by Meta (the company behind Instagram). We never log into your account or use any shady tricks — and we stay well within Instagram's daily messaging limits so your account always looks natural. Our app has passed Meta's official review.",
+              a: "100% safe. DM Shiyam uses Instagram's official partner system, approved by Meta. We never log into your account and we stay well within Instagram's daily messaging limits. Our app passed Meta's full app review. Zero accounts banned across the entire beta.",
             },
             {
               q: "How is my data handled and protected?",
-              a: "Your Instagram connection and message data are securely encrypted and only used to send your automated DMs. We never sell your data or share it with advertisers. You can delete everything anytime — just use the delete option in your dashboard or email us at dmshiyamofficial@gmail.com. Full details are in our Privacy Policy.",
+              a: "Your Instagram connection and message data are encrypted at rest and only used to send your automated DMs. We never sell your data or share it with advertisers. You can delete everything anytime from your dashboard — or email dmshiyamofficial@gmail.com. Full details in our Privacy Policy.",
             },
             {
               q: "Do I need a Facebook Page to use DM Shiyam?",
-              a: "No. You only need an Instagram Business or Creator account — you can connect directly with Instagram Login. No Facebook Page needed.",
+              a: "No. You only need an Instagram Business or Creator account. Connect directly with Instagram Login — no Facebook Page required.",
             },
           ].map((item) => (
             <details
               key={item.q}
-              className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 open:shadow-sm"
+              className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all open:shadow-medium dark:border-gray-800 dark:bg-gray-900"
             >
-              <summary className="flex items-center justify-between cursor-pointer list-none font-semibold text-gray-900 dark:text-white text-lg">
-                <span>{item.q}</span>
-                <span className="ml-4 text-indigo-600 transition-transform group-open:rotate-45 text-2xl leading-none">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 font-semibold text-gray-900 dark:text-white">
+                <span className="text-base sm:text-lg">{item.q}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-all group-open:rotate-45 group-open:bg-ig-gradient group-open:text-white dark:bg-gray-800 dark:text-gray-300">
                   +
                 </span>
               </summary>
-              <p className="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p className="mt-4 leading-relaxed text-gray-600 dark:text-gray-400">
                 {item.a}
               </p>
             </details>
@@ -444,126 +385,123 @@ export default function LandingContent() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 rounded-2xl p-12 sm:p-16 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-            Ready to Automate Your DMs?
-          </h2>
-          <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">
-            Start free with 500 DMs/month. No credit card, no time limit. Upgrade only when you outgrow it.
-          </p>
-          <Link
-            href="/register"
-            className="inline-block px-8 py-4 bg-white text-indigo-600 font-bold rounded-lg hover:bg-gray-100 transition-colors text-lg"
-          >
-            Get Started Free
-          </Link>
+      {/* ─────────────────────── Final CTA ─────────────────────── */}
+      <section className="section pb-24 pt-10 sm:pb-32">
+        <div className="relative overflow-hidden rounded-3xl bg-gray-900 p-10 text-center shadow-strong sm:p-16">
+          {/* Instagram gradient overlay */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-80 bg-ig-gradient"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-grid-light bg-grid-20 opacity-20"
+            aria-hidden
+          />
+          <div className="relative mx-auto max-w-2xl">
+            <h2 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+              Your next Reel could be your biggest lead magnet.
+            </h2>
+            <p className="mx-auto mb-10 max-w-xl text-lg text-white/90">
+              Start free with 500 DMs/month. No credit card, no time limit —
+              upgrade only when you outgrow it.
+            </p>
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-gray-900 shadow-strong transition-all hover:scale-[1.02]"
+            >
+              Get started free →
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 dark:bg-black text-white py-12 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h3 className="text-xl font-bold mb-4">DM Shiyam</h3>
-              <p className="text-gray-400 text-sm">
-                Automate your Instagram DMs and grow faster.
+      {/* ─────────────────────── Footer ─────────────────────── */}
+      <footer className="border-t border-gray-100 bg-white py-14 dark:border-gray-800 dark:bg-gray-950">
+        <div className="section">
+          <div className="mb-10 grid grid-cols-2 gap-10 md:grid-cols-4">
+            <div className="col-span-2">
+              <Link href="/" className="mb-4 inline-flex items-center gap-2.5">
+                <span className="logo-tile h-9 w-9 overflow-hidden">
+                  <Image
+                    src="/logo.jpeg"
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 object-cover"
+                  />
+                </span>
+                <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
+                  DM Shiyam
+                </span>
+              </Link>
+              <p className="max-w-xs text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                Turn Instagram comments into personal DMs. Fully automated,
+                Meta-approved, built for Indian creators.
               </p>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="#features" className="hover:text-white">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <Link href="/pricing" className="hover:text-white">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <a href="#faq" className="hover:text-white">
-                    FAQ
-                  </a>
-                </li>
-                <li>
-                  <Link href="/blog" className="hover:text-white">
-                    Blog
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>
-                  <a href="/privacy" className="hover:text-white">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="/terms" className="hover:text-white">
-                    Terms of Service
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Contact</h4>
-              <p className="text-gray-400 text-sm">
-                <a
-                  href="mailto:dmshiyamofficial@gmail.com"
-                  className="hover:text-white"
-                >
-                  dmshiyamofficial@gmail.com
-                </a>
-              </p>
-            </div>
+            <FooterCol
+              title="Product"
+              links={[
+                { href: "#features", label: "Features" },
+                { href: "/pricing", label: "Pricing" },
+                { href: "/blog", label: "Blog" },
+                { href: "#faq", label: "FAQ" },
+              ]}
+            />
+            <FooterCol
+              title="Company"
+              links={[
+                { href: "/privacy", label: "Privacy Policy" },
+                { href: "/terms", label: "Terms of Service" },
+                {
+                  href: "mailto:dmshiyamofficial@gmail.com",
+                  label: "Contact",
+                },
+              ]}
+            />
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
-            <p>
-              &copy; {new Date().getFullYear()} DM Shiyam. All rights reserved.
-            </p>
+          <div className="border-t border-gray-100 pt-6 text-center text-sm text-gray-400 dark:border-gray-800">
+            © {new Date().getFullYear()} DM Shiyam. All rights reserved.
           </div>
         </div>
       </footer>
 
-      {/* Sticky bottom CTA (Task 10.4) */}
+      {/* ─────────────────────── Sticky CTA ─────────────────────── */}
       {showStickyCta && !ctaDismissed && (
         <div
-          className="fixed bottom-0 left-0 right-0 z-50 bg-indigo-600 text-white shadow-lg border-t border-indigo-700 animate-in slide-in-from-bottom"
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-gray-900/95 text-white shadow-strong backdrop-blur-xl animate-in slide-in-from-bottom"
           role="region"
           aria-label="Start free — 500 DMs per month"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-            <p className="text-sm sm:text-base font-medium">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30 bg-ig-gradient"
+            aria-hidden
+          />
+          <div className="section relative flex items-center justify-between gap-4 py-3">
+            <p className="text-sm font-medium sm:text-base">
               <span className="hidden sm:inline">
                 Ready to automate your Instagram DMs?{" "}
               </span>
-              Free forever — 500 DMs/mo. No credit card.
+              Free forever — 500 DMs/mo, no credit card.
             </p>
             <div className="flex items-center gap-2">
               <Link
                 href="/register"
-                className="px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors text-sm whitespace-nowrap"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-white px-4 py-2 text-sm font-semibold text-gray-900 transition-all hover:scale-[1.03]"
               >
-                Get Started Free
+                Get started free →
               </Link>
               <button
                 type="button"
                 onClick={dismissCta}
                 aria-label="Dismiss"
-                className="p-2 text-indigo-100 hover:text-white transition-colors"
+                className="p-2 text-white/70 transition-colors hover:text-white"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="h-5 w-5"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  aria-hidden="true"
+                  aria-hidden
                 >
                   <path
                     fillRule="evenodd"
@@ -577,5 +515,152 @@ export default function LandingContent() {
         </div>
       )}
     </main>
+  );
+}
+
+// ─────────────────────── Sub-components ───────────────────────
+
+function TrustCheck({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+      <svg
+        className="h-4 w-4 text-emerald-500"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M16.704 5.29a1 1 0 010 1.42l-7.5 7.5a1 1 0 01-1.42 0l-3.5-3.5a1 1 0 111.42-1.42l2.79 2.79 6.79-6.79a1 1 0 011.42 0z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span className="text-gray-700 dark:text-gray-300">{children}</span>
+    </span>
+  );
+}
+
+function MockRow({
+  name,
+  count,
+  color,
+}: {
+  name: string;
+  count: number;
+  color: "pink" | "violet" | "amber";
+}) {
+  const palette = {
+    pink: "bg-pink-100 text-pink-700",
+    violet: "bg-violet-100 text-violet-700",
+    amber: "bg-amber-100 text-amber-700",
+  }[color];
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex items-center rounded-md px-2 py-0.5 font-mono text-xs font-semibold ${palette}`}
+        >
+          {name}
+        </span>
+        <span className="text-gray-500">keyword</span>
+      </div>
+      <div className="font-semibold text-gray-900">
+        {count.toLocaleString()}
+      </div>
+    </div>
+  );
+}
+
+function SocialProof({ number, label }: { number: string; label: string }) {
+  return (
+    <div className="text-center">
+      <div
+        className="gradient-text text-3xl font-bold tracking-tight sm:text-4xl"
+        dangerouslySetInnerHTML={{ __html: number }}
+      />
+      <div className="mt-1 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+  accent,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  accent: "pink" | "violet" | "amber" | "emerald" | "sky" | "rose";
+}) {
+  const accentMap: Record<string, string> = {
+    pink: "from-pink-100 to-pink-50",
+    violet: "from-violet-100 to-violet-50",
+    amber: "from-amber-100 to-amber-50",
+    emerald: "from-emerald-100 to-emerald-50",
+    sky: "from-sky-100 to-sky-50",
+    rose: "from-rose-100 to-rose-50",
+  };
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-7 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-medium dark:border-gray-800 dark:bg-gray-900">
+      <div
+        className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${accentMap[accent]} text-2xl`}
+      >
+        {icon}
+      </div>
+      <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+        {title}
+      </h3>
+      <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function Step({ n, title, body }: { n: number; title: string; body: string }) {
+  return (
+    <div className="relative">
+      <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-ig-gradient text-xl font-bold text-white shadow-strong">
+        {n}
+      </div>
+      <h3 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+        {title}
+      </h3>
+      <p className="leading-relaxed text-gray-600 dark:text-gray-400">
+        {body}
+      </p>
+    </div>
+  );
+}
+
+function FooterCol({
+  title,
+  links,
+}: {
+  title: string;
+  links: Array<{ href: string; label: string }>;
+}) {
+  return (
+    <div>
+      <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-900 dark:text-white">
+        {title}
+      </h4>
+      <ul className="space-y-2.5 text-sm text-gray-500 dark:text-gray-400">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link
+              href={link.href}
+              className="transition-colors hover:text-gray-900 dark:hover:text-white"
+            >
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

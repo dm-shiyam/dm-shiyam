@@ -3,8 +3,20 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
-    @apply bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
+    @apply bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+  /* Tight headings — crisper SaaS feel. Default Inter line-height is a bit
+     airy for display sizes. */
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
   }
 }
 
@@ -12,7 +24,7 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ig-gradient bg-[length:200%_200%] px-6 py-3 text-sm font-semibold text-white shadow-strong transition-all hover:bg-[position:100%_0] hover:shadow-glow active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-secondary {
@@ -77,12 +89,31 @@
   background: #9ca3af;
 }
 
-/* Gradient text */
+/* Gradient text — rewritten to match the new "sunset" ig-gradient so
+   headline accents, logo wordmarks, and inline highlights all read as
+   the same brand mark. */
 .gradient-text {
-  background: linear-gradient(135deg, #ec4899, #8b5cf6, #6366f1);
+  background: linear-gradient(135deg, #f09433 0%, #dc2743 40%, #bc1888 80%, #833ab4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Logo mark container — rounded gradient tile with the DMShiyam wordmark
+   or image on top. Reused by nav, email header, hero. */
+.logo-tile {
+  @apply inline-flex items-center justify-center rounded-xl bg-ig-gradient shadow-glow;
+}
+
+/* Thin stat / trust pill used in hero + stats bands. */
+.pill {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-300;
+}
+
+/* Section container — standardises max-width + horizontal padding so
+   every section lines up on a 7xl grid without copy-pasting Tailwind. */
+.section {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }
 
 /* Pulse animation for live indicator */

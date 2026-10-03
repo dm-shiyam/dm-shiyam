@@ -628,13 +628,13 @@
 
 | # | Sub-task | Priority | Status |
 |---|----------|----------|--------|
-| 2.1 | Resolve outstanding `npm audit --production` high-severity vulns — plan Next.js 15 + NextAuth v5 upgrade (deferred from P12.1) | 🔴 | Pending |
+| 2.1 | Resolve outstanding `npm audit --production` high-severity vulns — plan Next.js 15 + NextAuth v5 upgrade (deferred from P12.1) | 🔴 | 🟡 Scan done 2026-10-03 (see `docs/SECURITY_SCAN_2026-10-03.md`) — 11 critical + 5 high in prod deps; ~10 of 11 criticals clear with `npm audit fix`, NextAuth v4→v5 upgrade still pending |
 | 2.2 | Rotate ALL production secrets before domain go-live: `NEXTAUTH_SECRET`, `CRON_SECRET`, DB password, Resend key, Razorpay live keys | 🔴 | Pending |
 | 2.3 | Flip CSP from `Report-Only` to enforced (`CSP_ENFORCE=1`) after 7-day clean report window | 🟡 | Pending |
 | 2.4 | Review `/api/csp-report` violations in Sentry; whitelist legit sources (GA, Razorpay, IG embeds) | 🟡 | Pending |
 | 2.5 | Enable Vercel WAF / bot protection on `/api/auth/*`, `/api/billing/*`, `/api/webhook/*` | 🟡 | Pending |
-| 2.6 | Audit all env vars — remove unused keys, ensure no secrets leak to client bundle (`NEXT_PUBLIC_*` sweep) | 🟡 | Pending |
-| 2.7 | Penetration-test checklist run: OWASP Top 10 (auth bypass, IDOR on `/api/automations/[id]`, XSS in DM template preview, SSRF in IG media fetch) | 🔴 | Pending |
+| 2.6 | Audit all env vars — remove unused keys, ensure no secrets leak to client bundle (`NEXT_PUBLIC_*` sweep) | 🟡 | ✅ Done 2026-10-03 — client bundle clean (only `NEXT_PUBLIC_APP_URL` + `NEXT_PUBLIC_GA_MEASUREMENT_ID` shipped, both public by design). `.env.example` drift documented in `docs/SECURITY_SCAN_2026-10-03.md` (7 undocumented required vars incl. `DATABASE_URL`); `DOCKER_BUILD` declared but unused. |
+| 2.7 | Penetration-test checklist run: OWASP Top 10 (auth bypass, IDOR on `/api/automations/[id]`, XSS in DM template preview, SSRF in IG media fetch) | 🔴 | ✅ Done 2026-10-03 — static review in `docs/SECURITY_SCAN_2026-10-03.md`. All 4 categories clean; no exploitable finding. One defense-in-depth suggestion: push `user_id` into SQL predicates of ID-only DB helpers in `src/lib/db.ts`. |
 | 2.8 | Add security.txt at `/.well-known/security.txt` with disclosure contact | 🟢 | Pending |
 | 2.9 | Session hardening — verify NextAuth cookie flags (`Secure`, `HttpOnly`, `SameSite=Lax`) on production domain, not just vercel.app subdomain | 🔴 | Pending |
 | 2.10 | Backup + restore drill on Neon Postgres — verify PITR works, document runbook | 🟡 | Pending |

@@ -260,6 +260,32 @@ export async function sendVerificationEmail({
   });
 }
 
+// Password reset — sent on POST /api/auth/forgot-password when the email
+// matches an existing user. Routes through sendEmail() so the branded
+// shell (logo chip, header, footer) is applied like every other template.
+// `name` is already HTML-escaped by the caller (forgot-password route).
+export async function sendPasswordResetEmail({
+  to,
+  name,
+  resetUrl,
+}: {
+  to: string;
+  name: string;
+  resetUrl: string;
+}) {
+  return sendEmail({
+    to,
+    subject: `Reset your ${APP_NAME} password`,
+    html: `
+      <h2 style="color:#111;font-size:20px;margin:0 0 12px;">Reset your password</h2>
+      <p>Hi ${name || "there"},</p>
+      <p>We received a request to reset your ${APP_NAME} password. Click the button below to choose a new one.</p>
+      ${ctaButton(resetUrl, "Reset password →")}
+      <p style="color:#666;font-size:14px;">This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your current password stays active.</p>
+    `,
+  });
+}
+
 // 13.1 Welcome (Day 0) — sent immediately on signup
 export async function sendWelcomeEmail({
   to,

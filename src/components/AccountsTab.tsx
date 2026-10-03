@@ -216,8 +216,9 @@ const handleDelete = async (id: string) => {
           </p>
           <div className="mb-6 mx-auto max-w-md rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-2 text-left text-xs text-amber-800 dark:text-amber-300">
             <strong>Before you connect:</strong> your Instagram account must be
-            a <em>Business</em> or <em>Creator</em> account linked to a
-            Facebook Page. Personal accounts can&apos;t send automated DMs (this is Instagram&apos;s rule, not ours).
+            a <em>Business</em> or <em>Creator</em> account. No Facebook Page
+            needed — we use Instagram&apos;s newer Business Login flow directly.
+            Personal accounts can&apos;t send automated DMs (this is Instagram&apos;s rule, not ours).
             {" "}
             <a
               href="https://help.instagram.com/502981923235522"

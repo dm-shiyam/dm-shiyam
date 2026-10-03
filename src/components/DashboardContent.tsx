@@ -665,7 +665,7 @@ function GettingStartedChecklist({
     {
       done: accountCount > 0,
       label: "Connect your Instagram account",
-      desc: "Requires a Business or Creator account linked to a Facebook Page.",
+      desc: "Needs a Business or Creator Instagram account — no Facebook Page required.",
       cta: "Connect account",
       onClick: onGoToAccounts,
     },
@@ -1677,24 +1677,18 @@ function SetupGuide() {
             },
             {
               step: 2,
-              title: "Link your Instagram to a Facebook Page",
+              title: "Connect Instagram to DM Shiyam",
               content:
-                "In the Instagram app, go to Settings → Account → Linked Accounts → Facebook, and connect it to a Facebook Page you manage. If you don't have a Page, you can create one for free.",
+                "Head over to the Accounts tab and click Connect Instagram. You'll be taken to Instagram's official sign-in page — approve the three permissions and you're done. No Facebook Page needed.",
             },
             {
               step: 3,
-              title: "Connect Instagram to DM Shiyam",
-              content:
-                "Head over to the Accounts tab and click Connect Instagram. You'll be taken to Instagram's official sign-in page — approve the permissions and you're done.",
-            },
-            {
-              step: 4,
               title: "Create your first automation",
               content:
                 "Go to the Automations tab and click New Automation. Pick a keyword (e.g. \"link\"), write your DM message, and hit Save. That's it — you're live!",
             },
             {
-              step: 5,
+              step: 4,
               title: "Test it",
               content:
                 "From another account, comment your keyword on one of your posts. Within a few seconds, DM Shiyam sends your message. Check the Activity tab to see it in action.",

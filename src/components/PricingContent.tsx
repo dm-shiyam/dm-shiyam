@@ -686,7 +686,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="Do I need an Instagram Business or Creator account?"
-              answer="Yes. Instagram only allows auto-DMs from Business or Creator accounts (not personal ones). Switching is free and takes 30 seconds — in the Instagram app, go to Settings → Account → Switch to Professional Account. You'll also need to connect it to a Facebook Page, and we'll guide you through every step."
+              answer="Yes. Instagram only allows auto-DMs from Business or Creator accounts (not personal ones). Switching is free and takes 30 seconds — in the Instagram app, go to Settings → Account → Switch to Professional Account. No Facebook Page required — DM Shiyam uses Instagram's newer Business Login flow directly."
             />
             <FAQItem
               question="Do prices include GST?"

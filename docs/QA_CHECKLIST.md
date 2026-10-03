@@ -233,3 +233,73 @@ Not blockers for A8, but noted for future work:
 
 Append a one-liner to §5 bug log for each defect found. When clean, set the "Last full pass" date in the header of this doc and tick S5.3.1 as ✅ in `TASK_LIST.md`.
 
+---
+
+## 9. S5.3.2 — Onboarding flow end-to-end (manual pass, destructive)
+
+> Automated coverage: `tests/e2e/onboarding.spec.ts` guards the entry points that are safe without auth (OAuth-authorize unauth bounce + callbackUrl preservation, pretty error page, protected-route redirects, no-Facebook-Page copy on pricing FAQ). The rest below needs a real Instagram Business/Creator account you own and a second account to post trigger comments from.
+>
+> **Target URL**: `https://dm-shiyam.vercel.app` (swap to `https://dmshiyam.com` after S5.7 cutover).
+> **Setup**: pre-create a brand-new credentials account per §8.1 so you start at the empty dashboard with a verified email. Delete via `/admin → Users → Delete` when done.
+
+### 9.1 First-login onboarding wizard
+
+- [ ] Fresh user with 0 automations lands on `/dashboard` → the wizard modal auto-opens (step 1 of 3) after the initial fetch resolves.
+- [ ] Step 1 "Welcome to DM Shiyam" — click **Get started** → advances to step 2.
+- [ ] Step 2 "Connect your Instagram account" — click **I'll do this later** → advances to step 3 without connecting.
+- [ ] Step 3 "Create your first automation" has a green "last step" badge visible.
+- [ ] Click the X in the corner → wizard closes; `onboardingDismissed` stays `true` for the rest of the session (don't reopen on next tab change inside the same page). Hard-reload the page → wizard reappears (dismissal is in-memory only — this is intentional nagging until you have ≥1 automation).
+- [ ] From a user who ALREADY has 1 connected account but 0 automations: wizard opens at step 2 (not 1) per `initialStep={accounts.length > 0 ? 2 : 0}`.
+
+### 9.2 Connect Instagram (IBL happy path)
+
+- [ ] From the wizard step 2 OR the Accounts tab "Connect Instagram" button → browser navigates to `https://www.instagram.com/oauth/authorize` with the three `instagram_business_*` scopes in the URL. Confirm `force_authentication=1` is in the query (so reviewers always see the consent screen).
+- [ ] Instagram's consent screen lists the three permissions. Approve.
+- [ ] Browser bounces back to `/api/instagram/oauth/callback?code=...&state=...` → the server exchanges short-lived → long-lived → fetches `/me` → persists the account → subscribes webhooks → redirects to `/dashboard?ig_connected=1&username=<handle>`.
+- [ ] Dashboard **auto-switches to the Accounts tab** (regression guard from `44f964a`) and shows a success toast with the connected handle.
+- [ ] Accounts tab now lists the connected IG as an active card with a green "Active" badge and `token_expires_at` ~ 60 days out.
+- [ ] `/api/billing/status` or `/admin → Users` shows this user's `first_account_connected_at` populated with the current timestamp.
+- [ ] **Negative:** reject the consent screen → bounce back to `/dashboard?ig_error=access_denied` with a visible amber warning banner; account NOT persisted.
+- [ ] **Negative:** try to connect a Personal (not Business/Creator) IG → Instagram's own consent screen or Meta Graph `/me` responds with an error → user sees the amber "Switch to Professional" callout on the Accounts tab (we don't swallow it to a generic 500).
+- [ ] **Hijack guard:** sign in as user B, try to connect the SAME IG account already bound to user A → redirect to `/dashboard?ig_error=already_connected`; A's binding stays intact.
+
+### 9.3 Create first automation (from a template)
+
+- [ ] After connecting IG, you land on Accounts tab. Switch to Automations tab → click **New Automation**.
+- [ ] Pick a template ("Lead Magnet", "Discount Code", or "Link in Bio") — all three fields pre-fill cleanly.
+- [ ] Select the Instagram account you just connected (should be the default when there's only one).
+- [ ] Keyword field accepts lowercase single word (e.g. `info`). Case-insensitive matching is enforced server-side.
+- [ ] DM message supports the `{{username}}` placeholder — type it, Save, re-open to confirm it round-tripped.
+- [ ] Save → automation appears in the list with "Active" toggle on. Database field `user_id` on the row matches your signed-in user id (quick `SELECT user_id FROM automations WHERE id = …` in Neon to confirm tenant isolation).
+- [ ] Negatives: duplicate keyword for the same account rejects. Empty DM template rejects. Keyword with special chars (`$`, `@`) rejects. All with friendly error text, not a 500.
+
+### 9.4 First DM (self-comment test)
+
+- [ ] Sign into a SECOND Instagram account (your personal one) on a different device/browser profile.
+- [ ] Post a public comment with your trigger keyword on one of the connected IG account's recent posts (last 7 days — Instagram webhook delivery is best-effort on older media).
+- [ ] Within ~5 s, DM Shiyam should:
+  - [ ] Reply publicly to your comment (if comment-reply is enabled on the automation).
+  - [ ] Send a DM to your second account with the `{{username}}` placeholder substituted.
+- [ ] Activity tab shows a row with: your IG handle (commenter), the trigger keyword, "DM sent" status, timestamp.
+- [ ] `/admin → Users` → your test user now shows `first_dm_sent_at` populated.
+- [ ] Getting Started checklist above the stats grid auto-hides (allDone condition triggered).
+- [ ] GA4 Realtime should show a `first_dm_sent` event with the user id as the custom param.
+- [ ] **Dedup:** post the SAME comment text again on the SAME post → activity log a second DM? NO — our `claimDmSend` enforces one DM per `(automation_id, comment_id)` triple. If you see duplicate, that's a critical regression against P12 work.
+- [ ] **Multi-user independence:** have your second account comment the keyword on a different post or at a different time — gets its own DM (dedup is per-comment, not per-sender).
+
+### 9.5 Error-state onboarding
+
+- [ ] Connect IG → wait → go to IG Settings and revoke DM Shiyam's permission (simulates Meta deauth). Our deauth callback (`/api/instagram/data-deletion`) should flip the account to inactive in our DB within a few seconds, and the Accounts tab card should show a red "Reconnect" badge instead of the green Active one.
+- [ ] Expire the IG token (hard to simulate without waiting 60 days — the daily refresh-tokens cron should prevent this. Verify by querying `SELECT last_refreshed_at FROM accounts` and confirming it was touched within the last 24 h).
+- [ ] Delete the connected IG from `/admin → Users` while a webhook fires for it → webhook route logs a warning but doesn't 500.
+
+### 9.6 Known gaps / things NOT in scope here
+
+- Full Playwright coverage of the wizard/checklist UI requires auth plumbing we don't have in CI. Covered by this manual pass instead.
+- The daily token refresh cron is covered under P20.2 (Priyanka/Venkat), not this task.
+- Multi-account automation routing is validated separately under S5.3.4.
+
+### 9.7 Record the pass
+
+Append a one-liner to §5 bug log for each defect found. When clean, update S5.3.2 in `TASK_LIST.md`.
+

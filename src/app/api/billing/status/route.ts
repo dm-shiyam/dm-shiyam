@@ -23,8 +23,18 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    plan: user.plan,
-    subscription_status: user.subscription_status,
-  });
+  // Short private cache so a user bouncing between dashboard tabs
+  // doesn't hammer the DB — but cancel actions still see fresh state
+  // within 30s. User-scoped (private), never shared across users.
+  return NextResponse.json(
+    {
+      plan: user.plan,
+      subscription_status: user.subscription_status,
+    },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+      },
+    }
+  );
 }

@@ -42,10 +42,54 @@ import {
   CreditCard,
 } from "lucide-react";
 import type { Automation, ActivityLog, DashboardStats, Account } from "@/types";
-import AnalyticsTab from "@/components/AnalyticsTab";
-import AccountsTab from "@/components/AccountsTab";
-import BillingTab from "@/components/BillingTab";
+import dynamic from "next/dynamic";
 import { trackEvent } from "@/lib/analytics";
+
+// Perf (2026-10-03): heavy tabs (analytics, accounts, billing) were
+// shipping in the initial dashboard client bundle (~1700 LOC of
+// DashboardContent + the three tab modules + their deps). Users
+// landing on Automations don't need the Analytics chart library,
+// Accounts OAuth helpers, or Billing fetch logic until they click.
+// `next/dynamic` splits each into its own JS chunk, downloaded only
+// when the user activates that tab. Keeps the first paint fast on
+// cold Vercel edge nodes.
+const AnalyticsTab = dynamic(() => import("@/components/AnalyticsTab"), {
+  loading: () => <TabLoader />,
+});
+const AccountsTab = dynamic(() => import("@/components/AccountsTab"), {
+  loading: () => <TabLoader />,
+});
+const BillingTab = dynamic(() => import("@/components/BillingTab"), {
+  loading: () => <TabLoader />,
+});
+
+function TabLoader() {
+  return (
+    <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-gray-400 shadow-soft dark:border-gray-800 dark:bg-gray-900">
+      <svg
+        className="h-5 w-5 animate-spin"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeOpacity="0.2"
+        />
+        <path
+          d="M22 12a10 10 0 00-10-10"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+}
 
 type Tab = "automations" | "activity" | "analytics" | "accounts" | "billing" | "setup";
 
@@ -115,6 +159,15 @@ export default function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("automations");
+  // Perf (2026-10-03): track which heavy tabs have ever been opened so
+  // we can keep them mounted (just visually hidden) after the first
+  // click. Prevents BillingTab, AnalyticsTab, AccountsTab from
+  // remounting + refetching every time the user bounces between tabs.
+  // Automations/Activity/Setup are cheap enough to just toggle in
+  // place against the shared `automations`/`activities` state.
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(
+    () => new Set(["automations"])
+  );
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -125,6 +178,18 @@ export default function DashboardContent() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+
+  // Wrap setActiveTab so every switch also records the tab as "visited".
+  // Keeps the mount-once logic for the dynamically imported tabs below.
+  const switchTab = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  }, []);
   // Live billing state — kept client-side so the UI reflects a cancel
   // immediately (without a sign-out/in cycle, since the session JWT
   // only carries `plan`, not subscription_status). Null = not loaded yet.
@@ -285,7 +350,7 @@ export default function DashboardContent() {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("ig_connected") || params.get("ig_error")) {
-      setActiveTab("accounts");
+      switchTab("accounts");
     }
   }, []);
 
@@ -445,12 +510,12 @@ export default function DashboardContent() {
             accountCount={accounts.length}
             automationCount={automations.length}
             hasFirstDm={activities.some((a) => a.dm_sent === true)}
-            onGoToAccounts={() => setActiveTab("accounts")}
+            onGoToAccounts={() => switchTab("accounts")}
             onGoToAutomations={() => {
-              setActiveTab("automations");
+              switchTab("automations");
               setShowCreateForm(true);
             }}
-            onGoToActivity={() => setActiveTab("activity")}
+            onGoToActivity={() => switchTab("activity")}
           />
         )}
 
@@ -484,7 +549,7 @@ export default function DashboardContent() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => switchTab(tab.id)}
               className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${
                 activeTab === tab.id
                   ? "bg-gray-900 text-white shadow-medium dark:bg-white dark:text-gray-900"
@@ -508,15 +573,32 @@ export default function DashboardContent() {
             editingId={editingId}
             setEditingId={setEditingId}
             onRefresh={fetchData}
-            onGoToAccounts={() => setActiveTab("accounts")}
+            onGoToAccounts={() => switchTab("accounts")}
           />
         )}
         {activeTab === "activity" && (
           <ActivityTab activities={activities} loading={loading} />
         )}
-        {activeTab === "analytics" && <AnalyticsTab userPlan={userPlan} />}
-        {activeTab === "accounts" && <AccountsTab />}
-        {activeTab === "billing" && <BillingTab />}
+        {/* Keep heavy tabs mounted once visited so revisiting is instant
+            and the component's internal state (fetched data, scroll
+            position, forms-in-progress) survives. First open still
+            triggers the dynamic import + fetch; subsequent clicks just
+            toggle CSS visibility. */}
+        {visitedTabs.has("analytics") && (
+          <div hidden={activeTab !== "analytics"}>
+            <AnalyticsTab userPlan={userPlan} />
+          </div>
+        )}
+        {visitedTabs.has("accounts") && (
+          <div hidden={activeTab !== "accounts"}>
+            <AccountsTab />
+          </div>
+        )}
+        {visitedTabs.has("billing") && (
+          <div hidden={activeTab !== "billing"}>
+            <BillingTab />
+          </div>
+        )}
         {activeTab === "setup" && <SetupGuide />}
       </main>
 
@@ -527,8 +609,8 @@ export default function DashboardContent() {
             setShowOnboarding(false);
             setOnboardingDismissed(true);
           }}
-          onGoToAccounts={() => setActiveTab("accounts")}
-          onGoToAutomations={() => setActiveTab("automations")}
+          onGoToAccounts={() => switchTab("accounts")}
+          onGoToAutomations={() => switchTab("automations")}
         />
       )}
       <FeedbackButton />

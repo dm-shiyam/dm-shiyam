@@ -153,14 +153,24 @@ export default function TermsOfService() {
               date.
             </li>
             <li>
-              Refunds are handled on a case-by-case basis. Contact{" "}
+              Refunds and cancellations are governed by our{" "}
+              <a
+                href="/refund-policy"
+                className="text-indigo-600 dark:text-indigo-400 underline"
+              >
+                Refund &amp; Cancellation Policy
+              </a>
+              . In short: full refund within 7 days of your first paid
+              charge; renewals reviewed case-by-case within 72 hours; no
+              refund for charges where more than 7 days have passed (except
+              for outages or billing errors). Email{" "}
               <a
                 href="mailto:dmshiyamofficial@gmail.com"
                 className="text-indigo-600 dark:text-indigo-400 underline"
               >
                 dmshiyamofficial@gmail.com
               </a>{" "}
-              within 7 days of a charge to request a review.
+              to request a refund or cancel.
             </li>
             <li>
               Prices are subject to change with 14 days' notice via email.

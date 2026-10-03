@@ -661,7 +661,7 @@ export default function PricingContent() {
             />
             <FAQItem
               question="Do you offer refunds?"
-              answer="If something's not working for you, just email us at dmshiyamofficial@gmail.com. Tell us what went wrong and we'll sort it out — we handle every refund personally and always try to make things right."
+              answer="Yes. Full refund within 7 days of your first paid charge — no questions asked. For renewals, email dmshiyamofficial@gmail.com within 72 hours and we'll review case-by-case (and almost always refund if you didn't use the plan). Full details and timelines are on our Refund & Cancellation Policy page: /refund-policy"
             />
             <FAQItem
               question="Is there a free trial?"

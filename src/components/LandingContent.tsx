@@ -480,6 +480,7 @@ export default function LandingContent() {
               links={[
                 { href: "/privacy", label: "Privacy Policy" },
                 { href: "/terms", label: "Terms of Service" },
+                { href: "/refund-policy", label: "Refund Policy" },
                 {
                   href: "mailto:dmshiyamofficial@gmail.com",
                   label: "Contact",

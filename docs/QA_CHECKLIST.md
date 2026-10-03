@@ -303,3 +303,93 @@ Append a one-liner to §5 bug log for each defect found. When clean, set the "La
 
 Append a one-liner to §5 bug log for each defect found. When clean, update S5.3.2 in `TASK_LIST.md`.
 
+---
+
+## 10. S5.3.3 — Billing flow end-to-end (manual pass, destructive, live money)
+
+> Automated coverage: `tests/e2e/billing.spec.ts` (10 specs — auth guards on checkout / cancel / status / webhook, 405 on GET-webhook, bogus-signature fail-closed, pricing-page live INR labels for monthly + yearly from `PLANS`, no-auth Subscribe routes to /register with callbackUrl carrying `?plan=…`, `/billing/success` + `/billing/cancel` landing-page smoke). All 10 green on prod.
+>
+> **Target URL**: `https://dm-shiyam.vercel.app` (swap to `https://dmshiyam.com` after S5.7 cutover).
+> **Prerequisites**: Razorpay live keys in Vercel env (already confirmed — Venkat 2026-10-03), live mode plans created and plan ids wired into `RAZORPAY_PLAN_*` env vars, `/api/health` reports `razorpay: ok`. Needs a UPI id or card you can actually charge; refund after.
+
+### 10.1 Free → Pro checkout (happy path, live money)
+
+- [ ] Signed-in on a fresh user still on the `free` plan. Confirm `/admin → Users` shows `plan=free, subscription_status=none, dm_limit=500`.
+- [ ] Open `/pricing`, click the **Pro** monthly Subscribe → Razorpay Checkout modal opens.
+- [ ] Modal shows `DM Shiyam Pro` and the price `₹799` (matches `PLANS.pro.price_monthly / 100`). **Fail the test** if it shows ₹99 (old regression QA §5 bug 5).
+- [ ] Modal does NOT show a "TEST MODE" red banner (live keys loaded).
+- [ ] Complete UPI payment with a real amount. The modal closes, `handler` fires → `POST /api/billing/verify` returns 2xx.
+- [ ] Browser redirects to `/billing/success?subscription=sub_XXX&plan=pro&cycle=monthly`:
+  - [ ] Shows real `sub_XXX` id (not a placeholder)
+  - [ ] Shows Plan: `Pro (Monthly)` and Amount: `₹799`
+  - [ ] Status row flips from "Checking…" / "Confirming…" to **Active** within ~15 s (poll gives up after that → "Payment received — confirming" copy fires)
+- [ ] `/admin → Users` for this user now shows: `plan=pro, subscription_status=active, dm_limit=25000, razorpay_subscription_id=sub_XXX`.
+- [ ] Dashboard DM-quota banner is gone / updates to `0 / 25,000`. Any upgrade pill in the header disappears.
+- [ ] GA4 Realtime shows `subscription_started` with `plan=pro, cycle=monthly, amount=79900, currency=INR` within ~30 s (fired server-side from the webhook, not the client).
+- [ ] Email receipt from Razorpay lands at your account email. Our own `sendSubscriptionActivated` email (branded with the logo) also lands.
+- [ ] `billing_events` table has exactly one row for this `event_id` (idempotency check — hit `/api/billing/webhook` with the same event id and confirm `duplicate:true`).
+
+### 10.2 Yearly checkout (plan + cycle + price all consistent)
+
+- [ ] Repeat §10.1 with the Yearly toggle. Pro yearly must charge `₹7,990` (= 10 × monthly). GA4 event has `cycle=yearly, amount=799000`.
+- [ ] Receipt page shows "Pro (Yearly)" and `₹7,990`.
+
+### 10.3 Mid-cycle upgrade / tier jump
+
+- [ ] From an active Starter user, click Subscribe on Pro.
+- [ ] Razorpay flow completes → webhook fires `subscription.activated` with the new plan slug in `notes.plan`.
+- [ ] `plan` flips `starter → pro`, `dm_limit` flips `5000 → 25000`, `subscription_status` stays `active`, `razorpay_subscription_id` is replaced with the new sub id. The OLD Starter sub is cancelled by Razorpay automatically (or we cancel it in the upgrade flow).
+- [ ] `subscription_started` DOES NOT re-fire (webhook guards with `!wasActive` — only first activation counts). Confirm by watching GA4 Realtime.
+
+### 10.4 Cancel at cycle end + grace period
+
+- [ ] Signed in as an active Pro user → Dashboard → click the plan pill in the top-right header → **Cancel subscription**.
+- [ ] Confirmation modal appears. Confirm.
+- [ ] `POST /api/billing/cancel` returns `{status: "cancelled", message: "…cancels at the end of the current billing cycle…"}`.
+- [ ] Dashboard pill now shows "Cancels on <date>" using the `current_end` returned by Razorpay.
+- [ ] `/admin → Users` shows `subscription_status=cancelled` **but `plan=pro`** (grace period — paid access until period end).
+- [ ] `sendSubscriptionCancellationScheduled` email lands (branded, logo header, shows `cycleEndUnix` formatted).
+- [ ] Trying to Cancel again → 400 "already scheduled to cancel" with a friendly toast, not a 500.
+- [ ] Rate limit: fire 6 POST `/api/billing/cancel` requests in 10 min from the same user → 6th returns 429 with Retry-After.
+- [ ] **Negative:** signed in as a free user, hit `POST /api/billing/cancel` → 400 "You're on the free plan — nothing to cancel."
+
+### 10.5 Automatic downgrade at cycle end
+
+- [ ] Hard to simulate without waiting a month. **Shortcut:** in Razorpay dashboard, manually cancel the subscription (or fast-forward end date). Razorpay fires `subscription.cancelled` → our webhook:
+  - [ ] `plan` → `free`, `dm_limit` → `500`, `subscription_status` → `cancelled` (NOT `expired`, that's reserved for `subscription.completed`).
+  - [ ] `sendSubscriptionEnded` email lands with `previousPlan` captured correctly ("Previous plan: Pro").
+- [ ] For a subscription that reaches its `total_count` without being cancelled, Razorpay fires `subscription.completed` instead → same downgrade but `subscription_status=expired`.
+- [ ] Dashboard back to free-tier UX (quota banner reappears, upgrade pill reappears). Automations keep their rows but no new DMs fire (webhook claims a free-tier DM slot and respects the 500 cap).
+
+### 10.6 Payment failures (reused from V12)
+
+Re-run `node scripts/test-payment-failures.mjs` against prod DB and confirm 4/4 pass:
+
+- [ ] 12.1 `payment.failed` → user stays `free`, Sentry `captureAlert` fired.
+- [ ] 12.2 Checkout closed without webhook → DB untouched, no orphan `pending` row.
+- [ ] 12.3 20-way concurrent `subscription.activated` storm → exactly one user ends active (idempotent via SET-based `updateUserPlan`).
+- [ ] 12.4 Invalid webhook signature → 400, no state change.
+
+### 10.7 Reconciliation cron (V11)
+
+- [ ] Trigger `GET /api/cron/reconcile-payments` with the `CRON_SECRET` header.
+- [ ] Response includes a 25-h window scan; no mismatches on a clean day.
+- [ ] Create a deliberate mismatch (manually mark a user `active` without a matching Razorpay payment) → next cron run fires Sentry `captureAlert` with the clipped sample.
+- [ ] Scheduled run (03:00 UTC daily) shows up in Vercel Cron logs.
+
+### 10.8 Receipts, refunds, GST
+
+- [ ] Razorpay auto-invoice email for the live payment includes GSTIN + line item.
+- [ ] Issue a partial refund from the Razorpay dashboard → `refund.created` webhook fires → `sendRefundInitiated` email lands at the user's inbox with refund id + expected timeline. UPI landed in bank in ~2-3 business days.
+- [ ] Our `/refund-policy` page §8 timelines match what we actually told the user.
+
+### 10.9 Known gaps / things NOT in scope here
+
+- Load-test of concurrent checkouts past Vercel function limits — not needed pre-launch at current volumes.
+- Dunning / failed-renewal retry flow — Razorpay handles this upstream; our webhook only reacts to final `subscription.halted` which currently we do not special-case (TODO after launch if churn signals demand it).
+- International cards / multi-currency — single-market (INR / India) only this quarter.
+
+### 10.10 Record the pass
+
+Append a one-liner to §5 bug log for each defect found. When clean, update S5.3.3 in `TASK_LIST.md`.
+

@@ -835,7 +835,13 @@ import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getUserById } from "@/lib/db";
+import {
+  getUserById,
+  getAllAutomations,
+  getActivityLog,
+  getAllAccounts,
+  getDashboardStats,
+} from "@/lib/db";
 import DashboardContent from "@/components/DashboardContent";
 
 
@@ -853,6 +859,15 @@ export const metadata: Metadata = {
 // (credentials-signup only; Google users are pre-verified at creation) to
 // /verify-email-pending so they can't touch product features until they
 // confirm their email address is real.
+//
+// Perf (2026-10-03): prefetch the four dashboard datasets server-side
+// and pass them to <DashboardContent> as initial props. Previously the
+// client-side `useSession` would fire → wait → then dispatch 5 parallel
+// fetches → wait again → paint. That's two full round-trips of blank
+// spinner. Now the server-rendered HTML already contains stats +
+// automations + accounts + first 30 activity rows, so the dashboard
+// paints populated on hydration. Client still polls every 30s for live
+// updates (unchanged).
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as { id?: string } | undefined)?.id;
@@ -869,5 +884,60 @@ export default async function DashboardPage() {
     redirect("/verify-email-pending");
   }
 
-  return <DashboardContent />;
+  // Fire the four dashboard datasets in parallel. Settled promises so a
+  // single slow table (e.g. activity_log on a big account) can't tank
+  // the whole page — DashboardContent will just show the client-side
+  // loader for whichever slice came back failed and let the 30s poll
+  // retry.
+  const [statsR, automationsR, accountsRaw, activitiesR] = await Promise.allSettled([
+    getDashboardStats(userId),
+    getAllAutomations({ userId }),
+    getAllAccounts(userId),
+    getActivityLog(30, 0, { userId }),
+  ]);
+
+  const initialStats = statsR.status === "fulfilled" ? statsR.value : null;
+  const initialAutomations =
+    automationsR.status === "fulfilled" ? automationsR.value : null;
+  const initialActivities =
+    activitiesR.status === "fulfilled" ? activitiesR.value : null;
+
+  // Mirror the /api/accounts route's masking so we never ship the
+  // real OAuth access_token to the browser via server-rendered HTML.
+  const initialAccounts =
+    accountsRaw.status === "fulfilled"
+      ? accountsRaw.value.map((a) => {
+          let token_status:
+            | "valid"
+            | "expiring_soon"
+            | "expired"
+            | "never_expires"
+            | "unknown" = "unknown";
+          if (!a.token_expires_at) {
+            token_status = "never_expires";
+          } else {
+            const expiryTime = new Date(a.token_expires_at).getTime();
+            const now = Date.now();
+            const sevenDays = 7 * 24 * 60 * 60 * 1000;
+            if (expiryTime < now) token_status = "expired";
+            else if (expiryTime - now < sevenDays) token_status = "expiring_soon";
+            else token_status = "valid";
+          }
+          return {
+            ...a,
+            access_token: a.access_token ? "••••" + a.access_token.slice(-8) : "",
+            token_status,
+          };
+        })
+      : null;
+
+  return (
+    <DashboardContent
+      initialStats={initialStats}
+      initialAutomations={initialAutomations}
+      initialActivities={initialActivities}
+      initialAccounts={initialAccounts}
+      sessionEmail={session.user.email}
+    />
+  );
 }

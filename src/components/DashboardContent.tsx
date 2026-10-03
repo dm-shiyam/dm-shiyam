@@ -155,7 +155,24 @@ function showFirstDmFeedbackToast() {
   );
 }
 
-export default function DashboardContent() {
+type DashboardContentProps = {
+  initialStats?: DashboardStats | null;
+  initialAutomations?: Automation[] | null;
+  initialActivities?: ActivityLog[] | null;
+  initialAccounts?: Account[] | null;
+  // Fallback for the useSession-not-yet-resolved window: the server
+  // already knows which user this is, so no reason to make the client
+  // wait on /api/auth/session before painting.
+  sessionEmail?: string;
+};
+
+export default function DashboardContent({
+  initialStats = null,
+  initialAutomations = null,
+  initialActivities = null,
+  initialAccounts = null,
+  sessionEmail,
+}: DashboardContentProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("automations");
@@ -163,16 +180,23 @@ export default function DashboardContent() {
   // we can keep them mounted (just visually hidden) after the first
   // click. Prevents BillingTab, AnalyticsTab, AccountsTab from
   // remounting + refetching every time the user bounces between tabs.
-  // Automations/Activity/Setup are cheap enough to just toggle in
-  // place against the shared `automations`/`activities` state.
   const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(
     () => new Set(["automations"])
   );
-  const [automations, setAutomations] = useState<Automation[]>([]);
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Initial state comes from the server-prefetched props so the first
+  // paint is already populated. The 30s poll + SSE still run as before
+  // for live updates.
+  const [automations, setAutomations] = useState<Automation[]>(
+    initialAutomations ?? []
+  );
+  const [activities, setActivities] = useState<ActivityLog[]>(
+    initialActivities ?? []
+  );
+  const [accounts, setAccounts] = useState<Account[]>(initialAccounts ?? []);
+  const [stats, setStats] = useState<DashboardStats | null>(initialStats);
+  // Only show the top-of-page spinner when we have *nothing* to render.
+  // Server-prefetched visitors skip the spinner entirely.
+  const [loading, setLoading] = useState(initialStats == null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -354,18 +378,28 @@ export default function DashboardContent() {
     }
   }, []);
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
-      </div>
-    );
+  // Perf (2026-10-03): if the server-rendered page already handed us
+  // initial data (via props), skip the bare "loading" spinner entirely
+  // and render the dashboard immediately — even if useSession() hasn't
+  // resolved yet. The page.tsx server guard has already confirmed the
+  // session exists; useSession is only needed later for `plan` + the
+  // signout handler, both of which can tolerate a 50ms session delay.
+  const sessionReady = status !== "loading" && !!session;
+  const hasInitial = initialStats != null;
+  if (!sessionReady && !hasInitial) {
+    // No server-prefetched data AND no session yet (edge case: hitting
+    // this component outside of /dashboard page.tsx). Render the
+    // dashboard shell with skeleton placeholders so the page never
+    // shows a blank spinner-only screen.
+    return <DashboardSkeleton />;
   }
-
-  if (!session) return null;
+  if (sessionReady && !session) return null;
 
   const userPlan =
-    ((session.user as Record<string, unknown>)?.plan as string) || "free";
+    ((session?.user as Record<string, unknown> | undefined)?.plan as
+      | string
+      | undefined) ?? "free";
+  const displayEmail = session?.user?.email ?? sessionEmail ?? "";
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans dark:bg-gray-950">
@@ -480,7 +514,7 @@ export default function DashboardContent() {
 
             <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
               <span className="hidden sm:block text-xs text-gray-500 truncate max-w-[120px]">
-                {session.user?.email}
+                {displayEmail}
               </span>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}
@@ -1852,6 +1886,73 @@ function SetupGuide() {
           <li>- Need help? Email us anytime at dmshiyamofficial@gmail.com</li>
         </ul>
       </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────
+// DashboardSkeleton — rendered only when the client component is used
+// without server-prefetched props AND useSession hasn't resolved yet.
+// Shows the full dashboard chrome with shimmer placeholders so the
+// user never sees a bare spinner-only screen. Matches the real
+// dashboard layout so there's no jank when the real content paints.
+// ─────────────────────────────────────────────────────────────────────
+function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans dark:bg-gray-950">
+      {/* Nav skeleton */}
+      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/80 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/80">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
+            <div className="h-5 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-7 w-20 animate-pulse rounded-full bg-gray-200 dark:bg-gray-800" />
+          </div>
+        </div>
+      </header>
+
+      {/* Body skeleton */}
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Stats grid skeleton */}
+        <div className="mb-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <div className="h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+                <div className="h-6 w-6 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
+              </div>
+              <div className="h-8 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            </div>
+          ))}
+        </div>
+
+        {/* Tab-strip skeleton */}
+        <div className="mb-8 flex gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-soft dark:border-gray-800 dark:bg-gray-900">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-9 flex-1 animate-pulse rounded-full bg-gray-100 dark:bg-gray-800"
+            />
+          ))}
+        </div>
+
+        {/* Content card skeleton */}
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-soft dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div className="mb-3 h-4 w-1/3 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="h-3 w-2/3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }

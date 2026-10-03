@@ -166,3 +166,70 @@ Not blockers for A8, but noted for future work:
 - Any Tailwind config change (`tailwind.config.ts`).
 - Before a marketing push / paid campaign starts.
 - On every major browser release (mostly relevant for Safari — Chrome/Firefox rarely break existing sites).
+
+---
+
+## 8. S5.3.1 — Auth flow end-to-end (manual pass, destructive)
+
+> Automated coverage: `pnpm test:e2e` now also runs `billing-and-legal.spec.ts` + `session-persistence.spec.ts`. Those are safe against prod. The checks below cannot be automated without burning Resend quota, creating real users in prod, or holding real Google credentials — do them by hand once per release-blocking change.
+>
+> **Target URL**: `https://dm-shiyam.vercel.app` (swap to `https://dmshiyam.com` once S5.7 cutover completes).
+> **Account recipe**: use a brand-new Gmail alias like `your+ankit-s531-<yyyymmdd>@gmail.com` so every pass is a clean slate. Delete via `scripts/delete-user.mjs` or `/admin → Users → Delete` when done.
+
+### 8.1 Signup (credentials) → verify → first login
+
+- [ ] Open `/register` in a private window.
+- [ ] Fill email + name + password that meets policy (≥ 8 chars, letters+digits). Submit.
+- [ ] You land on `/dashboard` **but immediately get redirected to `/verify-email-pending`** (dashboard gate). Confirm the pending page shows your email + a Resend button.
+- [ ] Welcome email arrives at that address within ~1 min (sender: `onboarding@resend.dev` / `FROM_EMAIL`). _(Note: Resend sandbox mode only delivers to the Resend account owner's inbox until `dmshiyam.com` DNS is verified — if you don't see it, that's expected on a non-owner address.)_
+- [ ] Click **Resend verification** on the pending page. Confirm `POST /api/auth/resend-verification` returns 200 (Network tab).
+- [ ] Open the verification email → click the magic link → it lands you on `/dashboard?verified=1`. Dashboard now loads normally (no more pending gate).
+- [ ] Log out → log back in with the same credentials → straight to `/dashboard`, no pending gate.
+- [ ] **Password rejection:** repeat §8.1 with a password that fails policy (6 chars). Expect 400 with the specific policy error, not a 500.
+- [ ] **Duplicate email:** try signing up with the same email again. Expect 409 "Email already registered", friendly form error.
+
+### 8.2 Signup (Google) → first login
+
+- [ ] Open `/register` in a private window. Click **Sign up with Google**.
+- [ ] Pick a Google account that has NEVER touched DM Shiyam.
+- [ ] You consent on `accounts.google.com` → bounce back → land on `/dashboard` with **no verify-email gate** (Google OAuth marks `email_verified: true` server-side per `src/lib/auth.ts` line 120).
+- [ ] On `/admin → Users`, confirm the new user has `provider = google` and `email_verified_at` populated.
+- [ ] Log out → `/login` → click **Continue with Google** → same account → straight to `/dashboard` (session restored, no second consent).
+- [ ] **Collision guard:** if a credentials account already exists at that email, Google sign-in should surface a friendly error (OAuthAccountNotLinked), not a 500. Already covered in copy by commit `efd1f90`; eyeball the toast.
+
+### 8.3 Forgot / reset password
+
+- [ ] Logged out, `/login` → click **Forgot password?** → `/forgot-password`.
+- [ ] Submit your test email → UI shows generic "If an account exists we sent a link" (anti-enumeration — do NOT leak existence).
+- [ ] Reset email lands within ~1 min with a tokenized `/reset-password?token=…` link.
+- [ ] Click the link → `/reset-password` loads the form.
+- [ ] Both password fields have reveal-eye toggles. Both match on live typing (hint "Passwords don't match yet" disappears once equal).
+- [ ] Submit new password → success toast → auto-redirect to `/login`.
+- [ ] Log in with the NEW password → success. Log in with the OLD password → "Invalid email or password" (not a 500).
+- [ ] Click the same reset link a second time → "Invalid or expired link" (one-time use enforced by `updatePassword` rowCount check).
+- [ ] **Rate limit:** fire 6 forgot-password requests in 15 min → the 6th returns 429 with a Retry-After.
+
+### 8.4 Session persistence across tabs + reloads
+
+- [ ] Log in. Open 3 more tabs on `/dashboard`, `/pricing`, and `/admin` (if admin role). All 3 render without redirecting to `/login`.
+- [ ] Hard-refresh each tab (⌘⇧R / Ctrl-Shift-R). Still authed.
+- [ ] Close the browser entirely, reopen, navigate back to `/dashboard`. If "Keep me logged in" / long-session is the design, you stay authed; otherwise expect redirect to `/login`. Document which it is here: _______________.
+- [ ] In tab A, log out. Click any protected link in tab B — expect redirect to `/login` (NextAuth cookie removal visible across tabs). May require 1 interaction to trigger (Next-Auth doesn't push a logout broadcast; a navigation does the check).
+- [ ] **Cookie flags on prod:** devtools → Application → Cookies → `__Secure-next-auth.session-token` has `Secure`, `HttpOnly`, `SameSite=Lax`. If any flag is missing on the production domain, flag it under S5.2.9.
+
+### 8.5 Fallback cases
+
+- [ ] Visit `/dashboard` while signed in as a brand-new user — the first-time Onboarding wizard opens (A10 Getting Started checklist appears).
+- [ ] Visit `/admin` as a non-admin user — expect redirect to `/dashboard` (not a 500).
+- [ ] Hit `/api/admin/funnel` directly (curl) with no cookie — expect 401. With a non-admin cookie — expect 403.
+
+### 8.6 Known gaps / things NOT in scope here
+
+- Google OAuth consent screen screenshots → part of S5.7.7 (needs the final `dmshiyam.com` domain in Google Cloud Console).
+- Full UX on the custom domain → blocked on S5.7 (Venkat).
+- Password-less / magic-link login → not shipped yet, not in S5.3.1 scope.
+
+### 8.7 Record the pass
+
+Append a one-liner to §5 bug log for each defect found. When clean, set the "Last full pass" date in the header of this doc and tick S5.3.1 as ✅ in `TASK_LIST.md`.
+

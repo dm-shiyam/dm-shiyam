@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
-import { PLANS, type PlanType } from "@/lib/plans";
+import { PLANS } from "@/lib/plans";
+import type { PlanType } from "@/types";
 
 type BillingStatus = {
   plan: string;

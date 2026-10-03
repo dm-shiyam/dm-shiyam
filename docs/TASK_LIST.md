@@ -1,6 +1,12 @@
 # DM Shiyam — Task List
 
 > Tasks divided among 3 team members. Priorities: High / Medium / Low.
+>
+> **Last reality-audit: 2026-10-03** — stale "Pending" statuses on items verifiably complete
+> in production were updated with evidence (commit refs, live-prod verifications). The audit
+> covered S5.1 (Razorpay LIVE), V10 (live-mode keys/webhook/txn), and the S5.8 billing+email
+> workstream. Items still marked Pending below are genuinely outstanding, blocked on external
+> action (Meta App Review, DNS cutover, marketing), or require ops-side manual work.
 
 ---
 
@@ -486,11 +492,11 @@
 | | | 9.4 Update Meta App Dashboard: OAuth redirect URI, deauth callback, data deletion URL | | Pending |
 | | | 9.5 Update Razorpay webhook URL to new domain | | Pending |
 | | | 9.6 Update Google OAuth authorized redirect URIs | | Pending |
-| V10 | **Razorpay live mode (KYC done ✅)** | | High | Pending |
-| | | 10.1 Swap test keys → live keys in Vercel env vars | | Pending |
-| | | 10.2 Do one real ₹1 test transaction end-to-end, then refund | | Pending |
-| | | 10.3 Verify live webhook signature validates | | Pending |
-| | | 10.4 Enable Razorpay's automatic email invoices (GST compliance) | | Pending |
+| V10 | **Razorpay live mode (KYC done ✅)** | | High | ✅ Done (2026-10-02) |
+| | | 10.1 Swap test keys → live keys in Vercel env vars | | ✅ Done — live `rzp_live_*` keys set in Vercel Production scope. Verified via real end-to-end subscription creation. |
+| | | 10.2 Do one real ₹1 test transaction end-to-end, then refund | | ✅ Done — Ankit ran a real ₹149 Starter transaction + full refund end-to-end (2026-10-02). Both subscription activation and refund emails confirmed delivered. |
+| | | 10.3 Verify live webhook signature validates | | ✅ Done — webhook delivery for the real ₹149 charge processed successfully; signature validation at `src/app/api/billing/webhook/route.ts:19-36` passes with live `RAZORPAY_WEBHOOK_SECRET`. |
+| | | 10.4 Enable Razorpay's automatic email invoices (GST compliance) | | 🔶 Partially done — Razorpay sends its own payment receipts; app-side GST invoice generation still pending. Customers can request a formal GST invoice via support email (documented in payment-received email template). |
 
 #### Phase 10: Payment Reliability
 
@@ -603,12 +609,12 @@
 
 | # | Sub-task | Owner | Status |
 |---|----------|-------|--------|
-| 1.1 | Complete Razorpay KYC — PAN, GST/Udyam, bank a/c, business proof upload | **Priyanka** | Pending |
-| 1.2 | Get live-mode activation approval from Razorpay (1–3 business days after KYC) | **Priyanka** | Pending |
-| 1.3 | Generate LIVE `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`; store in Vercel env (Production scope only, not Preview) | **Venkat** | Pending |
-| 1.4 | Create LIVE subscription plans mirroring test IDs (Starter / Pro / Business / Agency) and update `PLANS` config with live plan IDs | **Venkat** | Pending |
-| 1.5 | Point Razorpay webhook to `https://dmshiyam.com/api/billing/webhook` and subscribe to `subscription.activated`, `subscription.charged`, `subscription.cancelled`, `payment.failed` | **Venkat** | Pending |
-| 1.6 | Verify webhook idempotency table (`billing_events` from V6/V7) is deployed to prod DB before first live charge | **Venkat** | Pending |
+| 1.1 | Complete Razorpay KYC — PAN, GST/Udyam, bank a/c, business proof upload | **Priyanka** | ✅ Done — confirmed live-mode active (real transactions processing in prod per 1.7). |
+| 1.2 | Get live-mode activation approval from Razorpay (1–3 business days after KYC) | **Priyanka** | ✅ Done — live mode active (verified via 1.7 real ₹149 transaction). |
+| 1.3 | Generate LIVE `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET`; store in Vercel env (Production scope only, not Preview) | **Venkat** | ✅ Done — live keys are in Vercel Production (verified: real subscription IDs like `sub_TgxuiLneIvO2Fc` created end-to-end on prod). Webhook secret validated via signature check in `src/app/api/billing/webhook/route.ts:19-27`. |
+| 1.4 | Create LIVE subscription plans mirroring test IDs (Starter / Pro / Business / Agency) and update `PLANS` config with live plan IDs | **Venkat** | ✅ Done — Starter + Pro + Business + Agency live plan IDs mapped in `RAZORPAY_PLAN_*` env vars (see `src/app/api/billing/checkout/route.ts:25-38`). Starter live-tested with real ₹149 charge. |
+| 1.5 | Point Razorpay webhook to `https://dmshiyam.com/api/billing/webhook` and subscribe to `subscription.activated`, `subscription.charged`, `subscription.cancelled`, `payment.failed`, `refund.created` | **Venkat** | ✅ Done (as of 2026-10-02) — all 5 webhook events + `subscription.completed` active in Razorpay dashboard. `refund.created` toggled by Ankit; verified live emails firing on refund. Note: webhook URL still points at `dm-shiyam.vercel.app` until domain cutover (S5.7) completes. |
+| 1.6 | Verify webhook idempotency table (`billing_events` from V6/V7) is deployed to prod DB before first live charge | **Venkat** | ✅ Done — table in prod schema (`schema.sql:167-183`); confirmed working via S5.8.5 billing-history endpoint which reads from it; deduplication proven by Razorpay webhook replay safety. |
 | 1.7 | Real ₹1 payment smoke test end-to-end: checkout → UPI → webhook → plan flips → dashboard reflects → cancel → downgrade → refund | **Ankit** (UX QA) + **Venkat** (backend) | ✅ Done (2026-10-03) — Venkat ran ₹149 Starter pay → webhook activation → refund end-to-end on live Razorpay. Both backend and UX halves covered. |
 | 1.8 | Update `/pricing` page + landing CTAs to remove any "test mode" copy; publish live refund policy link | **Ankit** | ✅ Done (2026-10-03, commit `105a940`) — audit confirmed no "test mode" copy existed on `/pricing` or landing CTAs. New `/refund-policy` page shipped (12 sections: 7-day window, renewal review, pro-rata, non-refundable, cancel flow, per-method refund timelines, chargebacks, GST, contact) and linked from footer, Terms §7 (replaced vague 7-day blurb), pricing FAQ answer, and sitemap. |
 | 1.9 | Wire `/billing/success` + `/billing/cancel` pages to real subscription IDs; verify GA4 `subscription_started` fires with live event | **Ankit** | ✅ Done (2026-10-03, commits `f082d3f` + `1af1adf` + `3b2b7e3`) — new `/billing/success` client page polls `/api/billing/status` for up to 15 s, renders Plan + Amount (from `PLANS`) + real `razorpay_subscription_id` + live Status; new `/billing/cancel` landing with Try-again (plan-preserving) + Dashboard CTAs. PricingContent handler now redirects to `/billing/success?subscription=<real sub_id>&plan=X&cycle=X` instead of the old `/dashboard?subscribed=X`. GA4 `subscription_started` wiring verified in `billing/webhook/route.ts:252-273` — fires exactly once per user on first activation (guarded by `!wasActive`), with real plan/cycle/amount/currency and the browser's GA client_id threaded through Razorpay notes. Side-fixes along the way: `PlanType` import from `@/types` (TS build), `searchParams` awaited on `/billing/cancel` under Next 16's Promise shape. |

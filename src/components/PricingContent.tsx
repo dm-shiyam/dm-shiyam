@@ -145,9 +145,18 @@ export default function PricingContent() {
               }),
             });
             if (verifyRes.ok) {
-              // Success — land on dashboard with a query param the client
-              // can pick up to show a "Welcome to Pro" toast.
-              window.location.href = "/dashboard?subscribed=" + plan;
+              // S5.1.9 — Land on the dedicated /billing/success page with
+              // the REAL Razorpay subscription ID so the user sees a proper
+              // receipt (plan, amount, sub_id) and the page can poll
+              // /api/billing/status to confirm the webhook has flipped them
+              // to active. Replaces the old `/dashboard?subscribed=plan`
+              // redirect which only carried the plan slug (no sub id).
+              const q = new URLSearchParams({
+                subscription: response.razorpay_subscription_id,
+                plan,
+                cycle,
+              });
+              window.location.href = "/billing/success?" + q.toString();
             } else {
               const err = await verifyRes.json().catch(() => ({}));
               alert(

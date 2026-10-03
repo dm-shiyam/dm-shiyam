@@ -12,12 +12,16 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function BillingCancelPage({
+// Next 16 made searchParams a Promise — destructuring it synchronously was
+// silently returning the Promise's own `.plan` (undefined), so the Try-again
+// link lost its plan slug. Caught by billing-and-legal.spec.ts.
+export default async function BillingCancelPage({
   searchParams,
 }: {
-  searchParams?: { plan?: string };
+  searchParams?: Promise<{ plan?: string }>;
 }) {
-  const plan = (searchParams?.plan ?? "").trim();
+  const resolved = (await searchParams) ?? {};
+  const plan = (resolved.plan ?? "").trim();
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4 py-12">

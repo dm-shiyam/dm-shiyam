@@ -105,9 +105,8 @@ No secret-looking env var is accessible from client code. ✅
 Platform-injected vars (`NODE_ENV`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_SHA`)
 don't need to go in `.env.example`.
 
-**Declared but unused** (remove or comment):
-- `DOCKER_BUILD` — no `process.env.DOCKER_BUILD` reader in `src/`; set
-  only as a Docker build arg, not a runtime var.
+**No orphans** — `DOCKER_BUILD` is read by `next.config.js:81` (toggles
+`output: "standalone"`), not by any file under `src/`. Keep as-is.
 
 ---
 

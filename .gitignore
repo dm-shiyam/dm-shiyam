@@ -27,6 +27,14 @@ tsconfig.tsbuildinfo
 .idea/
 *.swp
 
+# IDE / agent tooling leftovers (local-only, must NOT ship to Vercel —
+# `autocomplete/server.d.ts` contains TS reserved words as parameter names
+# which breaks `next build`'s type check).
+/autocomplete/
+/agentrules/
+/agentinstructions.md
+/jsconfig.json
+
 # Playwright
 /test-results/
 /playwright-report/

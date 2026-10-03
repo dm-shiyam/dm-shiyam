@@ -340,21 +340,21 @@ export default function LandingContent() {
             n={1}
             title="A follower comments the keyword"
             caption="They see your Reel's CTA — 'comment GUIDE' — and drop the word in."
-            src="/screenshots/01-comment.png"
+            src="/screenshots/01-comment.jpg"
             fallbackMock="comment"
           />
           <ProofStep
             n={2}
             title="DM Shiyam auto-sends the DM"
             caption="Within one second, Instagram delivers your personalized DM. No bots, no browser hacks — Meta's official API."
-            src="/screenshots/02-dm.png"
+            src="/screenshots/02-dm.jpg"
             fallbackMock="dm"
           />
           <ProofStep
             n={3}
             title="They reply, you convert"
             caption="Now it's a real conversation. Pro users let AI handle the follow-up; Business users bulk-reply from one dashboard."
-            src="/screenshots/03-reply.png"
+            src="/screenshots/03-reply.jpg"
             fallbackMock="reply"
           />
         </div>
@@ -548,7 +548,7 @@ export default function LandingContent() {
 
 // ─────────────────────── Sub-components ───────────────────────
 
-// Hero dashboard screenshot. Uses /screenshots/hero-dashboard.png when
+// Hero dashboard screenshot. Uses /screenshots/hero-dashboard.jpg when
 // available; otherwise falls back to the inline mock so the page still
 // renders if Ankit hasn't dropped the file yet. The fallback is a
 // client-side swap on <img> error to avoid breaking SSR.
@@ -609,7 +609,7 @@ function HeroScreenshot() {
     // cropping, no stretching — regardless of what resolution/aspect
     // Ankit uploads.
     <img
-      src="/screenshots/hero-dashboard.png"
+      src="/screenshots/hero-dashboard.jpg"
       alt="DM Shiyam dashboard"
       className="block h-auto w-full"
       onError={() => setFailed(true)}

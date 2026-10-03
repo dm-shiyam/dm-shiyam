@@ -39,13 +39,15 @@ import {
   LogOut,
   Crown,
   AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import type { Automation, ActivityLog, DashboardStats, Account } from "@/types";
 import AnalyticsTab from "@/components/AnalyticsTab";
 import AccountsTab from "@/components/AccountsTab";
+import BillingTab from "@/components/BillingTab";
 import { trackEvent } from "@/lib/analytics";
 
-type Tab = "automations" | "activity" | "analytics" | "accounts" | "setup";
+type Tab = "automations" | "activity" | "analytics" | "accounts" | "billing" | "setup";
 
 // A14.1 — Custom sonner toast: 👍 / 👎 prompt after first DM.
 // Persists until dismissed. Submitting flips localStorage so we never re-prompt.
@@ -468,6 +470,10 @@ export default function DashboardContent() {
             { id: "activity" as Tab, label: "Activity", icon: Activity },
             { id: "analytics" as Tab, label: "Analytics", icon: BarChart3 },
             { id: "accounts" as Tab, label: "Accounts", icon: Instagram },
+            // S5.8.5 — Dedicated billing tab (current plan, payment
+            // history, change/cancel). Shown to everyone — free users
+            // still land here to see "no payments yet" + upgrade CTA.
+            { id: "billing" as Tab, label: "Billing", icon: CreditCard },
             // Setup guide is only useful before a user has set up their
             // first account. Hide it once a paid user is fully set up so
             // the sidebar stops nagging with a "getting started" tab
@@ -510,6 +516,7 @@ export default function DashboardContent() {
         )}
         {activeTab === "analytics" && <AnalyticsTab userPlan={userPlan} />}
         {activeTab === "accounts" && <AccountsTab />}
+        {activeTab === "billing" && <BillingTab />}
         {activeTab === "setup" && <SetupGuide />}
       </main>
 
@@ -1085,54 +1092,68 @@ function AutomationCard({
 
   return (
     <div
-      className={`card transition-all ${!automation.is_active ? "opacity-60" : ""}`}
+      className={`relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-soft transition-all hover:border-gray-300 hover:shadow-medium dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 ${
+        !automation.is_active ? "opacity-70" : ""
+      }`}
     >
+      {/* Active-state gradient edge — subtle brand accent for live rows */}
+      {automation.is_active && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-ig-gradient" aria-hidden />
+      )}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <h3 className="font-semibold truncate dark:text-white">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-gray-900 dark:text-white">
               {automation.name}
             </h3>
             {automation.is_active ? (
-              <span className="badge-success">Active</span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 pulse-dot" />
+                Active
+              </span>
             ) : (
-              <span className="badge-error">Paused</span>
+              <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                Paused
+              </span>
             )}
             {automation.ai_enabled && (
-              <span className="badge bg-violet-50 text-violet-700 flex items-center gap-1">
+              <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/40 dark:text-violet-300">
                 <Sparkles className="h-3 w-3" /> AI
               </span>
             )}
             {linkedAccount && (
-              <span className="badge bg-pink-50 text-pink-700">
+              <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:border-pink-900/40 dark:bg-pink-950/40 dark:text-pink-300">
                 @{linkedAccount.instagram_username}
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-            <span className="flex items-center gap-1 dark:text-gray-400">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5">
               <Hash className="h-3.5 w-3.5" />
               {automation.trigger_keywords.split(",").map((k) => (
                 <span
                   key={k}
-                  className="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700"
+                  className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 >
                   {k.trim()}
                 </span>
               ))}
             </span>
-            <span className="text-gray-300">|</span>
-            <span className="flex items-center gap-1 dark:text-gray-400">
+            <span className="text-gray-300 dark:text-gray-700">·</span>
+            <span className="flex items-center gap-1.5">
               <Send className="h-3.5 w-3.5" />
-              {automation.total_triggered} triggered
+              <span className="tabular-nums font-medium">
+                {automation.total_triggered}
+              </span>
+              <span>triggered</span>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             title="Expand"
           >
             {expanded ? (
@@ -1143,7 +1164,7 @@ function AutomationCard({
           </button>
           <button
             onClick={onToggle}
-            className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             title={automation.is_active ? "Pause" : "Activate"}
           >
             {automation.is_active ? (
@@ -1568,37 +1589,36 @@ function ActivityTab({
 }) {
   if (loading) {
     return (
-      <div className="card flex items-center justify-center py-12 text-gray-400">
-        <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Loading...
+      <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-gray-400 shadow-soft dark:border-gray-800 dark:bg-gray-900">
+        <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> Loading…
       </div>
     );
   }
 
   if (activities.length === 0) {
     return (
-      <div className="card py-16 text-center">
-        <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-        <h3 className="mb-2 text-lg font-semibold text-gray-700">
+      <div className="rounded-2xl border border-gray-200 bg-white py-16 text-center shadow-soft dark:border-gray-800 dark:bg-gray-900">
+        <Activity className="mx-auto mb-4 h-12 w-12 text-gray-300 dark:text-gray-700" />
+        <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
           No activity yet
         </h3>
-        <p className="text-sm text-gray-500">
-          Activity will appear here once your automations start
-          triggering.
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Activity will appear here once your automations start triggering.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      {activities.map((log) => (
-        <div key={log.id} className="card !py-4">
-          <div className="flex items-start gap-3">
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-soft dark:border-gray-800 dark:bg-gray-900">
+      <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+        {activities.map((log) => (
+          <li key={log.id} className="flex items-start gap-3 px-5 py-4">
             <div
-              className={`mt-0.5 rounded-full p-1.5 ${
+              className={`mt-0.5 shrink-0 rounded-full p-1.5 ${
                 log.dm_sent
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-red-50 text-red-500"
+                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  : "bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400"
               }`}
             >
               {log.dm_sent ? (
@@ -1607,50 +1627,56 @@ function ActivityTab({
                 <XCircle className="h-4 w-4" />
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-medium text-sm">
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
                   @{log.instagram_username}
                 </span>
-                <span className="text-gray-300">&middot;</span>
-                <span className="badge-info">{log.matched_keyword}</span>
+                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] font-semibold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300">
+                  {log.matched_keyword}
+                </span>
                 {log.ai_generated && (
-                  <span className="badge bg-violet-50 text-violet-700 flex items-center gap-1">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/40 dark:text-violet-300">
                     <Sparkles className="h-3 w-3" /> AI
                   </span>
                 )}
-                <span className="text-gray-300">&middot;</span>
-                <span className="text-xs text-gray-400">
-                  {log.automation_name}
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  · {log.automation_name}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 truncate">
+              <p className="truncate text-sm text-gray-600 dark:text-gray-400">
                 <MessageCircle className="mr-1 inline h-3.5 w-3.5" />
                 &ldquo;{log.comment_text}&rdquo;
               </p>
-              <div className="mt-1.5 flex items-center gap-3 text-xs flex-wrap">
+              <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs">
                 {log.dm_sent ? (
-                  <span className="text-emerald-600">DM sent</span>
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    DM sent
+                  </span>
                 ) : (
-                  <span className="text-red-500">DM failed</span>
+                  <span className="font-medium text-red-500 dark:text-red-400">
+                    DM failed
+                  </span>
                 )}
                 {log.comment_replied && (
-                  <span className="text-blue-600">Comment replied</span>
+                  <span className="font-medium text-blue-600 dark:text-blue-400">
+                    Comment replied
+                  </span>
                 )}
-                <span className="flex items-center gap-1 text-gray-400">
+                <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500">
                   <Clock className="h-3 w-3" />
                   {new Date(log.created_at).toLocaleString()}
                 </span>
               </div>
               {log.error_message && (
-                <p className="mt-1 text-xs text-red-400">
+                <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
                   {log.error_message}
                 </p>
               )}
             </div>
-          </div>
-        </div>
-      ))}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
